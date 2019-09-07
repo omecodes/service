@@ -1,0 +1,360 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "service.proto",
+    "version": "version not set"
+  },
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/api/services/deregister/{registry_id}": {
+      "get": {
+        "operationId": "Deregister",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoDeregisterResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "registry_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Registry"
+        ]
+      }
+    },
+    "/api/services/get/{registry_id}": {
+      "get": {
+        "operationId": "Get",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoGetResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "registry_id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Registry"
+        ]
+      }
+    },
+    "/api/services/list": {
+      "get": {
+        "operationId": "List",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoListResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "namespace",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Registry"
+        ]
+      }
+    },
+    "/api/services/register": {
+      "post": {
+        "operationId": "Register",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoRegisterResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protoRegisterRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Registry"
+        ]
+      }
+    },
+    "/api/services/search": {
+      "get": {
+        "operationId": "Search",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protoSearchResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "namespace",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "UnknownType",
+              "Authority",
+              "IDM",
+              "TokenStore",
+              "UserTree",
+              "UserData",
+              "Storage"
+            ],
+            "default": "UnknownType"
+          }
+        ],
+        "tags": [
+          "Registry"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "protoDeregisterResponse": {
+      "type": "object"
+    },
+    "protoEvent": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/protoEventType"
+        },
+        "name": {
+          "type": "string"
+        },
+        "info": {
+          "$ref": "#/definitions/protoInfo"
+        }
+      }
+    },
+    "protoEventType": {
+      "type": "string",
+      "enum": [
+        "UnknownEvent",
+        "Registered",
+        "DeRegistered",
+        "Updated"
+      ],
+      "default": "UnknownEvent"
+    },
+    "protoGetResponse": {
+      "type": "object",
+      "properties": {
+        "info": {
+          "$ref": "#/definitions/protoInfo"
+        }
+      }
+    },
+    "protoInfo": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "namespace": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/definitions/protoType"
+        },
+        "label": {
+          "type": "string"
+        },
+        "nodes": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/protoNode"
+          }
+        },
+        "meta": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "protoListResponse": {
+      "type": "object",
+      "properties": {
+        "applications": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protoInfo"
+          }
+        }
+      }
+    },
+    "protoNode": {
+      "type": "object",
+      "properties": {
+        "protocol": {
+          "$ref": "#/definitions/protoProtocol"
+        },
+        "address": {
+          "type": "string"
+        },
+        "security": {
+          "$ref": "#/definitions/protoSecurity"
+        },
+        "ttl": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "protoProtocol": {
+      "type": "string",
+      "enum": [
+        "Grpc",
+        "Http"
+      ],
+      "default": "Grpc"
+    },
+    "protoRegisterRequest": {
+      "type": "object",
+      "properties": {
+        "service": {
+          "$ref": "#/definitions/protoInfo"
+        }
+      }
+    },
+    "protoRegisterResponse": {
+      "type": "object",
+      "properties": {
+        "registry_id": {
+          "type": "string"
+        }
+      }
+    },
+    "protoSearchResponse": {
+      "type": "object",
+      "properties": {
+        "services": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protoInfo"
+          }
+        }
+      }
+    },
+    "protoSecurity": {
+      "type": "string",
+      "enum": [
+        "None",
+        "ServerTLS",
+        "MutualTLS"
+      ],
+      "default": "None"
+    },
+    "protoType": {
+      "type": "string",
+      "enum": [
+        "UnknownType",
+        "Authority",
+        "IDM",
+        "TokenStore",
+        "UserTree",
+        "UserData",
+        "Storage"
+      ],
+      "default": "UnknownType"
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "type_url": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "runtimeStreamError": {
+      "type": "object",
+      "properties": {
+        "grpc_code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "http_code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "http_status": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    }
+  },
+  "x-stream-definitions": {
+    "protoEvent": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "$ref": "#/definitions/protoEvent"
+        },
+        "error": {
+          "$ref": "#/definitions/runtimeStreamError"
+        }
+      },
+      "title": "Stream result of protoEvent"
+    }
+  }
+}
