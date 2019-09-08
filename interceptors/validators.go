@@ -61,7 +61,8 @@ func NewGateway(sharedSecret string, caCert *x509.Certificate) *Gateway {
 }
 
 type Jwt struct {
-	verifyFunc JwtVerifyFunc
+	acceptAnonymous bool
+	verifyFunc      JwtVerifyFunc
 }
 
 func (j *Jwt) Name() string {
@@ -80,13 +81,19 @@ func (j *Jwt) Validate(ctx context.Context) (context.Context, error) {
 	}
 
 	authorization := meta[0]
+	if authorization == "" && j.acceptAnonymous {
+		return ctx, nil
+	}
 
 	err := j.verifyFunc(ctx, authorization)
 	return ctx, err
 }
 
-func NewJwt(verifyFunc JwtVerifyFunc) *Jwt {
-	return &Jwt{verifyFunc: verifyFunc}
+func NewJwt(verifyFunc JwtVerifyFunc, acceptAnonymous bool) *Jwt {
+	return &Jwt{
+		acceptAnonymous: acceptAnonymous,
+		verifyFunc:      verifyFunc,
+	}
 }
 
 type Basic struct {
