@@ -26,6 +26,7 @@ type BoxConfigs struct {
 	Web     *Web
 	Grpc    *Grpc
 	Options []Option
+	Meta    map[string]string
 }
 
 type Service interface {

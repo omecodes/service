@@ -10,6 +10,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"github.com/iancoleman/strcase"
+	"github.com/zoenion/common"
 	crypto2 "github.com/zoenion/common/crypto"
 	"github.com/zoenion/common/errors"
 	"github.com/zoenion/common/futils"
@@ -323,11 +324,14 @@ func (box *Box) clientMutualTLS() *tls.Config {
 }
 
 func (box *Box) gatewayToGrpcClientTls() *tls.Config {
-	CAPool := x509.NewCertPool()
-	CAPool.AddCert(box.caCert)
-	return &tls.Config{
-		RootCAs: CAPool,
+	if box.caCert != nil {
+		CAPool := x509.NewCertPool()
+		CAPool.AddCert(box.caCert)
+		return &tls.Config{
+			RootCAs: CAPool,
+		}
 	}
+	return nil
 }
 
 func (box *Box) start(cfg *BoxConfigs) error {
@@ -397,15 +401,27 @@ func Run(loader BoxConfigsLoader, params BoxParams) {
 	if err := box.start(cfg); err != nil {
 		log.Fatalf("starting %s service: %s\n", box.Name, err)
 	}
+
 	if box.registry != nil {
+
+		meta := map[string]string{}
+
 		certEncoded, _ := crypto2.PEMEncodeCertificate(box.cert)
+		if certEncoded != nil {
+			meta[common.ServiceCertificate] = string(certEncoded)
+		}
+
+		for k, m := range cfg.Meta {
+			meta[k] = m
+		}
+
 		box.params.RegistryID, err = box.registry.Register(&proto.Info{
 			Type:      cfg.Type,
 			Name:      strcase.ToDelimited(box.Name(), '-'),
 			Namespace: box.params.Namespace,
 			Label:     strcase.ToCamel(box.params.Name),
 			Nodes:     box.gateway.nodes(),
-			Meta:      map[string]string{"metadata": string(certEncoded)},
+			Meta:      meta,
 		})
 		if err != nil {
 			log.Printf("could not register service: %s\n", err)

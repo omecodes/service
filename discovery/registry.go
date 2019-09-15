@@ -157,7 +157,7 @@ func (r *SyncedRegistry) ConnectionInfo(id string, protocol proto.Protocol) (*pr
 
 func (r *SyncedRegistry) RegisterEventHandler(h proto.RegistryEventHandler) string {
 	r.handlersLock.Lock()
-	defer r.handlersLock.Lock()
+	defer r.handlersLock.Unlock()
 	hid := uuid.New().String()
 	r.eventHandlers[hid] = h
 	return hid
@@ -165,7 +165,7 @@ func (r *SyncedRegistry) RegisterEventHandler(h proto.RegistryEventHandler) stri
 
 func (r *SyncedRegistry) DeregisterEventHandler(hid string) {
 	r.handlersLock.Lock()
-	defer r.handlersLock.Lock()
+	defer r.handlersLock.Unlock()
 	delete(r.eventHandlers, hid)
 }
 
@@ -224,6 +224,10 @@ func (r *SyncedRegistry) connected() {
 		if err != nil {
 			log.Printf("could not get event: %s\n", err)
 			return
+		}
+
+		for _, h := range r.eventHandlers {
+			go h.Handle(event)
 		}
 
 		log.Printf("registry -> %s: %s\n", event.Type.String(), event.Name)
