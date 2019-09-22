@@ -6,7 +6,8 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"github.com/zoenion/service/proto"
+	context2 "github.com/zoenion/service/context"
+	"github.com/zoenion/service/discovery"
 )
 
 type contextKey string
@@ -39,7 +40,7 @@ func PrivateKey(ctx context.Context) crypto.PrivateKey {
 	return val.(*Box).privateKey
 }
 
-func Registry(ctx context.Context) proto.Registry {
+func Registry(ctx context.Context) discovery.Registry {
 	val := ctx.Value(ctxBox)
 	if val == nil {
 		return nil
@@ -100,4 +101,20 @@ func ClientTLSConfig(ctx context.Context) *tls.Config {
 	}
 	box := val.(*Box)
 	return box.clientMutualTLS()
+}
+
+func RequestUser(ctx context.Context) (string, bool) {
+	value := ctx.Value(context2.User)
+	if user, ok := value.(string); ok {
+		return user, true
+	}
+	return "", false
+}
+
+func RequestUserAgent(ctx context.Context) (string, bool) {
+	value := ctx.Value(context2.UserAgent)
+	if userAgent, ok := value.(string); ok {
+		return userAgent, true
+	}
+	return "", false
 }

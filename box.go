@@ -36,7 +36,7 @@ type Box struct {
 	params BoxParams
 
 	gateway                    *gateway
-	registry                   proto.Registry
+	registry                   discovery.Registry
 	caCert                     *x509.Certificate
 	caClientAuthentication     credentials.PerRPCCredentials
 	caGRPCTransportCredentials credentials.TransportCredentials
@@ -61,7 +61,7 @@ func (box *Box) RegistryCert() *x509.Certificate {
 	return box.registryCert
 }
 
-func (box *Box) Registry() proto.Registry {
+func (box *Box) Registry() discovery.Registry {
 	return box.registry
 }
 
@@ -184,9 +184,9 @@ func (box *Box) loadTools() error {
 
 	if box.params.RegistryAddress != "" {
 		if box.params.RegistrySecure {
-			box.registry = discovery.NewSyncRegistry(box.params.RegistryAddress, box.clientMutualTLS())
+			box.registry = NewSyncRegistry(box.params.RegistryAddress, box.clientMutualTLS())
 		} else {
-			box.registry = discovery.NewSyncRegistry(box.params.RegistryAddress, nil)
+			box.registry = NewSyncRegistry(box.params.RegistryAddress, nil)
 		}
 	}
 	return nil

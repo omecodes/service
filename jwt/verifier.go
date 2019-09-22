@@ -9,6 +9,7 @@ import (
 	"github.com/zoenion/common/data"
 	"github.com/zoenion/common/errors"
 	authpb "github.com/zoenion/common/proto/auth"
+	"github.com/zoenion/service/discovery"
 	"github.com/zoenion/service/proto"
 	"log"
 	"path/filepath"
@@ -19,7 +20,7 @@ type RevokedHandlerFunc func()
 
 type jwtVerifier struct {
 	sync.Mutex
-	registry       proto.Registry
+	registry       discovery.Registry
 	storesMutex    sync.Mutex
 	tokenVerifiers map[string]authpb.TokenVerifier
 	syncedStores   map[string]*SyncedStore
@@ -27,6 +28,7 @@ type jwtVerifier struct {
 	serviceCert    *x509.Certificate
 	serviceKey     crypto.PrivateKey
 	cacheDir       string
+	withValidated  authpb.WithTokenValidated
 }
 
 func (j *jwtVerifier) Verify(ctx context.Context, t *authpb.JWT) (authpb.JWTState, error) {
@@ -45,7 +47,7 @@ func (j *jwtVerifier) Verify(ctx context.Context, t *authpb.JWT) (authpb.JWTStat
 			return 0, errors.Forbidden
 		}
 
-		verifier = authpb.NewTokenVerifier(issCert)
+		verifier = authpb.NewTokenVerifier(issCert, j.withValidated)
 		j.saveJwtVerifier(t.Claims.Iss, verifier)
 	}
 
@@ -117,7 +119,7 @@ func (j *jwtVerifier) saveStore(name string, s *SyncedStore) {
 	j.syncedStores[name] = s
 }
 
-func NewVerifier(caCert, cert *x509.Certificate, privateKey crypto.PrivateKey, registry proto.Registry, cacheDir string) authpb.TokenVerifier {
+func NewVerifier(caCert, cert *x509.Certificate, privateKey crypto.PrivateKey, registry discovery.Registry, cacheDir string, withValidated authpb.WithTokenValidated) authpb.TokenVerifier {
 	verifier := &jwtVerifier{
 		tokenVerifiers: map[string]authpb.TokenVerifier{},
 		syncedStores:   map[string]*SyncedStore{},
@@ -126,6 +128,7 @@ func NewVerifier(caCert, cert *x509.Certificate, privateKey crypto.PrivateKey, r
 		serviceKey:     privateKey,
 		serviceCert:    cert,
 		CaCert:         caCert,
+		withValidated:  withValidated,
 	}
 	return verifier
 }

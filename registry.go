@@ -1,4 +1,4 @@
-package discovery
+package service
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/zoenion/common/clone"
 	"github.com/zoenion/common/errors"
+	"github.com/zoenion/service/discovery"
 	"github.com/zoenion/service/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
@@ -42,7 +43,7 @@ type SyncedRegistry struct {
 	serverAddress string
 	stop          bool
 	conn          *grpc.ClientConn
-	eventHandlers map[string]proto.RegistryEventHandler
+	eventHandlers map[string]RegistryEventHandler
 }
 
 func (r *SyncedRegistry) Connect() error {
@@ -155,7 +156,7 @@ func (r *SyncedRegistry) ConnectionInfo(id string, protocol proto.Protocol) (*pr
 	return nil, errors.NotFound
 }
 
-func (r *SyncedRegistry) RegisterEventHandler(h proto.RegistryEventHandler) string {
+func (r *SyncedRegistry) RegisterEventHandler(h discovery.RegistryEventHandler) string {
 	r.handlersLock.Lock()
 	defer r.handlersLock.Unlock()
 	hid := uuid.New().String()
@@ -250,6 +251,6 @@ func NewSyncRegistry(server string, tlsConfig *tls.Config) *SyncedRegistry {
 		services:      map[string]*proto.Info{},
 		tlsConfig:     tlsConfig,
 		serverAddress: server,
-		eventHandlers: map[string]proto.RegistryEventHandler{},
+		eventHandlers: map[string]RegistryEventHandler{},
 	}
 }
