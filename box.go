@@ -29,11 +29,11 @@ import (
 )
 
 type BoxConfigsLoader interface {
-	Load(ctx context.Context) (*BoxConfigs, error)
+	Load(ctx context.Context) (*Configs, error)
 }
 
 type Box struct {
-	params BoxParams
+	params Params
 
 	gateway                    *gateway
 	registry                   discovery.Registry
@@ -334,7 +334,7 @@ func (box *Box) gatewayToGrpcClientTls() *tls.Config {
 	return nil
 }
 
-func (box *Box) start(cfg *BoxConfigs) error {
+func (box *Box) start(cfg *Configs) error {
 
 	if cfg.Web != nil {
 		if cfg.Web.Tls == nil {
@@ -368,7 +368,7 @@ func (box *Box) stop() {
 	}
 }
 
-func Run(loader BoxConfigsLoader, params BoxParams) {
+func Run(loader BoxConfigsLoader, params Params) {
 	box := new(Box)
 	if params.Name == "" {
 		params.Name = AppName

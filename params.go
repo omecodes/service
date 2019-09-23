@@ -1,6 +1,6 @@
 package service
 
-type BoxParams struct {
+type Params struct {
 	Name            string
 	Dir             string
 	Domain          string

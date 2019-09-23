@@ -16,68 +16,83 @@ const (
 	ctxBox = contextKey("box")
 )
 
-func CACertificate(ctx context.Context) *x509.Certificate {
+func serviceBox(ctx context.Context) *Box {
 	val := ctx.Value(ctxBox)
 	if val == nil {
+		srvCtx := ctx.Value(context2.ServiceContext)
+		if srvCtx == nil {
+			return nil
+		}
+		val = srvCtx.(context.Context).Value(ctxBox)
+		if val == nil {
+			return nil
+		}
+		return val.(*Box)
+	}
+	return nil
+}
+
+func CACertificate(ctx context.Context) *x509.Certificate {
+	box := serviceBox(ctx)
+	if box == nil {
 		return nil
 	}
-	return val.(*Box).caCert
+	return box.caCert
 }
 
 func Certificate(ctx context.Context) *x509.Certificate {
-	val := ctx.Value(ctxBox)
-	if val == nil {
+	box := serviceBox(ctx)
+	if box == nil {
 		return nil
 	}
-	return val.(*Box).cert
+	return box.cert
 }
 
 func PrivateKey(ctx context.Context) crypto.PrivateKey {
-	val := ctx.Value(ctxBox)
-	if val == nil {
+	box := serviceBox(ctx)
+	if box == nil {
 		return nil
 	}
-	return val.(*Box).privateKey
+	return box.privateKey
 }
 
 func Registry(ctx context.Context) discovery.Registry {
-	val := ctx.Value(ctxBox)
-	if val == nil {
+	box := serviceBox(ctx)
+	if box == nil {
 		return nil
 	}
-	return val.(*Box).registry
+	return box.registry
 }
 
 func Namespace(ctx context.Context) string {
-	val := ctx.Value(ctxBox)
-	if val == nil {
+	box := serviceBox(ctx)
+	if box == nil {
 		return ""
 	}
-	return val.(*Box).params.Namespace
+	return box.params.Namespace
 }
 
 func Name(ctx context.Context) string {
-	val := ctx.Value(ctxBox)
-	if val == nil {
+	box := serviceBox(ctx)
+	if box == nil {
 		return ""
 	}
-	return val.(*Box).params.Name
+	return box.params.Name
 }
 
 func Dir(ctx context.Context) string {
-	val := ctx.Value(ctxBox)
-	if val == nil {
+	box := serviceBox(ctx)
+	if box == nil {
 		return ""
 	}
-	return val.(*Box).params.Dir
+	return box.params.Dir
 }
 
 func WebAddress(ctx context.Context) string {
-	val := ctx.Value(ctxBox)
-	if val == nil {
+	box := serviceBox(ctx)
+	if box == nil {
 		return ""
 	}
-	box := val.(*Box)
 	if box.gateway.web.Tls != nil {
 		return fmt.Sprintf("https://%s", box.gateway.httpAddress)
 	} else {
@@ -86,20 +101,18 @@ func WebAddress(ctx context.Context) string {
 }
 
 func FullName(ctx context.Context) string {
-	val := ctx.Value(ctxBox)
-	if val == nil {
+	box := serviceBox(ctx)
+	if box == nil {
 		return ""
 	}
-	box := val.(*Box)
 	return fmt.Sprintf("%s:%s", box.params.Namespace, box.params.Name)
 }
 
 func ClientTLSConfig(ctx context.Context) *tls.Config {
-	val := ctx.Value(ctxBox)
-	if val == nil {
+	box := serviceBox(ctx)
+	if box == nil {
 		return nil
 	}
-	box := val.(*Box)
 	return box.clientMutualTLS()
 }
 
@@ -117,4 +130,16 @@ func RequestUserAgent(ctx context.Context) (string, bool) {
 		return userAgent, true
 	}
 	return "", false
+}
+
+func ContextWithUser(ctx context.Context, user string) context.Context {
+	return context.WithValue(ctx, context2.User, user)
+}
+
+func ContextWithUserAgent(ctx context.Context, userAgent string) context.Context {
+	return context.WithValue(ctx, context2.UserAgent, userAgent)
+}
+
+func ContextWithServiceContext(ctx context.Context, serviceContext context.Context) context.Context {
+	return context.WithValue(ctx, context2.ServiceContext, serviceContext)
 }

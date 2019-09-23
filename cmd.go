@@ -15,7 +15,7 @@ var (
 )
 
 func CMD(use string, service Service) *cobra.Command {
-	params := BoxParams{}
+	params := Params{}
 	var cfgDir, cfgName string
 
 	configureCMD := &cobra.Command{
