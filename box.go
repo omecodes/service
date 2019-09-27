@@ -133,7 +133,7 @@ func (box *Box) validateParams() error {
 	}
 
 	if box.params.RegistryAddress != "" || box.params.Namespace != "" {
-		if box.params.RegistryAddress == "" || box.params.Namespace == "" {
+		if box.params.RegistryAddress != "" && box.params.Namespace == "" {
 			return errors.New("command line: --namespace must always be provided with --registryAddress")
 		}
 	}

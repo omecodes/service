@@ -29,7 +29,7 @@ func serviceBox(ctx context.Context) *Box {
 		}
 		return val.(*Box)
 	}
-	return nil
+	return val.(*Box)
 }
 
 func CACertificate(ctx context.Context) *x509.Certificate {
