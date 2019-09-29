@@ -6,7 +6,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"github.com/zoenion/common/data"
+	"github.com/zoenion/common/data/persistence"
 	"github.com/zoenion/common/errors"
 	authpb "github.com/zoenion/common/proto/auth"
 	"github.com/zoenion/service/discovery"
@@ -67,7 +67,7 @@ func (j *jwtVerifier) Verify(ctx context.Context, t *authpb.JWT) (authpb.JWTStat
 				return 0, errors.Forbidden
 			}
 
-			dictStore, err := data.NewDictDB(filepath.Join(j.cacheDir, "jwt-store.db"))
+			dictStore, err := persistence.NewDictDB(filepath.Join(j.cacheDir, "jwt-store.db"))
 			if err != nil {
 				return 0, errors.Internal
 			}

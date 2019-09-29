@@ -18,7 +18,7 @@ import (
 
 type SyncedStore struct {
 	sync.Mutex
-	store                     data.Dict
+	store                     persist.Dict
 	serverAddress             string
 	tls                       *tls.Config
 	conn                      *grpc.ClientConn
@@ -117,7 +117,7 @@ func (s *SyncedStore) DeleteJwtRevokedEventHandler(id string) {
 	delete(s.jwtRevokedHandlerFuncList, id)
 }
 
-func NewSyncedStore(server string, tls *tls.Config, store data.Dict) *SyncedStore {
+func NewSyncedStore(server string, tls *tls.Config, store persist.Dict) *SyncedStore {
 	return &SyncedStore{
 		serverAddress:             server,
 		tls:                       tls,
