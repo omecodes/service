@@ -14,13 +14,16 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strings"
 )
 
 type Web struct {
-	Tls            *tls.Config
-	ClientGRPCTls  *tls.Config
-	BindGRPC       WireEndpointFunc
-	MiddlewareList []http_helper.HttpMiddleware
+	ResourcePathPrefix string
+	ResourcesDir       string
+	Tls                *tls.Config
+	ClientGRPCTls      *tls.Config
+	BindGRPC           WireEndpointFunc
+	MiddlewareList     []http_helper.HttpMiddleware
 }
 
 type Grpc struct {
@@ -164,6 +167,8 @@ func (g *gateway) startHTTP() {
 	ctx := context.Background()
 	endpoint := flag.String("grpc-server-endpoint", g.gRPCAddress, "gRPC server endpoint")
 
+	router := mux.NewRouter()
+
 	serverMux := runtime.NewServeMux()
 	var opts []grpc.DialOption
 
@@ -191,10 +196,24 @@ func (g *gateway) startHTTP() {
 		handler = http_helper.HttpBasicMiddlewareStack(context.Background(), serverMux.ServeHTTP, nil)
 	}
 
-	g.hs = &http.Server{
-		Addr:    g.httpAddress,
-		Handler: handler,
+	if g.web.ResourcesDir != "" {
+		if g.web.ResourcePathPrefix == "" {
+			g.web.ResourcePathPrefix = "/res/"
+		}
+		router.PathPrefix(g.web.ResourcePathPrefix).Handler(http.StripPrefix(strings.TrimRight(g.web.ResourcePathPrefix, "/"), http.FileServer(http.Dir(g.web.ResourcesDir))))
+		router.PathPrefix("/api/").Handler(handler)
+
+		g.hs = &http.Server{
+			Addr:    g.httpAddress,
+			Handler: router,
+		}
+	} else {
+		g.hs = &http.Server{
+			Addr:    g.httpAddress,
+			Handler: handler,
+		}
 	}
+
 	if err := g.hs.Serve(g.listenerHTTP); err != nil {
 		log.Println("Web server stopped, cause:", err)
 	}

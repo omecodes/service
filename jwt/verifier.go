@@ -6,7 +6,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"github.com/zoenion/common/data/persistence"
 	"github.com/zoenion/common/database"
 	"github.com/zoenion/common/errors"
 	"github.com/zoenion/common/persist"
