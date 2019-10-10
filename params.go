@@ -1,4 +1,4 @@
-package cmd
+package service
 
 type Params struct {
 	Name            string

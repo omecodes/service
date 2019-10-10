@@ -43,7 +43,7 @@ type SyncedRegistry struct {
 	serverAddress string
 	stop          bool
 	conn          *grpc.ClientConn
-	eventHandlers map[string]RegistryEventHandler
+	eventHandlers map[string]discovery.RegistryEventHandler
 }
 
 func (r *SyncedRegistry) Connect() error {
@@ -139,18 +139,20 @@ func (r *SyncedRegistry) ConnectionInfo(id string, protocol proto.Protocol) (*pr
 
 	for _, s := range r.services {
 		if id == fmt.Sprintf("%s.%s", s.Namespace, s.Name) {
-			for _, n := range s.Nodes {
-				if n.Protocol == protocol {
-					ci.Address = n.Address
-					strCert, found := s.Meta["certificate"]
-					if !found {
-						return ci, nil
-					}
-
-					ci.Certificate = []byte(strCert)
-					return ci, nil
-				}
+			var node *proto.Node
+			if protocol == proto.Protocol_Grpc {
+				node = s.ServiceNode
+			} else {
+				node = s.GatewayNode
 			}
+
+			ci.Address = node.Address
+			strCert, found := s.Meta["certificate"]
+			if !found {
+				return ci, nil
+			}
+			ci.Certificate = []byte(strCert)
+			return ci, nil
 		}
 	}
 	return nil, errors.NotFound
@@ -251,6 +253,6 @@ func NewSyncRegistry(server string, tlsConfig *tls.Config) *SyncedRegistry {
 		services:      map[string]*proto.Info{},
 		tlsConfig:     tlsConfig,
 		serverAddress: server,
-		eventHandlers: map[string]RegistryEventHandler{},
+		eventHandlers: map[string]discovery.RegistryEventHandler{},
 	}
 }

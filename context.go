@@ -88,18 +88,6 @@ func Dir(ctx context.Context) string {
 	return box.params.Dir
 }
 
-func WebAddress(ctx context.Context) string {
-	box := serviceBox(ctx)
-	if box == nil {
-		return ""
-	}
-	if box.servers.web.Tls != nil {
-		return fmt.Sprintf("https://%s", box.servers.httpAddress)
-	} else {
-		return fmt.Sprintf("http://%s", box.servers.httpAddress)
-	}
-}
-
 func FullName(ctx context.Context) string {
 	box := serviceBox(ctx)
 	if box == nil {

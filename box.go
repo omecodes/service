@@ -8,35 +8,36 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"flag"
 	"fmt"
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/iancoleman/strcase"
-	"github.com/zoenion/common"
 	crypto2 "github.com/zoenion/common/crypto"
 	"github.com/zoenion/common/errors"
 	"github.com/zoenion/common/futils"
-	"github.com/zoenion/common/prompt"
 	capb "github.com/zoenion/common/proto/ca"
 	"github.com/zoenion/service/authentication"
-	"github.com/zoenion/service/cmd"
 	"github.com/zoenion/service/discovery"
-	"github.com/zoenion/service/proto"
+	"github.com/zoenion/service/server"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"log"
+	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
 
-type BoxConfigsLoader interface {
-	Load(ctx context.Context) (*Configs, error)
-}
-
 type Box struct {
-	params cmd.Params
+	params Params
 
-	servers                    *servers
+	serverMutex sync.Mutex
+	services    map[string]*grpc.Server
+	gateways    map[string]*http.Server
+
 	registry                   discovery.Registry
 	caCert                     *x509.Certificate
 	caClientAuthentication     credentials.PerRPCCredentials
@@ -44,6 +45,15 @@ type Box struct {
 	registryCert               *x509.Certificate
 	cert                       *x509.Certificate
 	privateKey                 crypto.PrivateKey
+}
+
+func NewBox(p Params) (*Box, error) {
+	b := &Box{params: p}
+	err := b.validateParams()
+	if err != nil {
+		return nil, err
+	}
+	return b, b.Load()
 }
 
 func (box *Box) Name() string {
@@ -110,21 +120,11 @@ func (box *Box) validateParams() error {
 	if box.params.Domain == "" && box.params.Ip == "" {
 		return errors.New("command line: one or both --domain and --ip flags must be passed")
 	}
-
-	if box.params.Dir == "" {
-		d := getDir()
-		box.params.Dir = d.Path()
-		if err := d.Create(); err != nil {
-			log.Printf("command line: could not create %s. Might not be writeable\n", box.Dir())
-			return err
-		}
-	} else {
-		var err error
-		box.params.Dir, err = filepath.Abs(box.params.Dir)
-		if err != nil {
-			log.Printf("command line: could not find %s\n", box.Dir())
-			return err
-		}
+	var err error
+	box.params.Dir, err = filepath.Abs(box.params.Dir)
+	if err != nil {
+		log.Printf("command line: could not find %s\n", box.Dir())
+		return err
 	}
 
 	if box.params.CaGRPC != "" || box.params.CaCertPath != "" || box.params.CaCredentials != "" {
@@ -148,7 +148,7 @@ func (box *Box) validateParams() error {
 	return nil
 }
 
-func (box *Box) loadTools() error {
+func (box *Box) Load() error {
 	var err error
 
 	if box.params.CertificatePath != "" {
@@ -324,7 +324,7 @@ func (box *Box) clientMutualTLS() *tls.Config {
 	}
 }
 
-func (box *Box) gatewayToGrpcClientTls() *tls.Config {
+func (box *Box) gatewayToGRPCClientTls() *tls.Config {
 	if box.caCert != nil {
 		CAPool := x509.NewCertPool()
 		CAPool.AddCert(box.caCert)
@@ -335,121 +335,143 @@ func (box *Box) gatewayToGrpcClientTls() *tls.Config {
 	return nil
 }
 
-func (box *Box) start(cfg *Configs) error {
+func (box *Box) listen(web bool, secure bool, port int, tc *tls.Config) (net.Listener, error) {
+	var (
+		listener net.Listener
+		err      error
+		address  string
+	)
 
-	if cfg.HTTP != nil {
-		if cfg.HTTP.Tls == nil {
-			cfg.HTTP.Tls = box.serverMutualTLS()
-			/*if cfg.HTTP.ClientGRPCTls == nil {
-				cfg.HTTP.ClientGRPCTls = box.gatewayToGrpcClientTls()
-			}*/
-		}
+	if port > 0 {
+		address = fmt.Sprintf("%s:%d", box.Ip(), port)
+	} else {
+		address = fmt.Sprintf("%s:", box.Ip())
 	}
 
-	if cfg.GRPC != nil {
-		if cfg.GRPC.Tls == nil {
-			cfg.GRPC.Tls = box.serverWebTLS()
-		}
-	}
-
-	box.servers = &servers{
-		name:        box.params.Name,
-		gRPC:        cfg.GRPC,
-		web:         cfg.HTTP,
-		gRPCAddress: box.GRPCAddress(),
-		httpAddress: box.HTTPAddress(),
-	}
-
-	return box.servers.start()
-}
-
-func (box *Box) stop() {
-	if box.servers != nil {
-		box.servers.stop()
-	}
-}
-
-func Run(loader BoxConfigsLoader, params cmd.Params) {
-	box := new(Box)
-	if params.Name == "" {
-		params.Name = AppName
-	}
-
-	if params.Dir == "" {
-		d := getDir()
-		err := d.Create()
+	if secure {
+		err = box.loadSignedKeyPair()
 		if err != nil {
-			log.Fatalf("could not initialize configs dir: %s\n", err)
+			return nil, err
 		}
-		params.Dir = d.path
-	}
 
-	box.params = params
-	if err := box.validateParams(); err != nil {
-		log.Fatalln(err)
-	}
+		if tc == nil {
+			if web {
+				tc = box.serverWebTLS()
+			} else {
+				tc = box.serverMutualTLS()
+			}
+		}
 
-	if err := box.loadTools(); err != nil {
-		log.Fatalln(err)
-	}
+		listener, err = tls.Listen("tcp", address, tc)
+		if err != nil {
+			return nil, err
+		}
 
-	ctx := context.WithValue(context.Background(), ctxBox, box)
-	cfg, err := loader.Load(ctx)
+	} else {
+		listener, err = net.Listen("tcp", address)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return listener, err
+}
+
+func (box *Box) StartGatewayGRPCMapping(name string, g *server.GatewayServiceMapping) error {
+	if box.registry == nil {
+		box.serverMutex.Lock()
+		defer box.serverMutex.Unlock()
+
+		info, err := box.registry.Get(box.params.Namespace + ":" + name)
+		if err != nil {
+			return err
+		}
+
+		listener, err := box.listen(true, g.SecureConnection, g.Port, g.Tls)
+		if err != nil {
+			return err
+		}
+
+		address := listener.Addr().String()
+		grpcServerEndpoint := flag.String("grpc-server-endpoint", info.ServiceNode.Address, "gRPC server endpoint")
+		ctx := context.Background()
+		mux := runtime.NewServeMux()
+		opts := []grpc.DialOption{grpc.WithInsecure()}
+
+		err = g.Binder(ctx, mux, *grpcServerEndpoint, opts)
+		if err != nil {
+			return err
+		}
+
+		log.Printf("starting %s.HTTP at %s", name, address)
+		srv := &http.Server{
+			Addr:    address,
+			Handler: mux,
+		}
+		box.gateways[name] = srv
+		go srv.Serve(listener)
+		return nil
+	}
+	return errors.New("not found")
+}
+
+func (box *Box) StartGateway(name string, g *server.Gateway) error {
+	box.serverMutex.Lock()
+	defer box.serverMutex.Unlock()
+
+	listener, err := box.listen(true, g.SecureConnection, g.Port, g.Tls)
 	if err != nil {
-		log.Fatalf("could not load box configs: %s\n", err)
+		return err
 	}
 
-	if err := box.start(cfg); err != nil {
-		log.Fatalf("starting %s service: %s\n", box.Name, err)
+	address := listener.Addr().String()
+	router := g.ProvideRouter()
+
+	log.Printf("starting %s.HTTP at %s", name, address)
+	srv := &http.Server{
+		Addr:    address,
+		Handler: router,
+	}
+	box.gateways[name] = srv
+	go srv.Serve(listener)
+	return nil
+}
+
+func (box *Box) StartService(name string, g *server.Service) error {
+	box.serverMutex.Lock()
+	defer box.serverMutex.Unlock()
+
+	listener, err := box.listen(true, g.SecureConnection, g.Port, g.Tls)
+	if err != nil {
+		return err
+	}
+	address := listener.Addr().String()
+
+	log.Printf("starting %s.gRPC at %s", name, address)
+	var opts []grpc.ServerOption
+	if g.Interceptor != nil {
+		opts = append(opts, grpc.StreamInterceptor(g.Interceptor.InterceptStream), grpc.UnaryInterceptor(g.Interceptor.InterceptUnary))
 	}
 
-	if box.registry != nil {
+	srv := grpc.NewServer(opts...)
+	box.services[name] = srv
 
-		meta := map[string]string{}
+	g.RegisterHandlerFunc(srv)
+	go srv.Serve(nil)
+	return nil
+}
 
-		certEncoded, _ := crypto2.PEMEncodeCertificate(box.cert)
-		if certEncoded != nil {
-			meta[common.ServiceCertificate] = string(certEncoded)
-		}
+func (box *Box) StopServices() error {
+	return nil
+}
 
-		for k, m := range cfg.Meta {
-			meta[k] = m
-		}
+func (box *Box) StopService(name string) error {
+	return nil
+}
 
-		box.params.RegistryID, err = box.registry.Register(&proto.Info{
-			Type:      cfg.Type,
-			Name:      strcase.ToDelimited(box.Name(), '-'),
-			Namespace: box.params.Namespace,
-			Label:     strcase.ToCamel(box.params.Name),
-			Nodes:     box.servers.nodes(),
-			Meta:      meta,
-		})
-		if err != nil {
-			log.Printf("could not register service: %s\n", err)
-		}
-	}
-	opts := Options{}
-	for _, opt := range cfg.Options {
-		opt(&opts)
-	}
+func (box *Box) StopGateway(name string) error {
+	return nil
+}
 
-	for _, sc := range opts.afterStart {
-		if err = sc(); err != nil {
-			log.Fatalln("got error while executing start callback:", err)
-		}
-	}
-
-	<-prompt.QuitSignal()
-
-	box.stop()
-	if box.params.RegistryID != "" {
-		err = box.registry.Deregister(box.params.RegistryID)
-		if err != nil {
-			log.Printf("could not de-register service: %s\n", err)
-		}
-	}
-
-	for _, sc := range opts.afterStop {
-		sc()
-	}
+func (box *Box) StopGateways() error {
+	return nil
 }

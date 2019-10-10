@@ -205,11 +205,11 @@
         "label": {
           "type": "string"
         },
-        "nodes": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/definitions/protoNode"
-          }
+        "serviceNode": {
+          "$ref": "#/definitions/protoNode"
+        },
+        "gatewayNode": {
+          "$ref": "#/definitions/protoNode"
         },
         "meta": {
           "type": "object",
