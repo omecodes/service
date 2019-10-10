@@ -45,6 +45,9 @@ type Box struct {
 	registryCert               *x509.Certificate
 	cert                       *x509.Certificate
 	privateKey                 crypto.PrivateKey
+
+	ctx           context.Context
+	ctxCancelFunc context.CancelFunc
 }
 
 func NewBox(p Params) (*Box, error) {
@@ -53,7 +56,14 @@ func NewBox(p Params) (*Box, error) {
 	if err != nil {
 		return nil, err
 	}
+	b.gateways = map[string]*http.Server{}
+	b.services = map[string]*grpc.Server{}
+	b.ctx, b.ctxCancelFunc = context.WithCancel(context.WithValue(context.Background(), ctxBox, b))
 	return b, b.Load()
+}
+
+func (box *Box) Context() context.Context {
+	return box.ctx
 }
 
 func (box *Box) Name() string {
@@ -76,15 +86,15 @@ func (box *Box) Registry() discovery.Registry {
 	return box.registry
 }
 
-func (box *Box) AuthorityCert() *x509.Certificate {
+func (box *Box) CACertificate() *x509.Certificate {
 	return box.caCert
 }
 
-func (box *Box) AuthorityClientAuthentication() credentials.PerRPCCredentials {
+func (box *Box) CAClientAuthentication() credentials.PerRPCCredentials {
 	return box.caClientAuthentication
 }
 
-func (box *Box) AuthorityGRPCTransportCredentials() credentials.TransportCredentials {
+func (box *Box) CAClientTransportCrendentials() credentials.TransportCredentials {
 	return box.caGRPCTransportCredentials
 }
 
@@ -94,58 +104,6 @@ func (box *Box) ServiceCert() *x509.Certificate {
 
 func (box *Box) ServiceKey() crypto.PrivateKey {
 	return box.privateKey
-}
-
-func (box *Box) GRPCAddress() string {
-	addr := box.params.Domain
-	if addr == "" {
-		addr = box.params.Ip
-	}
-	return fmt.Sprintf("%s:%s", addr, box.params.GatewayGRPCPort)
-}
-
-func (box *Box) HTTPAddress() string {
-	addr := box.params.Domain
-	if addr == "" {
-		addr = box.params.Ip
-	}
-	return fmt.Sprintf("%s:%s", addr, box.params.GatewayHTTPPort)
-}
-
-func (box *Box) validateParams() error {
-	if box.params.Name == "" {
-		return errors.New("command line: --name flags is required")
-	}
-
-	if box.params.Domain == "" && box.params.Ip == "" {
-		return errors.New("command line: one or both --domain and --ip flags must be passed")
-	}
-	var err error
-	box.params.Dir, err = filepath.Abs(box.params.Dir)
-	if err != nil {
-		log.Printf("command line: could not find %s\n", box.Dir())
-		return err
-	}
-
-	if box.params.CaGRPC != "" || box.params.CaCertPath != "" || box.params.CaCredentials != "" {
-		if box.params.CaGRPC == "" || box.params.CaCertPath == "" || box.params.CaCredentials == "" {
-			return fmt.Errorf("command line: --a-grpc must always be provided with --a-cert and --a-cred")
-		}
-	}
-
-	if box.params.RegistryAddress != "" || box.params.Namespace != "" {
-		if box.params.RegistryAddress != "" && box.params.Namespace == "" {
-			return errors.New("command line: --namespace must always be provided with --registryAddress")
-		}
-	}
-
-	if box.params.CertificatePath != "" || box.params.KeyPath != "" {
-		if box.params.CertificatePath == "" || box.params.KeyPath == "" {
-			return errors.New("command line: --cert must always be provided with --key")
-		}
-	}
-
-	return nil
 }
 
 func (box *Box) Load() error {
@@ -189,6 +147,110 @@ func (box *Box) Load() error {
 		} else {
 			box.registry = NewSyncRegistry(box.params.RegistryAddress, nil)
 		}
+	}
+	return nil
+}
+
+func (box *Box) StartGatewayGRPCMapping(name string, g *server.GatewayServiceMapping) error {
+	if box.registry == nil {
+		box.serverMutex.Lock()
+		defer box.serverMutex.Unlock()
+
+		info, err := box.registry.Get(box.params.Namespace + ":" + name)
+		if err != nil {
+			return err
+		}
+
+		listener, err := box.listen(true, g.SecureConnection, g.Port, g.Tls)
+		if err != nil {
+			return err
+		}
+
+		address := listener.Addr().String()
+		grpcServerEndpoint := flag.String("grpc-server-endpoint", info.ServiceNode.Address, "gRPC server endpoint")
+		ctx := context.Background()
+		mux := runtime.NewServeMux()
+		opts := []grpc.DialOption{grpc.WithInsecure()}
+
+		err = g.Binder(ctx, mux, *grpcServerEndpoint, opts)
+		if err != nil {
+			return err
+		}
+
+		log.Printf("starting %s.HTTP at %s", name, address)
+		srv := &http.Server{
+			Addr:    address,
+			Handler: mux,
+		}
+		box.gateways[name] = srv
+		go srv.Serve(listener)
+		return nil
+	}
+	return errors.New("not found")
+}
+
+func (box *Box) StartGateway(name string, g *server.Gateway) error {
+	box.serverMutex.Lock()
+	defer box.serverMutex.Unlock()
+
+	listener, err := box.listen(true, g.SecureConnection, g.Port, g.Tls)
+	if err != nil {
+		return err
+	}
+
+	address := listener.Addr().String()
+	router := g.ProvideRouter()
+
+	log.Printf("starting %s.HTTP at %s", name, address)
+	srv := &http.Server{
+		Addr:    address,
+		Handler: router,
+	}
+	box.gateways[name] = srv
+	go srv.Serve(listener)
+	return nil
+}
+
+func (box *Box) StartService(name string, g *server.Service) error {
+	box.serverMutex.Lock()
+	defer box.serverMutex.Unlock()
+
+	listener, err := box.listen(true, g.SecureConnection, g.Port, g.Tls)
+	if err != nil {
+		return err
+	}
+	address := listener.Addr().String()
+
+	log.Printf("starting %s.gRPC at %s", name, address)
+	var opts []grpc.ServerOption
+	if g.Interceptor != nil {
+		opts = append(opts, grpc.StreamInterceptor(g.Interceptor.InterceptStream), grpc.UnaryInterceptor(g.Interceptor.InterceptUnary))
+	}
+
+	srv := grpc.NewServer(opts...)
+	box.services[name] = srv
+
+	g.RegisterHandlerFunc(srv)
+	go srv.Serve(nil)
+	return nil
+}
+
+func (box *Box) StopServices() error {
+	box.serverMutex.Lock()
+	defer box.serverMutex.Unlock()
+	for name, srv := range box.services {
+		srv.Stop()
+		log.Printf("name: %s\t state:stopped\t error:no\n", name)
+	}
+	return nil
+}
+
+func (box *Box) StopGateways() error {
+	box.serverMutex.Lock()
+	defer box.serverMutex.Unlock()
+	for name, srv := range box.gateways {
+		err := srv.Close()
+		log.Printf("name: %s\t state:stopped\t error:%s\n", name, err)
 	}
 	return nil
 }
@@ -376,102 +438,38 @@ func (box *Box) listen(web bool, secure bool, port int, tc *tls.Config) (net.Lis
 	return listener, err
 }
 
-func (box *Box) StartGatewayGRPCMapping(name string, g *server.GatewayServiceMapping) error {
-	if box.registry == nil {
-		box.serverMutex.Lock()
-		defer box.serverMutex.Unlock()
-
-		info, err := box.registry.Get(box.params.Namespace + ":" + name)
-		if err != nil {
-			return err
-		}
-
-		listener, err := box.listen(true, g.SecureConnection, g.Port, g.Tls)
-		if err != nil {
-			return err
-		}
-
-		address := listener.Addr().String()
-		grpcServerEndpoint := flag.String("grpc-server-endpoint", info.ServiceNode.Address, "gRPC server endpoint")
-		ctx := context.Background()
-		mux := runtime.NewServeMux()
-		opts := []grpc.DialOption{grpc.WithInsecure()}
-
-		err = g.Binder(ctx, mux, *grpcServerEndpoint, opts)
-		if err != nil {
-			return err
-		}
-
-		log.Printf("starting %s.HTTP at %s", name, address)
-		srv := &http.Server{
-			Addr:    address,
-			Handler: mux,
-		}
-		box.gateways[name] = srv
-		go srv.Serve(listener)
-		return nil
+func (box *Box) validateParams() error {
+	if box.params.Name == "" {
+		return errors.New("command line: --name flags is required")
 	}
-	return errors.New("not found")
-}
 
-func (box *Box) StartGateway(name string, g *server.Gateway) error {
-	box.serverMutex.Lock()
-	defer box.serverMutex.Unlock()
-
-	listener, err := box.listen(true, g.SecureConnection, g.Port, g.Tls)
+	if box.params.Domain == "" && box.params.Ip == "" {
+		return errors.New("command line: one or both --domain and --ip flags must be passed")
+	}
+	var err error
+	box.params.Dir, err = filepath.Abs(box.params.Dir)
 	if err != nil {
+		log.Printf("command line: could not find %s\n", box.Dir())
 		return err
 	}
 
-	address := listener.Addr().String()
-	router := g.ProvideRouter()
-
-	log.Printf("starting %s.HTTP at %s", name, address)
-	srv := &http.Server{
-		Addr:    address,
-		Handler: router,
-	}
-	box.gateways[name] = srv
-	go srv.Serve(listener)
-	return nil
-}
-
-func (box *Box) StartService(name string, g *server.Service) error {
-	box.serverMutex.Lock()
-	defer box.serverMutex.Unlock()
-
-	listener, err := box.listen(true, g.SecureConnection, g.Port, g.Tls)
-	if err != nil {
-		return err
-	}
-	address := listener.Addr().String()
-
-	log.Printf("starting %s.gRPC at %s", name, address)
-	var opts []grpc.ServerOption
-	if g.Interceptor != nil {
-		opts = append(opts, grpc.StreamInterceptor(g.Interceptor.InterceptStream), grpc.UnaryInterceptor(g.Interceptor.InterceptUnary))
+	if box.params.CaGRPC != "" || box.params.CaCertPath != "" || box.params.CaCredentials != "" {
+		if box.params.CaGRPC == "" || box.params.CaCertPath == "" || box.params.CaCredentials == "" {
+			return fmt.Errorf("command line: --a-grpc must always be provided with --a-cert and --a-cred")
+		}
 	}
 
-	srv := grpc.NewServer(opts...)
-	box.services[name] = srv
+	if box.params.RegistryAddress != "" || box.params.Namespace != "" {
+		if box.params.RegistryAddress != "" && box.params.Namespace == "" {
+			return errors.New("command line: --namespace must always be provided with --registryAddress")
+		}
+	}
 
-	g.RegisterHandlerFunc(srv)
-	go srv.Serve(nil)
-	return nil
-}
+	if box.params.CertificatePath != "" || box.params.KeyPath != "" {
+		if box.params.CertificatePath == "" || box.params.KeyPath == "" {
+			return errors.New("command line: --cert must always be provided with --key")
+		}
+	}
 
-func (box *Box) StopServices() error {
-	return nil
-}
-
-func (box *Box) StopService(name string) error {
-	return nil
-}
-
-func (box *Box) StopGateway(name string) error {
-	return nil
-}
-
-func (box *Box) StopGateways() error {
 	return nil
 }

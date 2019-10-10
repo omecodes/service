@@ -30,11 +30,8 @@ func CMD(use string, params *Params) *cobra.Command {
 		},
 	}
 	command.PersistentFlags().StringVar(&params.Name, CmdFlagName, "", "Unique name in registryAddress group")
-	command.PersistentFlags().StringVar(&params.Name, CmdFlagDir, "", "Configs directory path")
 	command.PersistentFlags().StringVar(&params.CertificatePath, CmdFlagCert, "", "Public certificate path")
 	command.PersistentFlags().StringVar(&params.KeyPath, CmdFlagKey, "", "Private key path")
-	command.PersistentFlags().StringVar(&params.GatewayGRPCPort, CmdFlagGRPC, "", "ServerGRPC Port: gRPC port")
-	command.PersistentFlags().StringVar(&params.GatewayHTTPPort, CmdFlagHTTP, "", "ServerHTTP Port: ServerHTTP port")
 	command.PersistentFlags().StringVar(&params.RegistryAddress, CmdFlagRegistry, "", "Registry Server - address location")
 	command.PersistentFlags().BoolVar(&params.RegistrySecure, CmdFlagRegistrySecure, false, "Registry Secure Mode - enable secure connection to registry")
 	command.PersistentFlags().StringVar(&params.Namespace, CmdFlagNamespace, "", "Namespace - Group identifier for registryAddress")

@@ -10,12 +10,6 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-type Service interface {
-	Name() string
-	Type() proto.Type
-	OwnProcess() bool
-}
-
 func GRPCConnectionDialer(ctx context.Context, serviceType proto.Type) (connection.GRPCDialer, error) {
 	reg := Registry(ctx)
 	if reg == nil {

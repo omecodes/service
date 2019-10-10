@@ -16,7 +16,4 @@ type Params struct {
 	CaGRPC        string
 	CaCertPath    string
 	CaCredentials string
-
-	GatewayGRPCPort string
-	GatewayHTTPPort string
 }

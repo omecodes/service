@@ -128,6 +128,6 @@ func ContextWithUserAgent(ctx context.Context, userAgent string) context.Context
 	return context.WithValue(ctx, context2.UserAgent, userAgent)
 }
 
-func ContextWithServiceContext(ctx context.Context, serviceContext context.Context) context.Context {
+func AddBoxContext(ctx context.Context, serviceContext context.Context) context.Context {
 	return context.WithValue(ctx, context2.ServiceContext, serviceContext)
 }
