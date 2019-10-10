@@ -68,7 +68,7 @@ func (s *SyncedStore) saveJwtInfo(i *authpb.JwtInfo) error {
 	if err != nil {
 		return err
 	}
-	return s.store.Set(i.Jti, marshaled)
+	return s.store.Set(i.Jti, string(marshaled))
 }
 
 func (s *SyncedStore) deleteJwtInfo(jti string) error {
@@ -82,7 +82,7 @@ func (s *SyncedStore) getJwtState(jti string) (authpb.JWTState, error) {
 	}
 
 	info := new(authpb.JwtInfo)
-	err = json.Unmarshal(infoBytes, info)
+	err = json.Unmarshal([]byte(infoBytes), info)
 	if err != nil {
 		return 0, err
 	}

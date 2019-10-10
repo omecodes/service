@@ -31,8 +31,8 @@ const (
 
 type Configs struct {
 	Type    proto.Type
-	Web     *Web
-	Grpc    *Grpc
+	HTTP    *ServerHTTP
+	GRPC    *ServerGRPC
 	Options []Option
 	Meta    map[string]string
 }

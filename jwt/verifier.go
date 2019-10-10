@@ -3,17 +3,12 @@ package jwt
 import (
 	"context"
 	"crypto"
-	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"github.com/zoenion/common/database"
 	"github.com/zoenion/common/errors"
-	"github.com/zoenion/common/persist"
 	authpb "github.com/zoenion/common/proto/auth"
 	"github.com/zoenion/service/discovery"
-	"github.com/zoenion/service/proto"
 	"log"
-	"path/filepath"
 	"sync"
 )
 
@@ -60,7 +55,7 @@ func (j *jwtVerifier) Verify(ctx context.Context, t *authpb.JWT) (authpb.JWTStat
 		return 0, errors.Forbidden
 	}
 
-	if t.Claims.Store != "" {
+	/*if t.Claims.Store != "" {
 		jwtStore := j.getStore(t.Claims.Store)
 		if jwtStore == nil {
 			ci, err := j.registry.ConnectionInfo(t.Claims.Store, proto.Protocol_Grpc)
@@ -90,7 +85,7 @@ func (j *jwtVerifier) Verify(ctx context.Context, t *authpb.JWT) (authpb.JWTStat
 		if err != nil {
 			return state, err
 		}
-	}
+	}*/
 
 	ctx = context.WithValue(ctx, "User", t.Claims.Sub)
 	return authpb.JWTState_VALID, nil

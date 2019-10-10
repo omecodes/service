@@ -93,10 +93,10 @@ func WebAddress(ctx context.Context) string {
 	if box == nil {
 		return ""
 	}
-	if box.gateway.web.Tls != nil {
-		return fmt.Sprintf("https://%s", box.gateway.httpAddress)
+	if box.servers.web.Tls != nil {
+		return fmt.Sprintf("https://%s", box.servers.httpAddress)
 	} else {
-		return fmt.Sprintf("http://%s", box.gateway.httpAddress)
+		return fmt.Sprintf("http://%s", box.servers.httpAddress)
 	}
 }
 

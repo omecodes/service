@@ -3,50 +3,38 @@ package service
 import (
 	"context"
 	"crypto/tls"
-	"flag"
 	"github.com/gorilla/mux"
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
-	http_helper "github.com/zoenion/common/xhttp"
 	"github.com/zoenion/service/interceptors"
 	"github.com/zoenion/service/proto"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 	"log"
 	"net"
 	"net/http"
-	"strings"
 )
 
-type Web struct {
-	ResourcePathPrefix string
-	ResourcesDir       string
-	Tls                *tls.Config
-	ClientGRPCTls      *tls.Config
-	BindGRPC           WireEndpointFunc
-	MiddlewareList     []http_helper.HttpMiddleware
+type ServerHTTP struct {
+	GetRouterFunc func(gRPCAddress string) *mux.Router
+	Tls           *tls.Config
 }
 
-type Grpc struct {
+type ServerGRPC struct {
 	Tls                 *tls.Config
 	Interceptor         interceptors.GRPC
 	RegisterHandlerFunc func(*grpc.Server)
 }
 
-type WireEndpointFunc func(ctx context.Context, serveMux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) error
-
-type gateway struct {
+type servers struct {
 	name                       string
 	running                    bool
 	gs                         *grpc.Server
 	hs                         *http.Server
-	gRPC                       *Grpc
-	web                        *Web
-	router                     *mux.Router
+	gRPC                       *ServerGRPC
+	web                        *ServerHTTP
 	gRPCAddress, httpAddress   string
 	listenerGRPC, listenerHTTP net.Listener
 }
 
-func (g *gateway) start() error {
+func (g *servers) start() error {
 	if g.running {
 		return nil
 	}
@@ -69,7 +57,7 @@ func (g *gateway) start() error {
 	return nil
 }
 
-func (g *gateway) stop() {
+func (g *servers) stop() {
 
 	g.running = false
 
@@ -85,9 +73,9 @@ func (g *gateway) stop() {
 	}
 }
 
-func (g *gateway) nodes() map[string]*proto.Node {
+func (g *servers) nodes() map[string]*proto.Node {
 	if !g.running {
-		log.Println("could not get running node, gateway is not running")
+		log.Println("could not get running node, servers is not running")
 		return nil
 	}
 	if g.gRPC == nil && g.web == nil {
@@ -114,7 +102,7 @@ func (g *gateway) nodes() map[string]*proto.Node {
 	return nodes
 }
 
-func (g *gateway) listen() (err error) {
+func (g *servers) listen() (err error) {
 	if g.gRPC != nil {
 		if g.gRPCAddress == "" {
 			g.gRPCAddress = ":"
@@ -149,7 +137,7 @@ func (g *gateway) listen() (err error) {
 	return nil
 }
 
-func (g *gateway) startGRPC() {
+func (g *servers) startGRPC() {
 	log.Printf("starting %s.gRPC at %s", g.name, g.gRPCAddress)
 
 	var opts []grpc.ServerOption
@@ -162,59 +150,19 @@ func (g *gateway) startGRPC() {
 	}
 }
 
-func (g *gateway) startHTTP() {
-	log.Printf("starting %s.Web at %s", g.name, g.httpAddress)
-	ctx := context.Background()
-	endpoint := flag.String("grpc-server-endpoint", g.gRPCAddress, "gRPC server endpoint")
-
-	router := mux.NewRouter()
-
-	serverMux := runtime.NewServeMux()
-	var opts []grpc.DialOption
-
-	if g.web.ClientGRPCTls != nil {
-		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(g.web.ClientGRPCTls)))
-	} else {
-		opts = append(opts, grpc.WithInsecure())
-	}
-
-	if err := g.web.BindGRPC(ctx, serverMux, *endpoint, opts); err != nil {
-		log.Println("failed to start Web gateway, cause: ", err)
+func (g *servers) startHTTP() {
+	router := g.web.GetRouterFunc(g.gRPCAddress)
+	if router == nil {
 		return
 	}
 
-	var handler http.HandlerFunc
-
-	if len(g.web.MiddlewareList) > 0 {
-		m := g.web.MiddlewareList[0]
-		hf := m(serverMux.ServeHTTP)
-		for _, mid := range g.web.MiddlewareList[1:] {
-			hf = mid(hf)
-		}
-		handler = http_helper.HttpBasicMiddlewareStack(context.Background(), hf, nil)
-	} else {
-		handler = http_helper.HttpBasicMiddlewareStack(context.Background(), serverMux.ServeHTTP, nil)
-	}
-
-	if g.web.ResourcesDir != "" {
-		if g.web.ResourcePathPrefix == "" {
-			g.web.ResourcePathPrefix = "/res/"
-		}
-		router.PathPrefix(g.web.ResourcePathPrefix).Handler(http.StripPrefix(strings.TrimRight(g.web.ResourcePathPrefix, "/"), http.FileServer(http.Dir(g.web.ResourcesDir))))
-		router.PathPrefix("/api/").Handler(handler)
-
-		g.hs = &http.Server{
-			Addr:    g.httpAddress,
-			Handler: router,
-		}
-	} else {
-		g.hs = &http.Server{
-			Addr:    g.httpAddress,
-			Handler: handler,
-		}
+	log.Printf("starting %s.ServerHTTP at %s", g.name, g.httpAddress)
+	g.hs = &http.Server{
+		Addr:    g.httpAddress,
+		Handler: router,
 	}
 
 	if err := g.hs.Serve(g.listenerHTTP); err != nil {
-		log.Println("Web server stopped, cause:", err)
+		log.Println("ServerHTTP server stopped, cause:", err)
 	}
 }

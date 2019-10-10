@@ -17,6 +17,7 @@ import (
 	"github.com/zoenion/common/prompt"
 	capb "github.com/zoenion/common/proto/ca"
 	"github.com/zoenion/service/authentication"
+	"github.com/zoenion/service/cmd"
 	"github.com/zoenion/service/discovery"
 	"github.com/zoenion/service/proto"
 	"google.golang.org/grpc"
@@ -33,9 +34,9 @@ type BoxConfigsLoader interface {
 }
 
 type Box struct {
-	params Params
+	params cmd.Params
 
-	gateway                    *gateway
+	servers                    *servers
 	registry                   discovery.Registry
 	caCert                     *x509.Certificate
 	caClientAuthentication     credentials.PerRPCCredentials
@@ -114,14 +115,14 @@ func (box *Box) validateParams() error {
 		d := getDir()
 		box.params.Dir = d.Path()
 		if err := d.Create(); err != nil {
-			log.Printf("command line: could not create %s. Might not be writeable\n", box.Dir)
+			log.Printf("command line: could not create %s. Might not be writeable\n", box.Dir())
 			return err
 		}
 	} else {
 		var err error
 		box.params.Dir, err = filepath.Abs(box.params.Dir)
 		if err != nil {
-			log.Printf("command line: could not find %s\n", box.Dir)
+			log.Printf("command line: could not find %s\n", box.Dir())
 			return err
 		}
 	}
@@ -336,39 +337,39 @@ func (box *Box) gatewayToGrpcClientTls() *tls.Config {
 
 func (box *Box) start(cfg *Configs) error {
 
-	if cfg.Web != nil {
-		if cfg.Web.Tls == nil {
-			cfg.Web.Tls = box.serverMutualTLS()
-			if cfg.Web.ClientGRPCTls == nil {
-				cfg.Web.ClientGRPCTls = box.gatewayToGrpcClientTls()
-			}
+	if cfg.HTTP != nil {
+		if cfg.HTTP.Tls == nil {
+			cfg.HTTP.Tls = box.serverMutualTLS()
+			/*if cfg.HTTP.ClientGRPCTls == nil {
+				cfg.HTTP.ClientGRPCTls = box.gatewayToGrpcClientTls()
+			}*/
 		}
 	}
 
-	if cfg.Grpc != nil {
-		if cfg.Grpc.Tls == nil {
-			cfg.Grpc.Tls = box.serverWebTLS()
+	if cfg.GRPC != nil {
+		if cfg.GRPC.Tls == nil {
+			cfg.GRPC.Tls = box.serverWebTLS()
 		}
 	}
 
-	box.gateway = &gateway{
+	box.servers = &servers{
 		name:        box.params.Name,
-		gRPC:        cfg.Grpc,
-		web:         cfg.Web,
+		gRPC:        cfg.GRPC,
+		web:         cfg.HTTP,
 		gRPCAddress: box.GRPCAddress(),
 		httpAddress: box.HTTPAddress(),
 	}
 
-	return box.gateway.start()
+	return box.servers.start()
 }
 
 func (box *Box) stop() {
-	if box.gateway != nil {
-		box.gateway.stop()
+	if box.servers != nil {
+		box.servers.stop()
 	}
 }
 
-func Run(loader BoxConfigsLoader, params Params) {
+func Run(loader BoxConfigsLoader, params cmd.Params) {
 	box := new(Box)
 	if params.Name == "" {
 		params.Name = AppName
@@ -420,7 +421,7 @@ func Run(loader BoxConfigsLoader, params Params) {
 			Name:      strcase.ToDelimited(box.Name(), '-'),
 			Namespace: box.params.Namespace,
 			Label:     strcase.ToCamel(box.params.Name),
-			Nodes:     box.gateway.nodes(),
+			Nodes:     box.servers.nodes(),
 			Meta:      meta,
 		})
 		if err != nil {

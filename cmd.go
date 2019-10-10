@@ -1,6 +1,7 @@
 package service
 
 import (
+	"github.com/zoenion/service/cmd"
 	"log"
 	"os"
 	"path/filepath"
@@ -15,7 +16,7 @@ var (
 )
 
 func CMD(use string, service Service) *cobra.Command {
-	params := Params{}
+	params := cmd.Params{}
 	var cfgDir, cfgName string
 
 	configureCMD := &cobra.Command{
@@ -53,15 +54,15 @@ func CMD(use string, service Service) *cobra.Command {
 	startCMD.PersistentFlags().StringVar(&params.Name, CmdFlagDir, "", "Configs directory path")
 	startCMD.PersistentFlags().StringVar(&params.CertificatePath, CmdFlagCert, "", "Public certificate path")
 	startCMD.PersistentFlags().StringVar(&params.KeyPath, CmdFlagKey, "", "Private key path")
-	startCMD.PersistentFlags().StringVar(&params.GatewayGRPCPort, CmdFlagGRPC, "", "Grpc Port: gRPC port")
-	startCMD.PersistentFlags().StringVar(&params.GatewayHTTPPort, CmdFlagHTTP, "", "Web Port: Web port")
+	startCMD.PersistentFlags().StringVar(&params.GatewayGRPCPort, CmdFlagGRPC, "", "ServerGRPC Port: gRPC port")
+	startCMD.PersistentFlags().StringVar(&params.GatewayHTTPPort, CmdFlagHTTP, "", "ServerHTTP Port: ServerHTTP port")
 	startCMD.PersistentFlags().StringVar(&params.RegistryAddress, CmdFlagRegistry, "", "Registry Server - address location")
 	startCMD.PersistentFlags().BoolVar(&params.RegistrySecure, CmdFlagRegistrySecure, false, "Registry Secure Mode - enable secure connection to registry")
 	startCMD.PersistentFlags().StringVar(&params.Namespace, CmdFlagNamespace, "", "Namespace - Group identifier for registryAddress")
 	startCMD.PersistentFlags().StringVar(&params.Ip, CmdFlagIP, "", "Network - ip address to listen to. Must matching domain if provided")
 	startCMD.PersistentFlags().StringVar(&params.Domain, CmdFlagDomain, "", "Domain - Domain name to bind to")
 	startCMD.PersistentFlags().StringVar(&params.CaCertPath, CmdFlagAuthorityCert, "", "Authority Certificate - file path")
-	startCMD.PersistentFlags().StringVar(&params.CaGRPC, CmdFlagAuthority, "", "Authority Grpc - address location")
+	startCMD.PersistentFlags().StringVar(&params.CaGRPC, CmdFlagAuthority, "", "Authority ServerGRPC - address location")
 	startCMD.PersistentFlags().StringVar(&params.CaCredentials, CmdFlagAuthorityCred, "", "Authority Credentials - authority authentication credentials")
 
 	command := &cobra.Command{

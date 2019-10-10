@@ -33,12 +33,12 @@ const (
 )
 
 var Protocol_name = map[int32]string{
-	0: "Grpc",
+	0: "GRPC",
 	1: "Http",
 }
 
 var Protocol_value = map[string]int32{
-	"Grpc": 0,
+	"GRPC": 0,
 	"Http": 1,
 }
 
