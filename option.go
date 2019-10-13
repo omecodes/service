@@ -18,3 +18,15 @@ func WithAfterStop(f func()) Option {
 		opts.afterStop = append(opts.afterStop, f)
 	}
 }
+
+type initOptions struct {
+	credentialsProvider func(...string) string
+}
+
+type InitOption func(*initOptions)
+
+func WithCACredentialsProvider(cp func(...string) string) InitOption {
+	return func(opts *initOptions) {
+		opts.credentialsProvider = cp
+	}
+}

@@ -2,11 +2,11 @@
 // source: service.proto
 
 /*
-Package proto is a reverse proxy.
+Package pb is a reverse proxy.
 
 It translates gRPC into RESTful JSON APIs.
 */
-package proto
+package pb
 
 import (
 	"context"
@@ -275,15 +275,15 @@ func RegisterRegistryHandlerClient(ctx context.Context, mux *runtime.ServeMux, c
 }
 
 var (
-	pattern_Registry_Register_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"api", "services", "register"}, ""))
+	pattern_Registry_Register_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"service", "register"}, ""))
 
-	pattern_Registry_Deregister_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"api", "services", "deregister", "registry_id"}, ""))
+	pattern_Registry_Deregister_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"service", "deregister", "registry_id"}, ""))
 
-	pattern_Registry_List_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"api", "services", "list"}, ""))
+	pattern_Registry_List_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"service", "list"}, ""))
 
-	pattern_Registry_Get_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"api", "services", "get", "registry_id"}, ""))
+	pattern_Registry_Get_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 1, 0, 4, 1, 5, 2}, []string{"service", "get", "registry_id"}, ""))
 
-	pattern_Registry_Search_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"api", "services", "search"}, ""))
+	pattern_Registry_Search_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"service", "search"}, ""))
 )
 
 var (

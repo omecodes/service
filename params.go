@@ -12,8 +12,10 @@ type Params struct {
 	RegistrySecure  bool
 	Namespace       string
 	RegistryID      string
+	StartRegistry   bool
 
-	CaGRPC        string
-	CaCertPath    string
-	CaCredentials string
+	IsCA          bool
+	CA            string
+	CACertPath    string
+	CACredentials string
 }

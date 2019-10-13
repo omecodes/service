@@ -5,12 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/zoenion/service/connection"
-	"github.com/zoenion/service/proto"
+	pb2 "github.com/zoenion/service/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
 
-func GRPCConnectionDialer(ctx context.Context, serviceType proto.Type) (connection.GRPCDialer, error) {
+func GRPCConnectionDialer(ctx context.Context, serviceType pb2.Type) (connection.Dialer, error) {
 	reg := Registry(ctx)
 	if reg == nil {
 		return nil, errors.New("no registry configured")
@@ -29,9 +29,9 @@ func GRPCConnectionDialer(ctx context.Context, serviceType proto.Type) (connecti
 		if info.ServiceNode != nil {
 			tlsConf := ClientTLSConfig(ctx)
 			if tlsConf == nil {
-				return connection.NewGRPCDialer(info.ServiceNode.Address), nil
+				return connection.NewDialer(info.ServiceNode.Address), nil
 			} else {
-				return connection.NewGRPCDialer(info.ServiceNode.Address, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf))), nil
+				return connection.NewDialer(info.ServiceNode.Address, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf))), nil
 			}
 		}
 	}

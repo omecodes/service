@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package proto;
+package pb;
 
 import "google/api/annotations.proto";
 
@@ -113,21 +113,21 @@ message ListenRequest {
 service Registry {
     rpc Register(RegisterRequest) returns (RegisterResponse){
         option(google.api.http) = {
-            post: "/api/services/register";
+            post: "/service/register";
             body: "*";
         };
     };
     rpc Deregister(DeregisterRequest)returns(DeregisterResponse){
-            option(google.api.http).get = "/api/services/deregister/{registry_id}";
+            option(google.api.http).get = "/service/deregister/{registry_id}";
     };
     rpc List(ListRequest)returns(ListResponse){
-            option(google.api.http).get = "/api/services/list";
+            option(google.api.http).get = "/service/list";
     };
     rpc Get(GetRequest)returns(GetResponse){
-        option(google.api.http).get = "/api/services/get/{registry_id}";
+        option(google.api.http).get = "/service/get/{registry_id}";
     };
     rpc Search(SearchRequest) returns (SearchResponse) {
-        option(google.api.http).get = "/api/services/search";
+        option(google.api.http).get = "/service/search";
     };
     rpc Listen(ListenRequest) returns (stream Event);
 }

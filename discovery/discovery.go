@@ -1,30 +1,32 @@
 package discovery
 
-import "github.com/zoenion/service/proto"
+import (
+	pb2 "github.com/zoenion/service/proto"
+)
 
 type RegistryEventHandler interface {
-	Handle(*proto.Event)
+	Handle(*pb2.Event)
 }
 
 type eventHandlerFunc struct {
-	f func(event *proto.Event)
+	f func(event *pb2.Event)
 }
 
-func (hf *eventHandlerFunc) Handle(event *proto.Event) {
+func (hf *eventHandlerFunc) Handle(event *pb2.Event) {
 	hf.f(event)
 }
 
-func EventHandlerFunc(f func(*proto.Event)) RegistryEventHandler {
+func EventHandlerFunc(f func(*pb2.Event)) RegistryEventHandler {
 	return &eventHandlerFunc{f: f}
 }
 
 type Registry interface {
-	Register(info *proto.Info) (string, error)
-	Deregister(id string) error
-	Get(id string) (*proto.Info, error)
+	RegisterService(info *pb2.Info) (string, error)
+	DeregisterService(id string) error
+	GetService(id string) (*pb2.Info, error)
 	Certificate(id string) ([]byte, error)
-	ConnectionInfo(id string, protocol proto.Protocol) (*proto.ConnectionInfo, error)
+	ConnectionInfo(id string, protocol pb2.Protocol) (*pb2.ConnectionInfo, error)
 	RegisterEventHandler(h RegistryEventHandler) string
 	DeregisterEventHandler(string)
-	GetOfType(t proto.Type) ([]*proto.Info, error)
+	GetOfType(t pb2.Type) ([]*pb2.Info, error)
 }

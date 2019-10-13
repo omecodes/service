@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package pb;
+
+import "google/api/annotations.proto";
+
+enum Purpose {
+    ServiceProvider = 0;
+    CertificateSigning = 1;
+}
+
+message CSRData {
+    repeated string addresses = 1;
+    repeated string domains = 2;
+    string public_key = 3;
+    string subject = 4;
+    Purpose purpose = 5;
+}
+
+message SignCertificateRequest {
+    CSRData csr = 1;
+}
+message SignCertificateResponse {
+    string raw_certificate = 1;
+}
+
+service CSR {
+    rpc SignCertificate (SignCertificateRequest) returns (SignCertificateResponse) {
+        option (google.api.http) = {
+            post: "/cert/sign";
+            body: "*";
+        };
+    };
+}

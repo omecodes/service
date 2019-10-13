@@ -1,0 +1,97 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "ca.proto",
+    "version": "version not set"
+  },
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/cert/sign": {
+      "post": {
+        "operationId": "SignCertificate",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/pbSignCertificateResponse"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/pbSignCertificateRequest"
+            }
+          }
+        ],
+        "tags": [
+          "CSR"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "pbCSRData": {
+      "type": "object",
+      "properties": {
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "domains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "public_key": {
+          "type": "string"
+        },
+        "subject": {
+          "type": "string"
+        },
+        "purpose": {
+          "$ref": "#/definitions/pbPurpose"
+        }
+      }
+    },
+    "pbPurpose": {
+      "type": "string",
+      "enum": [
+        "ServiceProvider",
+        "CertificateSigning"
+      ],
+      "default": "ServiceProvider"
+    },
+    "pbSignCertificateRequest": {
+      "type": "object",
+      "properties": {
+        "csr": {
+          "$ref": "#/definitions/pbCSRData"
+        }
+      }
+    },
+    "pbSignCertificateResponse": {
+      "type": "object",
+      "properties": {
+        "raw_certificate": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

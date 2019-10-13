@@ -15,9 +15,10 @@ import (
 	crypto2 "github.com/zoenion/common/crypto"
 	"github.com/zoenion/common/errors"
 	"github.com/zoenion/common/futils"
-	capb "github.com/zoenion/common/proto/ca"
 	"github.com/zoenion/service/authentication"
 	"github.com/zoenion/service/discovery"
+	"github.com/zoenion/service/interceptors"
+	pb "github.com/zoenion/service/proto"
 	"github.com/zoenion/service/server"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -33,6 +34,7 @@ import (
 
 type Box struct {
 	params Params
+	boxDir string
 
 	serverMutex sync.Mutex
 	services    map[string]*grpc.Server
@@ -59,221 +61,31 @@ func NewBox(p Params) (*Box, error) {
 	b.gateways = map[string]*http.Server{}
 	b.services = map[string]*grpc.Server{}
 	b.ctx, b.ctxCancelFunc = context.WithCancel(context.WithValue(context.Background(), ctxBox, b))
-	return b, b.Load()
+	return b, nil
 }
 
-func (box *Box) Context() context.Context {
-	return box.ctx
-}
-
-func (box *Box) Name() string {
-	return box.params.Name
-}
-
-func (box *Box) Dir() string {
-	return box.params.Dir
-}
-
-func (box *Box) Ip() string {
-	return box.params.Ip
-}
-
-func (box *Box) RegistryCert() *x509.Certificate {
-	return box.registryCert
-}
-
-func (box *Box) Registry() discovery.Registry {
-	return box.registry
-}
-
-func (box *Box) CACertificate() *x509.Certificate {
-	return box.caCert
-}
-
-func (box *Box) CAClientAuthentication() credentials.PerRPCCredentials {
-	return box.caClientAuthentication
-}
-
-func (box *Box) CAClientTransportCrendentials() credentials.TransportCredentials {
-	return box.caGRPCTransportCredentials
-}
-
-func (box *Box) ServiceCert() *x509.Certificate {
-	return box.cert
-}
-
-func (box *Box) ServiceKey() crypto.PrivateKey {
-	return box.privateKey
-}
-
-func (box *Box) Load() error {
-	var err error
-
-	if box.params.CertificatePath != "" {
-		box.cert, err = crypto2.LoadCertificate(box.params.CaCertPath)
-		if err != nil {
-			return fmt.Errorf("could not load service certificate: %s", err)
-		}
-
-		box.privateKey, err = crypto2.LoadPrivateKey(nil, box.params.KeyPath)
-		if err != nil {
-			return fmt.Errorf("could not load service private key: %s", err)
-		}
-	}
-
-	if box.params.CaGRPC != "" {
-		box.caCert, err = crypto2.LoadCertificate(box.params.CaCertPath)
-		if err != nil {
-			return fmt.Errorf("could not load authority certificate: %s", err)
-		}
-
-		box.caGRPCTransportCredentials, err = credentials.NewClientTLSFromFile(box.params.CaCertPath, "")
-		if err != nil {
-			return fmt.Errorf("could not create authority client credentials: %s", box.params.CaCertPath)
-		}
-
-		parts := strings.Split(box.params.CaCredentials, ":")
-		box.caClientAuthentication = authentication.NewGRPCBasic(parts[0], parts[1])
-
-		err = box.loadSignedKeyPair()
-		if err != nil {
-			return err
-		}
-	}
-
-	if box.params.RegistryAddress != "" {
-		if box.params.RegistrySecure {
-			box.registry = NewSyncRegistry(box.params.RegistryAddress, box.clientMutualTLS())
-		} else {
-			box.registry = NewSyncRegistry(box.params.RegistryAddress, nil)
-		}
-	}
-	return nil
-}
-
-func (box *Box) StartGatewayGRPCMapping(name string, g *server.GatewayServiceMapping) error {
-	if box.registry == nil {
-		box.serverMutex.Lock()
-		defer box.serverMutex.Unlock()
-
-		info, err := box.registry.Get(box.params.Namespace + ":" + name)
-		if err != nil {
-			return err
-		}
-
-		listener, err := box.listen(true, g.SecureConnection, g.Port, g.Tls)
-		if err != nil {
-			return err
-		}
-
-		address := listener.Addr().String()
-		grpcServerEndpoint := flag.String("grpc-server-endpoint", info.ServiceNode.Address, "gRPC server endpoint")
-		ctx := context.Background()
-		mux := runtime.NewServeMux()
-		opts := []grpc.DialOption{grpc.WithInsecure()}
-
-		err = g.Binder(ctx, mux, *grpcServerEndpoint, opts)
-		if err != nil {
-			return err
-		}
-
-		log.Printf("starting %s.HTTP at %s", name, address)
-		srv := &http.Server{
-			Addr:    address,
-			Handler: mux,
-		}
-		box.gateways[name] = srv
-		go srv.Serve(listener)
-		return nil
-	}
-	return errors.New("not found")
-}
-
-func (box *Box) StartGateway(name string, g *server.Gateway) error {
-	box.serverMutex.Lock()
-	defer box.serverMutex.Unlock()
-
-	listener, err := box.listen(true, g.SecureConnection, g.Port, g.Tls)
-	if err != nil {
-		return err
-	}
-
-	address := listener.Addr().String()
-	router := g.ProvideRouter()
-
-	log.Printf("starting %s.HTTP at %s", name, address)
-	srv := &http.Server{
-		Addr:    address,
-		Handler: router,
-	}
-	box.gateways[name] = srv
-	go srv.Serve(listener)
-	return nil
-}
-
-func (box *Box) StartService(name string, g *server.Service) error {
-	box.serverMutex.Lock()
-	defer box.serverMutex.Unlock()
-
-	listener, err := box.listen(true, g.SecureConnection, g.Port, g.Tls)
-	if err != nil {
-		return err
-	}
-	address := listener.Addr().String()
-
-	log.Printf("starting %s.gRPC at %s", name, address)
-	var opts []grpc.ServerOption
-	if g.Interceptor != nil {
-		opts = append(opts, grpc.StreamInterceptor(g.Interceptor.InterceptStream), grpc.UnaryInterceptor(g.Interceptor.InterceptUnary))
-	}
-
-	srv := grpc.NewServer(opts...)
-	box.services[name] = srv
-
-	g.RegisterHandlerFunc(srv)
-	go srv.Serve(nil)
-	return nil
-}
-
-func (box *Box) StopServices() error {
-	box.serverMutex.Lock()
-	defer box.serverMutex.Unlock()
-	for name, srv := range box.services {
-		srv.Stop()
-		log.Printf("name: %s\t state:stopped\t error:no\n", name)
-	}
-	return nil
-}
-
-func (box *Box) StopGateways() error {
-	box.serverMutex.Lock()
-	defer box.serverMutex.Unlock()
-	for name, srv := range box.gateways {
-		err := srv.Close()
-		log.Printf("name: %s\t state:stopped\t error:%s\n", name, err)
-	}
-	return nil
-}
-
-func (box *Box) loadSignedKeyPair() error {
+func (box *Box) loadKeyPair() error {
 	if box.cert != nil && box.privateKey != nil {
 		return nil
 	}
 
-	if box.params.CaCertPath == "" {
+	if !box.params.IsCA && box.params.CACertPath == "" {
 		return errors.BadInput
 	}
 
-	box.params.CaCertPath, _ = filepath.Abs(box.params.CaCertPath)
-	if !futils.FileExists(box.params.CaCertPath) {
-		return errors.NotFound
-	}
-	authorityCert, err := crypto2.LoadCertificate(box.params.CaCertPath)
-	if err != nil {
-		return fmt.Errorf("could not load authority certificate: %s", err)
-	}
+	if box.params.CACertPath != "" {
+		box.params.CACertPath, _ = filepath.Abs(box.params.CACertPath)
+		if !futils.FileExists(box.params.CACertPath) {
+			return errors.NotFound
+		}
+		authorityCert, err := crypto2.LoadCertificate(box.params.CACertPath)
+		if err != nil {
+			return fmt.Errorf("could not load authority certificate: %s", err)
+		}
 
-	box.caCert = authorityCert
+		box.caCert = authorityCert
+	}
+	var err error
 
 	name := strcase.ToSnake(box.params.Name)
 	certFilename := filepath.Join(box.params.Dir, fmt.Sprintf("%s.crt", name))
@@ -291,13 +103,14 @@ func (box *Box) loadSignedKeyPair() error {
 		}
 	}
 
-	CAPool := x509.NewCertPool()
-	CAPool.AddCert(authorityCert)
-
-	if box.cert != nil {
-		_, err = box.cert.Verify(x509.VerifyOptions{Roots: CAPool})
-		if err != nil || time.Now().After(box.cert.NotAfter) || time.Now().Before(box.cert.NotBefore) {
-			shouldGenerateNewPair = true
+	if !box.params.IsCA {
+		CAPool := x509.NewCertPool()
+		CAPool.AddCert(box.caCert)
+		if box.cert != nil {
+			_, err = box.cert.Verify(x509.VerifyOptions{Roots: CAPool})
+			if err != nil || time.Now().After(box.cert.NotAfter) || time.Now().Before(box.cert.NotBefore) {
+				shouldGenerateNewPair = true
+			}
 		}
 	}
 
@@ -308,28 +121,45 @@ func (box *Box) loadSignedKeyPair() error {
 		}
 		pub := box.privateKey.(*ecdsa.PrivateKey).PublicKey
 
-		if box.caClientAuthentication == nil {
-			parts := strings.Split(box.params.CaCredentials, ":")
-			box.caClientAuthentication = authentication.NewGRPCBasic(parts[0], parts[1])
-		}
+		if box.params.IsCA {
+			box.cert, err = crypto2.GenerateCACertificate(&crypto2.CertificateTemplate{
+				Organization:      "oe",
+				Name:              "",
+				Domains:           []string{box.params.Domain},
+				IPs:               []net.IP{net.ParseIP(box.params.Ip)},
+				Expiry:            time.Hour * 24 * 370,
+				PublicKey:         &pub,
+				SignerPrivateKey:  box.privateKey,
+				SignerCertificate: nil,
+			})
+			if err != nil {
+				return fmt.Errorf("could not generate CA cert: %s", err)
+			}
 
-		conn, err := grpc.Dial(box.params.CaGRPC, grpc.WithTransportCredentials(box.caGRPCTransportCredentials), grpc.WithPerRPCCredentials(box.caClientAuthentication))
-		client := capb.NewAuthorityServiceClient(conn)
-		rsp, err := client.SignCertificate(context.Background(), &capb.SignCertificateRequest{
-			Template: &capb.CertificateTemplate{
-				Domains:     []string{box.params.Domain},
-				Addresses:   []string{box.params.Ip},
-				ServiceName: strcase.ToDelimited(box.params.Name, '.'),
-				PublicKey:   elliptic.Marshal(elliptic.P256(), pub.X, pub.Y),
-			},
-		})
-		if err != nil {
-			return fmt.Errorf("could not sign certificate: %s", err)
-		}
+		} else {
+			if box.caClientAuthentication == nil {
+				parts := strings.Split(box.params.CACredentials, ":")
+				box.caClientAuthentication = authentication.NewGRPCBasic(parts[0], parts[1])
+			}
 
-		box.cert, err = x509.ParseCertificate(rsp.RawCertificate)
-		if err != nil {
-			return err
+			conn, err := grpc.Dial(box.params.CA, grpc.WithTransportCredentials(box.caGRPCTransportCredentials), grpc.WithPerRPCCredentials(box.caClientAuthentication))
+			client := pb.NewCSRClient(conn)
+			rsp, err := client.SignCertificate(context.Background(), &pb.SignCertificateRequest{
+				Csr: &pb.CSRData{
+					Domains:   []string{box.params.Domain},
+					Addresses: []string{box.params.Ip},
+					Subject:   strcase.ToDelimited(box.params.Name, '.'),
+					PublicKey: string(elliptic.Marshal(elliptic.P256(), pub.X, pub.Y)),
+				},
+			})
+			if err != nil {
+				return fmt.Errorf("could not sign certificate: %s", err)
+			}
+
+			box.cert, err = x509.ParseCertificate([]byte(rsp.RawCertificate))
+			if err != nil {
+				return err
+			}
 		}
 
 		_ = crypto2.StoreCertificate(box.cert, certFilename, os.ModePerm)
@@ -411,7 +241,7 @@ func (box *Box) listen(web bool, secure bool, port int, tc *tls.Config) (net.Lis
 	}
 
 	if secure {
-		err = box.loadSignedKeyPair()
+		err = box.loadKeyPair()
 		if err != nil {
 			return nil, err
 		}
@@ -453,8 +283,8 @@ func (box *Box) validateParams() error {
 		return err
 	}
 
-	if box.params.CaGRPC != "" || box.params.CaCertPath != "" || box.params.CaCredentials != "" {
-		if box.params.CaGRPC == "" || box.params.CaCertPath == "" || box.params.CaCredentials == "" {
+	if box.params.CA != "" || box.params.CACertPath != "" || box.params.CACredentials != "" {
+		if box.params.CA == "" || box.params.CACertPath == "" || box.params.CACredentials == "" {
 			return fmt.Errorf("command line: --a-grpc must always be provided with --a-cert and --a-cred")
 		}
 	}
@@ -471,5 +301,284 @@ func (box *Box) validateParams() error {
 		}
 	}
 
+	return nil
+}
+
+func (box *Box) Context() context.Context {
+	return box.ctx
+}
+
+func (box *Box) Name() string {
+	return box.params.Name
+}
+
+func (box *Box) Dir() string {
+	return box.params.Dir
+}
+
+func (box *Box) Ip() string {
+	return box.params.Ip
+}
+
+func (box *Box) RegistryCert() *x509.Certificate {
+	return box.registryCert
+}
+
+func (box *Box) Registry() discovery.Registry {
+	return box.registry
+}
+
+func (box *Box) CACertificate() *x509.Certificate {
+	return box.caCert
+}
+
+func (box *Box) CAClientAuthentication() credentials.PerRPCCredentials {
+	return box.caClientAuthentication
+}
+
+func (box *Box) CAClientTransportCredentials() credentials.TransportCredentials {
+	return box.caGRPCTransportCredentials
+}
+
+func (box *Box) ServiceCert() *x509.Certificate {
+	return box.cert
+}
+
+func (box *Box) ServiceKey() crypto.PrivateKey {
+	return box.privateKey
+}
+
+func (box *Box) Init(opts ...InitOption) error {
+	var err error
+	options := &initOptions{}
+	for _, opt := range opts {
+		opt(options)
+	}
+
+	box.boxDir = filepath.Join(box.params.Dir, "box")
+	_ = os.MkdirAll(box.boxDir, os.ModePerm)
+
+	if box.params.CertificatePath != "" {
+		box.cert, err = crypto2.LoadCertificate(box.params.CACertPath)
+		if err != nil {
+			return fmt.Errorf("could not load service certificate: %s", err)
+		}
+
+		box.privateKey, err = crypto2.LoadPrivateKey(nil, box.params.KeyPath)
+		if err != nil {
+			return fmt.Errorf("could not load service private key: %s", err)
+		}
+	}
+
+	if box.params.IsCA {
+		err = box.loadKeyPair()
+		if err != nil {
+			return fmt.Errorf("could not load CA key pair: %s", err)
+		}
+
+	} else if box.params.CA != "" {
+		box.caCert, err = crypto2.LoadCertificate(box.params.CACertPath)
+		if err != nil {
+			return fmt.Errorf("could not load authority certificate: %s", err)
+		}
+
+		box.caGRPCTransportCredentials, err = credentials.NewClientTLSFromFile(box.params.CACertPath, "")
+		if err != nil {
+			return fmt.Errorf("could not create authority client credentials: %s", box.params.CACertPath)
+		}
+
+		parts := strings.Split(box.params.CACredentials, ":")
+		box.caClientAuthentication = authentication.NewGRPCBasic(parts[0], parts[1])
+
+		err = box.loadKeyPair()
+		if err != nil {
+			return err
+		}
+	}
+
+	var syncedRegistry *SyncedRegistry
+	if box.params.StartRegistry {
+		syncedRegistry = NewSyncedRegistryServer()
+		if box.params.CA != "" {
+			err = syncedRegistry.Serve(box.params.RegistryAddress, box.serverMutualTLS())
+		} else {
+			err = syncedRegistry.Serve(box.params.RegistryAddress, nil)
+		}
+		if err != nil {
+			syncedRegistry = nil
+		}
+	}
+
+	if box.params.RegistryAddress != "" && syncedRegistry == nil {
+		var syncedRegistry *SyncedRegistry
+		var tc *tls.Config
+		if box.params.RegistrySecure {
+			tc = box.clientMutualTLS()
+			syncedRegistry = NewSyncedRegistryClient(box.params.RegistryAddress, tc)
+		} else {
+			syncedRegistry = NewSyncedRegistryClient(box.params.RegistryAddress, nil)
+		}
+		box.registry = syncedRegistry
+	}
+
+	if box.params.IsCA {
+		return box.startCA(options.credentialsProvider)
+	}
+	return nil
+}
+
+func (box *Box) startCA(credentialsProvider func(...string) string) error {
+	var tc *tls.Config
+	certPEMBytes, _ := crypto2.PEMEncodeCertificate(box.cert)
+	keyPEMBytes, _ := crypto2.PEMEncodeKey(box.privateKey)
+	tlsCert, err := tls.X509KeyPair(certPEMBytes, keyPEMBytes)
+	if err == nil {
+		clientCAs := x509.NewCertPool()
+		clientCAs.AddCert(box.cert)
+		tc = &tls.Config{
+			Certificates: []tls.Certificate{tlsCert},
+			ClientCAs:    clientCAs,
+			ClientAuth:   tls.VerifyClientCertIfGiven,
+		}
+	} else {
+		log.Println("could not load TLS configs")
+		return err
+	}
+
+	address := fmt.Sprintf("%s:9090", box.Ip())
+	listener, err := tls.Listen("tcp", address, tc)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("starting CA.gRPC at %s", address)
+	var opts []grpc.ServerOption
+	interceptor := interceptors.NewChainedInterceptor(map[string]*interceptors.InterceptRule{
+		"SignCertificate": {
+			Secure: true,
+			Links:  []string{interceptors.BasicValidator},
+		},
+	}, interceptors.NewBasic("box-ca", credentialsProvider))
+	opts = append(opts, grpc.StreamInterceptor(interceptor.InterceptStream), grpc.UnaryInterceptor(interceptor.InterceptUnary))
+
+	gs := grpc.NewServer()
+	pb.RegisterCSRServer(gs, &csrServerHandler{
+		PrivateKey:  box.privateKey,
+		Certificate: box.cert,
+	})
+	go gs.Serve(listener)
+	return nil
+}
+
+func (box *Box) StartGatewayGRPCMapping(name string, g *server.GatewayServiceMapping) error {
+	if box.registry == nil {
+		box.serverMutex.Lock()
+		defer box.serverMutex.Unlock()
+
+		info, err := box.registry.GetService(box.params.Namespace + ":" + name)
+		if err != nil {
+			return err
+		}
+
+		listener, err := box.listen(true, g.SecureConnection, g.Port, g.Tls)
+		if err != nil {
+			return err
+		}
+
+		address := listener.Addr().String()
+		grpcServerEndpoint := flag.String("grpc-server-endpoint", info.ServiceNode.Address, "gRPC server endpoint")
+		ctx := context.Background()
+		mux := runtime.NewServeMux()
+		opts := []grpc.DialOption{grpc.WithInsecure()}
+
+		err = g.Binder(ctx, mux, *grpcServerEndpoint, opts)
+		if err != nil {
+			return err
+		}
+
+		log.Printf("starting %s.HTTP at %s", name, address)
+		srv := &http.Server{
+			Addr:    address,
+			Handler: mux,
+		}
+		box.gateways[name] = srv
+		go srv.Serve(listener)
+		return nil
+	}
+	return errors.New("not found")
+}
+
+func (box *Box) StartGateway(name string, g *server.Gateway) error {
+	box.serverMutex.Lock()
+	defer box.serverMutex.Unlock()
+
+	listener, err := box.listen(true, g.SecureConnection, g.Port, g.Tls)
+	if err != nil {
+		return err
+	}
+
+	address := listener.Addr().String()
+	router := g.ProvideRouter()
+
+	log.Printf("starting %s.HTTP at %s", name, address)
+	srv := &http.Server{
+		Addr:    address,
+		Handler: router,
+	}
+	box.gateways[name] = srv
+	go srv.Serve(listener)
+	return nil
+}
+
+func (box *Box) StartService(name string, g *server.Service) error {
+	box.serverMutex.Lock()
+	defer box.serverMutex.Unlock()
+
+	listener, err := box.listen(true, g.SecureConnection, g.Port, g.Tls)
+	if err != nil {
+		return err
+	}
+	address := listener.Addr().String()
+
+	log.Printf("starting %s.gRPC at %s", name, address)
+	var opts []grpc.ServerOption
+	if g.Interceptor != nil {
+		opts = append(opts, grpc.StreamInterceptor(g.Interceptor.InterceptStream), grpc.UnaryInterceptor(g.Interceptor.InterceptUnary))
+	}
+
+	srv := grpc.NewServer(opts...)
+	box.services[name] = srv
+
+	g.RegisterHandlerFunc(srv)
+	go srv.Serve(listener)
+	return nil
+}
+
+func (box *Box) StopService(name string) {
+	box.serverMutex.Lock()
+	defer box.serverMutex.Unlock()
+	s := box.services[name]
+	if s != nil {
+		s.Stop()
+	}
+}
+
+func (box *Box) StopServices() error {
+	box.serverMutex.Lock()
+	defer box.serverMutex.Unlock()
+	for name, srv := range box.services {
+		srv.Stop()
+		log.Printf("name: %s\t state:stopped\t error:no\n", name)
+	}
+	return nil
+}
+
+func (box *Box) StopGateways() error {
+	box.serverMutex.Lock()
+	defer box.serverMutex.Unlock()
+	for name, srv := range box.gateways {
+		err := srv.Close()
+		log.Printf("name: %s\t state:stopped\t error:%s\n", name, err)
+	}
 	return nil
 }

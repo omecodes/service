@@ -5,17 +5,17 @@ import (
 	"google.golang.org/grpc/connectivity"
 )
 
-type GRPCDialer interface {
+type Dialer interface {
 	Dial() (*grpc.ClientConn, error)
 }
 
-type gRPC struct {
+type dialer struct {
 	address string
 	wrapped *grpc.ClientConn
 	options []grpc.DialOption
 }
 
-func (g *gRPC) Dial() (*grpc.ClientConn, error) {
+func (g *dialer) Dial() (*grpc.ClientConn, error) {
 	if g.wrapped == nil || g.wrapped.GetState() != connectivity.Ready {
 		if g.wrapped != nil {
 			_ = g.wrapped.Close()
@@ -29,8 +29,8 @@ func (g *gRPC) Dial() (*grpc.ClientConn, error) {
 	return g.wrapped, nil
 }
 
-func NewGRPCDialer(addr string, opts ...grpc.DialOption) *gRPC {
-	return &gRPC{
+func NewDialer(addr string, opts ...grpc.DialOption) *dialer {
+	return &dialer{
 		address: addr,
 		options: opts,
 	}

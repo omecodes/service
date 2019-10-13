@@ -15,14 +15,14 @@
     "application/json"
   ],
   "paths": {
-    "/api/services/deregister/{registry_id}": {
+    "/service/deregister/{registry_id}": {
       "get": {
         "operationId": "Deregister",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/protoDeregisterResponse"
+              "$ref": "#/definitions/pbDeregisterResponse"
             }
           }
         },
@@ -39,14 +39,14 @@
         ]
       }
     },
-    "/api/services/get/{registry_id}": {
+    "/service/get/{registry_id}": {
       "get": {
         "operationId": "Get",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/protoGetResponse"
+              "$ref": "#/definitions/pbGetResponse"
             }
           }
         },
@@ -63,14 +63,14 @@
         ]
       }
     },
-    "/api/services/list": {
+    "/service/list": {
       "get": {
         "operationId": "List",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/protoListResponse"
+              "$ref": "#/definitions/pbListResponse"
             }
           }
         },
@@ -87,14 +87,14 @@
         ]
       }
     },
-    "/api/services/register": {
+    "/service/register": {
       "post": {
         "operationId": "Register",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/protoRegisterResponse"
+              "$ref": "#/definitions/pbRegisterResponse"
             }
           }
         },
@@ -104,7 +104,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/protoRegisterRequest"
+              "$ref": "#/definitions/pbRegisterRequest"
             }
           }
         ],
@@ -113,14 +113,14 @@
         ]
       }
     },
-    "/api/services/search": {
+    "/service/search": {
       "get": {
         "operationId": "Search",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/protoSearchResponse"
+              "$ref": "#/definitions/pbSearchResponse"
             }
           }
         },
@@ -155,24 +155,24 @@
     }
   },
   "definitions": {
-    "protoDeregisterResponse": {
+    "pbDeregisterResponse": {
       "type": "object"
     },
-    "protoEvent": {
+    "pbEvent": {
       "type": "object",
       "properties": {
         "type": {
-          "$ref": "#/definitions/protoEventType"
+          "$ref": "#/definitions/pbEventType"
         },
         "name": {
           "type": "string"
         },
         "info": {
-          "$ref": "#/definitions/protoInfo"
+          "$ref": "#/definitions/pbInfo"
         }
       }
     },
-    "protoEventType": {
+    "pbEventType": {
       "type": "string",
       "enum": [
         "UnknownEvent",
@@ -182,15 +182,15 @@
       ],
       "default": "UnknownEvent"
     },
-    "protoGetResponse": {
+    "pbGetResponse": {
       "type": "object",
       "properties": {
         "info": {
-          "$ref": "#/definitions/protoInfo"
+          "$ref": "#/definitions/pbInfo"
         }
       }
     },
-    "protoInfo": {
+    "pbInfo": {
       "type": "object",
       "properties": {
         "name": {
@@ -200,16 +200,16 @@
           "type": "string"
         },
         "type": {
-          "$ref": "#/definitions/protoType"
+          "$ref": "#/definitions/pbType"
         },
         "label": {
           "type": "string"
         },
         "serviceNode": {
-          "$ref": "#/definitions/protoNode"
+          "$ref": "#/definitions/pbNode"
         },
         "gatewayNode": {
-          "$ref": "#/definitions/protoNode"
+          "$ref": "#/definitions/pbNode"
         },
         "meta": {
           "type": "object",
@@ -219,28 +219,28 @@
         }
       }
     },
-    "protoListResponse": {
+    "pbListResponse": {
       "type": "object",
       "properties": {
         "applications": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/protoInfo"
+            "$ref": "#/definitions/pbInfo"
           }
         }
       }
     },
-    "protoNode": {
+    "pbNode": {
       "type": "object",
       "properties": {
         "protocol": {
-          "$ref": "#/definitions/protoProtocol"
+          "$ref": "#/definitions/pbProtocol"
         },
         "address": {
           "type": "string"
         },
         "security": {
-          "$ref": "#/definitions/protoSecurity"
+          "$ref": "#/definitions/pbSecurity"
         },
         "ttl": {
           "type": "string",
@@ -248,7 +248,7 @@
         }
       }
     },
-    "protoProtocol": {
+    "pbProtocol": {
       "type": "string",
       "enum": [
         "Grpc",
@@ -256,15 +256,15 @@
       ],
       "default": "Grpc"
     },
-    "protoRegisterRequest": {
+    "pbRegisterRequest": {
       "type": "object",
       "properties": {
         "service": {
-          "$ref": "#/definitions/protoInfo"
+          "$ref": "#/definitions/pbInfo"
         }
       }
     },
-    "protoRegisterResponse": {
+    "pbRegisterResponse": {
       "type": "object",
       "properties": {
         "registry_id": {
@@ -272,18 +272,18 @@
         }
       }
     },
-    "protoSearchResponse": {
+    "pbSearchResponse": {
       "type": "object",
       "properties": {
         "services": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/protoInfo"
+            "$ref": "#/definitions/pbInfo"
           }
         }
       }
     },
-    "protoSecurity": {
+    "pbSecurity": {
       "type": "string",
       "enum": [
         "None",
@@ -292,7 +292,7 @@
       ],
       "default": "None"
     },
-    "protoType": {
+    "pbType": {
       "type": "string",
       "enum": [
         "UnknownType",
@@ -344,17 +344,17 @@
     }
   },
   "x-stream-definitions": {
-    "protoEvent": {
+    "pbEvent": {
       "type": "object",
       "properties": {
         "result": {
-          "$ref": "#/definitions/protoEvent"
+          "$ref": "#/definitions/pbEvent"
         },
         "error": {
           "$ref": "#/definitions/runtimeStreamError"
         }
       },
-      "title": "Stream result of protoEvent"
+      "title": "Stream result of pbEvent"
     }
   }
 }
