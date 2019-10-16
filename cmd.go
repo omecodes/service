@@ -5,10 +5,8 @@ import (
 )
 
 const (
-	CmdFlagAuthority      = "a-grpc"
 	CmdFlagIP             = "ip"
 	CmdFlagName           = "name"
-	CmdFlagDir            = "dir"
 	CmdFlagDomain         = "domain"
 	CmdFlagCert           = "cert"
 	CmdFlagKey            = "key"
@@ -20,8 +18,6 @@ const (
 	CmdFlagRegistry       = "reg"
 	CmdFlagRegistrySecure = "reg-secure"
 	CmdFlagStartRegistry  = "start-reg"
-	CmdFlagGRPC           = "grpc"
-	CmdFlagHTTP           = "http"
 )
 
 func CMD(use string, params *Params) *cobra.Command {

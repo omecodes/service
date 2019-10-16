@@ -64,14 +64,6 @@ func Registry(ctx context.Context) discovery.Registry {
 	return box.registry
 }
 
-func Namespace(ctx context.Context) string {
-	box := serviceBox(ctx)
-	if box == nil {
-		return ""
-	}
-	return box.params.Namespace
-}
-
 func Name(ctx context.Context) string {
 	box := serviceBox(ctx)
 	if box == nil {
@@ -88,7 +80,7 @@ func Dir(ctx context.Context) string {
 	return box.params.Dir
 }
 
-func FullName(ctx context.Context) string {
+func ID(ctx context.Context) string {
 	box := serviceBox(ctx)
 	if box == nil {
 		return ""
@@ -112,20 +104,8 @@ func RequestUser(ctx context.Context) (string, bool) {
 	return "", false
 }
 
-func RequestUserAgent(ctx context.Context) (string, bool) {
-	value := ctx.Value(context2.UserAgent)
-	if userAgent, ok := value.(string); ok {
-		return userAgent, true
-	}
-	return "", false
-}
-
 func ContextWithUser(ctx context.Context, user string) context.Context {
 	return context.WithValue(ctx, context2.User, user)
-}
-
-func ContextWithUserAgent(ctx context.Context, userAgent string) context.Context {
-	return context.WithValue(ctx, context2.UserAgent, userAgent)
 }
 
 func AddBoxContext(ctx context.Context, serviceContext context.Context) context.Context {

@@ -29,10 +29,6 @@ func (hf *eventHandlerFunc) Handle(event *pb2.Event) {
 	hf.f(event)
 }
 
-func EventHandlerFunc(f func(*pb2.Event)) RegistryEventHandler {
-	return &eventHandlerFunc{f: f}
-}
-
 type SyncedRegistry struct {
 	servicesLock sync.Mutex
 	handlersLock sync.Mutex
@@ -239,7 +235,7 @@ func (r *SyncedRegistry) connected() {
 		log.Printf("could not listen to registry server events: %s\n", err)
 		return
 	}
-	defer stream.CloseSend()
+	defer log.Println("stream close:", stream.CloseSend())
 	for !r.stop {
 		event, err := stream.Recv()
 		if err != nil {

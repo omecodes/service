@@ -304,6 +304,13 @@ func (box *Box) validateParams() error {
 	return nil
 }
 
+func (box *Box) host() string {
+	if box.params.Domain != "" {
+		return box.params.Domain
+	}
+	return box.params.Ip
+}
+
 func (box *Box) Context() context.Context {
 	return box.ctx
 }
@@ -396,20 +403,25 @@ func (box *Box) Init(opts ...InitOption) error {
 		}
 	}
 
-	var syncedRegistry *SyncedRegistry
-	if box.params.StartRegistry {
-		syncedRegistry = NewSyncedRegistryServer()
-		if box.params.CA != "" {
-			err = syncedRegistry.Serve(box.params.RegistryAddress, box.serverMutualTLS())
-		} else {
-			err = syncedRegistry.Serve(box.params.RegistryAddress, nil)
-		}
-		if err != nil {
-			syncedRegistry = nil
-		}
+	syncedRegistry := NewSyncedRegistryServer()
+	if box.params.CA != "" {
+		err = syncedRegistry.Serve(box.host()+RegistryDefaultHost, box.serverMutualTLS())
+	} else {
+		err = syncedRegistry.Serve(box.host()+RegistryDefaultHost, nil)
 	}
 
-	if box.params.RegistryAddress != "" && syncedRegistry == nil {
+	if err != nil {
+		log.Println("An instance of registry might already be running on this machine")
+		syncedRegistry = nil
+	}
+
+	parts := strings.Split(box.params.RegistryAddress, ":")
+	if len(parts) != 2 {
+		return errors.New("malformed registry address. Should be like HOST:PORT")
+	}
+
+	registryHost := parts[0]
+	if syncedRegistry == nil || registryHost != "" && registryHost != RegistryDefaultHost && registryHost != box.host() {
 		var syncedRegistry *SyncedRegistry
 		var tc *tls.Config
 		if box.params.RegistrySecure {
@@ -466,7 +478,7 @@ func (box *Box) startCA(credentialsProvider func(...string) string) error {
 		PrivateKey:  box.privateKey,
 		Certificate: box.cert,
 	})
-	go gs.Serve(listener)
+	go log.Println("CA done serving:", gs.Serve(listener))
 	return nil
 }
 
@@ -502,7 +514,7 @@ func (box *Box) StartGatewayGRPCMapping(name string, g *server.GatewayServiceMap
 			Handler: mux,
 		}
 		box.gateways[name] = srv
-		go srv.Serve(listener)
+		go log.Println(name, "done serving:", srv.Serve(listener))
 		return nil
 	}
 	return errors.New("not found")
@@ -526,7 +538,7 @@ func (box *Box) StartGateway(name string, g *server.Gateway) error {
 		Handler: router,
 	}
 	box.gateways[name] = srv
-	go srv.Serve(listener)
+	go log.Println(name, "done serving:", srv.Serve(listener))
 	return nil
 }
 
@@ -550,7 +562,7 @@ func (box *Box) StartService(name string, g *server.Service) error {
 	box.services[name] = srv
 
 	g.RegisterHandlerFunc(srv)
-	go srv.Serve(listener)
+	go log.Println(name, "done serving:", srv.Serve(listener))
 	return nil
 }
 

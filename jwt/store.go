@@ -47,7 +47,7 @@ func (s *SyncedStore) connected() {
 		log.Printf("could not listen to jwt events: %s\n", err)
 		return
 	}
-	defer stream.CloseSend()
+	defer log.Println("stream close:", stream.CloseSend())
 	for {
 		event, err := stream.Recv()
 		if err != nil {
