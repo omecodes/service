@@ -478,7 +478,7 @@ func (box *Box) startCA(credentialsProvider func(...string) string) error {
 		PrivateKey:  box.privateKey,
 		Certificate: box.cert,
 	})
-	go log.Println("CA done serving:", gs.Serve(listener))
+	go gs.Serve(listener)
 	return nil
 }
 
@@ -514,7 +514,7 @@ func (box *Box) StartGatewayGRPCMapping(name string, g *server.GatewayServiceMap
 			Handler: mux,
 		}
 		box.gateways[name] = srv
-		go log.Println(name, "done serving:", srv.Serve(listener))
+		go srv.Serve(listener)
 		return nil
 	}
 	return errors.New("not found")
@@ -538,7 +538,7 @@ func (box *Box) StartGateway(name string, g *server.Gateway) error {
 		Handler: router,
 	}
 	box.gateways[name] = srv
-	go log.Println(name, "done serving:", srv.Serve(listener))
+	go srv.Serve(listener)
 	return nil
 }
 
@@ -562,7 +562,7 @@ func (box *Box) StartService(name string, g *server.Service) error {
 	box.services[name] = srv
 
 	g.RegisterHandlerFunc(srv)
-	go log.Println(name, "done serving:", srv.Serve(listener))
+	go srv.Serve(listener)
 	return nil
 }
 

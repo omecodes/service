@@ -29,7 +29,7 @@ func (r *SyncedRegistry) Serve(addr string, tc *tls.Config) error {
 
 	srv := grpc.NewServer()
 	pb.RegisterRegistryServer(srv, r)
-	go log.Println("registry done serving:", srv.Serve(listener))
+	go srv.Serve(listener)
 	log.Println("start gRPC.Registry server at:", listener.Addr())
 	return nil
 }
