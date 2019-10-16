@@ -186,7 +186,7 @@ func (box *Box) serverMutualTLS() *tls.Config {
 	}
 }
 
-func (box *Box) serverWebTLS() *tls.Config {
+func (box *Box) serverTLS() *tls.Config {
 	if box.privateKey == nil || box.cert == nil || box.caCert == nil {
 		return nil
 	}
@@ -248,7 +248,7 @@ func (box *Box) listen(web bool, secure bool, port int, tc *tls.Config) (net.Lis
 
 		if tc == nil {
 			if web {
-				tc = box.serverWebTLS()
+				tc = box.serverTLS()
 			} else {
 				tc = box.serverMutualTLS()
 			}
@@ -406,6 +406,10 @@ func (box *Box) Init(opts ...InitOption) error {
 	syncedRegistry := NewSyncedRegistryServer()
 	if box.params.CA != "" {
 		err = syncedRegistry.Serve(box.host()+RegistryDefaultHost, box.serverMutualTLS())
+
+	} else if box.params.IsCA {
+		err = syncedRegistry.Serve(box.host()+RegistryDefaultHost, box.serverTLS())
+
 	} else {
 		err = syncedRegistry.Serve(box.host()+RegistryDefaultHost, nil)
 	}

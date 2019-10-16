@@ -29,8 +29,9 @@ func (r *SyncedRegistry) Serve(addr string, tc *tls.Config) error {
 
 	srv := grpc.NewServer()
 	pb.RegisterRegistryServer(srv, r)
+
+	log.Println("starting Registry.gRPC at", listener.Addr())
 	go srv.Serve(listener)
-	log.Println("start gRPC.Registry server at:", listener.Addr())
 	return nil
 }
 
