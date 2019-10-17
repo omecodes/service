@@ -41,9 +41,9 @@ func CMD(use string, params *Params) *cobra.Command {
 	command.PersistentFlags().StringVar(&params.Ip, CmdFlagIP, "", "Network - ip address to listen to. Must matching domain if provided")
 	command.PersistentFlags().StringVar(&params.Domain, CmdFlagDomain, "", "Domain - Domain name to bind to")
 
+	command.PersistentFlags().BoolVar(&params.CA, CmdFlagCA, false, "Is CA - Runs service as CA")
 	command.PersistentFlags().StringVar(&params.CACertPath, CmdFlagCACert, "", "Authority Certificate - file path")
-	command.PersistentFlags().BoolVar(&params.IsCA, CmdFlagCA, false, "Is CA - Runs service as CA")
-	command.PersistentFlags().StringVar(&params.CA, CmdFlagCAAddr, "", "Authority ServerGRPC - address location")
+	command.PersistentFlags().StringVar(&params.CAAddress, CmdFlagCAAddr, "", "Authority ServerGRPC - address location")
 	command.PersistentFlags().StringVar(&params.CACredentials, CmdFlagCACred, "", "Authority Credentials - authority authentication credentials")
 	return command
 }

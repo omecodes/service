@@ -275,5 +275,6 @@ func NewSyncedRegistryServer() *SyncedRegistry {
 	return &SyncedRegistry{
 		services:      map[string]*pb2.Info{},
 		eventHandlers: map[string]discovery.RegistryEventHandler{},
+		listeners:     map[int]chan *pb2.Event{},
 	}
 }

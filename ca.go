@@ -23,7 +23,7 @@ func (C *csrServerHandler) SignCertificate(ctx context.Context, in *pb.SignCerti
 		ips = append(ips, net.ParseIP(a))
 	}
 
-	x, y := elliptic.Unmarshal(elliptic.P256(), []byte(in.Csr.PublicKey))
+	x, y := elliptic.Unmarshal(elliptic.P256(), in.Csr.PublicKey)
 	k := &ecdsa.PublicKey{
 		Curve: elliptic.P256(),
 		X:     x,
@@ -44,6 +44,6 @@ func (C *csrServerHandler) SignCertificate(ctx context.Context, in *pb.SignCerti
 	}
 
 	return &pb.SignCertificateResponse{
-		RawCertificate: string(cert.Raw),
+		RawCertificate: cert.Raw,
 	}, nil
 }

@@ -5,12 +5,19 @@ import (
 	"errors"
 	"fmt"
 	"github.com/zoenion/service/connection"
-	pb2 "github.com/zoenion/service/proto"
+	pb "github.com/zoenion/service/proto"
+	"github.com/zoenion/service/server"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
 
-func GRPCConnectionDialer(ctx context.Context, serviceType pb2.Type) (connection.Dialer, error) {
+type runningService struct {
+	service    *server.Service
+	registryId string
+	server     *grpc.Server
+}
+
+func GRPCConnectionDialer(ctx context.Context, serviceType pb.Type) (connection.Dialer, error) {
 	reg := Registry(ctx)
 	if reg == nil {
 		return nil, errors.New("no registry configured")

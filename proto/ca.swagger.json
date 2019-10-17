@@ -59,7 +59,8 @@
           }
         },
         "public_key": {
-          "type": "string"
+          "type": "string",
+          "format": "byte"
         },
         "subject": {
           "type": "string"
@@ -89,7 +90,8 @@
       "type": "object",
       "properties": {
         "raw_certificate": {
-          "type": "string"
+          "type": "string",
+          "format": "byte"
         }
       }
     }

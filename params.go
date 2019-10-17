@@ -14,8 +14,8 @@ type Params struct {
 	RegistryID      string
 	StartRegistry   bool
 
-	IsCA          bool
-	CA            string
+	CA            bool
+	CAAddress     string
 	CACertPath    string
 	CACredentials string
 }

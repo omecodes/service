@@ -37,7 +37,7 @@ type Box struct {
 	boxDir string
 
 	serverMutex sync.Mutex
-	services    map[string]*grpc.Server
+	services    map[string]*runningService
 	gateways    map[string]*http.Server
 
 	registry                   discovery.Registry
@@ -59,7 +59,7 @@ func NewBox(p Params) (*Box, error) {
 		return nil, err
 	}
 	b.gateways = map[string]*http.Server{}
-	b.services = map[string]*grpc.Server{}
+	b.services = map[string]*runningService{}
 	b.ctx, b.ctxCancelFunc = context.WithCancel(context.WithValue(context.Background(), ctxBox, b))
 	return b, nil
 }
@@ -69,7 +69,7 @@ func (box *Box) loadKeyPair() error {
 		return nil
 	}
 
-	if !box.params.IsCA && box.params.CACertPath == "" {
+	if !box.params.CA && box.params.CACertPath == "" {
 		return errors.BadInput
 	}
 
@@ -103,7 +103,7 @@ func (box *Box) loadKeyPair() error {
 		}
 	}
 
-	if !box.params.IsCA {
+	if !box.params.CA {
 		CAPool := x509.NewCertPool()
 		CAPool.AddCert(box.caCert)
 		if box.cert != nil {
@@ -121,7 +121,7 @@ func (box *Box) loadKeyPair() error {
 		}
 		pub := box.privateKey.(*ecdsa.PrivateKey).PublicKey
 
-		if box.params.IsCA {
+		if box.params.CA {
 			box.cert, err = crypto2.GenerateCACertificate(&crypto2.CertificateTemplate{
 				Organization:      "oe",
 				Name:              "",
@@ -142,14 +142,14 @@ func (box *Box) loadKeyPair() error {
 				box.caClientAuthentication = authentication.NewGRPCBasic(parts[0], parts[1])
 			}
 
-			conn, err := grpc.Dial(box.params.CA, grpc.WithTransportCredentials(box.caGRPCTransportCredentials), grpc.WithPerRPCCredentials(box.caClientAuthentication))
+			conn, err := grpc.Dial(box.params.CAAddress, grpc.WithTransportCredentials(box.caGRPCTransportCredentials), grpc.WithPerRPCCredentials(box.caClientAuthentication))
 			client := pb.NewCSRClient(conn)
 			rsp, err := client.SignCertificate(context.Background(), &pb.SignCertificateRequest{
 				Csr: &pb.CSRData{
 					Domains:   []string{box.params.Domain},
 					Addresses: []string{box.params.Ip},
 					Subject:   strcase.ToDelimited(box.params.Name, '.'),
-					PublicKey: string(elliptic.Marshal(elliptic.P256(), pub.X, pub.Y)),
+					PublicKey: elliptic.Marshal(elliptic.P256(), pub.X, pub.Y),
 				},
 			})
 			if err != nil {
@@ -283,9 +283,9 @@ func (box *Box) validateParams() error {
 		return err
 	}
 
-	if box.params.CA != "" || box.params.CACertPath != "" || box.params.CACredentials != "" {
-		if box.params.CA == "" || box.params.CACertPath == "" || box.params.CACredentials == "" {
-			return fmt.Errorf("command line: --a-grpc must always be provided with --a-cert and --a-cred")
+	if box.params.CAAddress != "" || box.params.CACertPath != "" || box.params.CACredentials != "" {
+		if box.params.CAAddress == "" || box.params.CACertPath == "" || box.params.CACredentials == "" {
+			return fmt.Errorf("command line: --ca-addr must always be provided with --ca-cert and --ca-cred")
 		}
 	}
 
@@ -377,13 +377,13 @@ func (box *Box) Init(opts ...InitOption) error {
 		}
 	}
 
-	if box.params.IsCA {
+	if box.params.CA {
 		err = box.loadKeyPair()
 		if err != nil {
 			return fmt.Errorf("could not load CA key pair: %s", err)
 		}
 
-	} else if box.params.CA != "" {
+	} else if box.params.CAAddress != "" {
 		box.caCert, err = crypto2.LoadCertificate(box.params.CACertPath)
 		if err != nil {
 			return fmt.Errorf("could not load authority certificate: %s", err)
@@ -404,10 +404,10 @@ func (box *Box) Init(opts ...InitOption) error {
 	}
 
 	syncedRegistry := NewSyncedRegistryServer()
-	if box.params.CA != "" {
+	if box.params.CAAddress != "" {
 		err = syncedRegistry.Serve(box.host()+RegistryDefaultHost, box.serverMutualTLS())
 
-	} else if box.params.IsCA {
+	} else if box.params.CA {
 		err = syncedRegistry.Serve(box.host()+RegistryDefaultHost, box.serverTLS())
 
 	} else {
@@ -417,6 +417,10 @@ func (box *Box) Init(opts ...InitOption) error {
 	if err != nil {
 		log.Println("An instance of registry might already be running on this machine")
 		syncedRegistry = nil
+	}
+
+	if box.params.RegistryAddress == "" {
+		box.params.RegistryAddress = RegistryDefaultHost
 	}
 
 	parts := strings.Split(box.params.RegistryAddress, ":")
@@ -437,7 +441,7 @@ func (box *Box) Init(opts ...InitOption) error {
 		box.registry = syncedRegistry
 	}
 
-	if box.params.IsCA {
+	if box.params.CA {
 		return box.startCA(options.credentialsProvider)
 	}
 	return nil
@@ -550,11 +554,19 @@ func (box *Box) StartService(name string, g *server.Service) error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
 
-	listener, err := box.listen(true, g.SecureConnection, g.Port, g.Tls)
+	listener, err := box.listen(true, true, g.Port, g.Tls)
 	if err != nil {
 		return err
 	}
 	address := listener.Addr().String()
+	if g.Info == nil {
+		g.Info = new(pb.Info)
+	}
+	g.Info.ServiceNode = new(pb.Node)
+	g.Info.ServiceNode.Address = address
+	g.Info.ServiceNode.Protocol = pb.Protocol_Grpc
+	g.Info.ServiceNode.Security = pb.Security_MutualTLS
+	g.Info.ServiceNode.Ttl = 0
 
 	log.Printf("starting %s.gRPC at %s", name, address)
 	var opts []grpc.ServerOption
@@ -563,29 +575,48 @@ func (box *Box) StartService(name string, g *server.Service) error {
 	}
 
 	srv := grpc.NewServer(opts...)
-	box.services[name] = srv
+	rs := new(runningService)
+	rs.service = g
+	rs.server = srv
+	box.services[name] = rs
 
 	g.RegisterHandlerFunc(srv)
 	go srv.Serve(listener)
+
+	if g.Info != nil {
+		rs.registryId, err = box.registry.RegisterService(g.Info)
+		if err != nil {
+			log.Println("could not register service")
+		}
+	}
 	return nil
 }
 
 func (box *Box) StopService(name string) {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
-	s := box.services[name]
-	if s != nil {
-		s.Stop()
+	rs := box.services[name]
+	delete(box.services, name)
+	if rs != nil {
+		rs.server.Stop()
+		err := box.registry.DeregisterService(rs.registryId)
+		if err != nil {
+			log.Println("could not deregister service:", name)
+		}
 	}
 }
 
 func (box *Box) StopServices() error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
-	for name, srv := range box.services {
-		srv.Stop()
-		log.Printf("name: %s\t state:stopped\t error:no\n", name)
+	for name, rs := range box.services {
+		rs.server.Stop()
+		err := box.registry.DeregisterService(rs.registryId)
+		if err != nil {
+			log.Println("could not deregister service:", name)
+		}
 	}
+	box.services = map[string]*runningService{}
 	return nil
 }
 

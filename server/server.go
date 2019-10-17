@@ -5,6 +5,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/zoenion/service/gateway"
 	"github.com/zoenion/service/interceptors"
+	pb "github.com/zoenion/service/proto"
 	"google.golang.org/grpc"
 )
 
@@ -25,8 +26,8 @@ type Gateway struct {
 
 type Service struct {
 	Port                int
-	SecureConnection    bool
 	Tls                 *tls.Config
 	Interceptor         interceptors.GRPC
 	RegisterHandlerFunc func(*grpc.Server)
+	Info                *pb.Info
 }
