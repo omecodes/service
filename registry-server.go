@@ -3,10 +3,11 @@ package service
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	pb "github.com/zoenion/service/proto"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/peer"
+	"io"
 	"log"
 	"net"
 )
@@ -36,13 +37,29 @@ func (r *SyncedRegistry) Serve(addr string, tc *tls.Config) error {
 }
 
 func (r *SyncedRegistry) Register(ctx context.Context, in *pb.RegisterRequest) (*pb.RegisterResponse, error) {
+	peerAddress := "unknown"
+	p, ok := peer.FromContext(ctx)
+	if ok {
+		peerAddress = p.Addr.String()
+	}
+
 	r.saveService(in.Service)
-	return &pb.RegisterResponse{RegistryId: in.Service.Namespace + ":" + in.Service.Name}, nil
+	registryID := in.Service.Namespace + ":" + in.Service.Name
+	result := &pb.RegisterResponse{RegistryId: registryID}
+	log.Printf("[Registry Server]:\tRegistered %s@%s\n", registryID, peerAddress)
+	return result, nil
 }
 
 func (r *SyncedRegistry) Deregister(ctx context.Context, in *pb.DeregisterRequest) (*pb.DeregisterResponse, error) {
-	err := r.DeregisterService(in.RegistryId)
-	return &pb.DeregisterResponse{}, err
+	peerAddress := "unknown"
+	p, ok := peer.FromContext(ctx)
+	if ok {
+		peerAddress = p.Addr.String()
+	}
+	r.deleteService(in.RegistryId)
+	log.Printf("[Registry Server]:\tDe-registered %s@%s\n", in.RegistryId, peerAddress)
+	//r.deRegisterEventChannelByName(in.RegistryId)
+	return &pb.DeregisterResponse{}, nil
 }
 
 func (r *SyncedRegistry) List(ctx context.Context, in *pb.ListRequest) (*pb.ListResponse, error) {
@@ -67,6 +84,13 @@ func (r *SyncedRegistry) Search(ctx context.Context, in *pb.SearchRequest) (*pb.
 }
 
 func (r *SyncedRegistry) Listen(in *pb.ListenRequest, stream pb.Registry_ListenServer) error {
+	peerAddress := "unknown"
+	p, ok := peer.FromContext(stream.Context())
+	if ok {
+		peerAddress = p.Addr.String()
+	}
+
+	log.Printf("[Registry Server]:\tSyncing with client from client@%s\n", peerAddress)
 	list := r.ofNamespace(in.Namespace)
 
 	for _, i := range list {
@@ -78,6 +102,7 @@ func (r *SyncedRegistry) Listen(in *pb.ListenRequest, stream pb.Registry_ListenS
 
 		err := stream.Send(ev)
 		if err != nil {
+			log.Printf("[Registry Server]:\tCould not send event to client@%s: %s\n", peerAddress, err)
 			return err
 		}
 	}
@@ -90,13 +115,14 @@ func (r *SyncedRegistry) Listen(in *pb.ListenRequest, stream pb.Registry_ListenS
 	for {
 		e, _ := <-channel
 		if e == nil {
-			log.Println("closed channel")
-			return errors.New("event channel closed")
+			log.Printf("[Registry Server]:\t Closed sync stream with client client@%s\n", peerAddress)
+			return io.EOF
 		}
 
 		err := stream.Send(e)
 		if err != nil {
-			return fmt.Errorf("could not send event: %s", err)
+			log.Printf("[Registry Server]:\tCould not send event to client at client@%s: %s\n", peerAddress, err)
+			return io.EOF
 		}
 	}
 }

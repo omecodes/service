@@ -40,7 +40,7 @@ type Box struct {
 	services    map[string]*runningService
 	gateways    map[string]*http.Server
 
-	registry                   discovery.Registry
+	registry                   *SyncedRegistry
 	caCert                     *x509.Certificate
 	caClientAuthentication     credentials.PerRPCCredentials
 	caGRPCTransportCredentials credentials.TransportCredentials
@@ -562,11 +562,6 @@ func (box *Box) StartService(name string, g *server.Service) error {
 	if g.Info == nil {
 		g.Info = new(pb.Info)
 	}
-	g.Info.ServiceNode = new(pb.Node)
-	g.Info.ServiceNode.Address = address
-	g.Info.ServiceNode.Protocol = pb.Protocol_Grpc
-	g.Info.ServiceNode.Security = pb.Security_MutualTLS
-	g.Info.ServiceNode.Ttl = 0
 
 	log.Printf("starting %s.gRPC at %s", name, address)
 	var opts []grpc.ServerOption
@@ -584,6 +579,11 @@ func (box *Box) StartService(name string, g *server.Service) error {
 	go srv.Serve(listener)
 
 	if g.Info != nil {
+		g.Info.Namespace = box.params.Namespace
+		g.Info.ServiceNode.Address = address
+		g.Info.ServiceNode.Protocol = pb.Protocol_Grpc
+		g.Info.ServiceNode.Security = pb.Security_MutualTLS
+		g.Info.ServiceNode.Ttl = 0
 		rs.registryId, err = box.registry.RegisterService(g.Info)
 		if err != nil {
 			log.Println("could not register service")
@@ -598,15 +598,15 @@ func (box *Box) StopService(name string) {
 	rs := box.services[name]
 	delete(box.services, name)
 	if rs != nil {
-		rs.server.Stop()
 		err := box.registry.DeregisterService(rs.registryId)
 		if err != nil {
 			log.Println("could not deregister service:", name)
 		}
+		rs.server.Stop()
 	}
 }
 
-func (box *Box) StopServices() error {
+func (box *Box) stopServices() error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
 	for name, rs := range box.services {
@@ -620,7 +620,7 @@ func (box *Box) StopServices() error {
 	return nil
 }
 
-func (box *Box) StopGateways() error {
+func (box *Box) stopGateways() error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
 	for name, srv := range box.gateways {
@@ -628,4 +628,12 @@ func (box *Box) StopGateways() error {
 		log.Printf("name: %s\t state:stopped\t error:%s\n", name, err)
 	}
 	return nil
+}
+
+func (box *Box) Stop() {
+	if box.registry != nil {
+		box.registry.Stop()
+	}
+	_ = box.stopServices()
+	_ = box.stopGateways()
 }

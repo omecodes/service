@@ -98,8 +98,10 @@ func (r *SyncedRegistry) RegisterService(i *pb2.Info) (string, error) {
 	}
 	rsp, err := r.client.Register(context.Background(), &pb2.RegisterRequest{Service: i})
 	if err != nil {
+		log.Printf("[Registry Client]:\tCould not register %s: %s\n", i.Name, err)
 		return "", err
 	}
+	log.Println("[Registry Client]:\tRegistered")
 	return rsp.RegistryId, nil
 }
 
@@ -110,6 +112,9 @@ func (r *SyncedRegistry) DeregisterService(id string) error {
 	}
 
 	_, err = r.client.Deregister(context.Background(), &pb2.DeregisterRequest{RegistryId: id})
+	if err == nil {
+		log.Println("[Registry Client]:\tDeregistered")
+	}
 	return err
 }
 
@@ -188,6 +193,14 @@ func (r *SyncedRegistry) GetOfType(t pb2.Type) ([]*pb2.Info, error) {
 	return result, nil
 }
 
+func (r *SyncedRegistry) Stop() {
+	r.stop = true
+	for _, channel := range r.listeners {
+		close(channel)
+	}
+	r.services = nil
+}
+
 func (r *SyncedRegistry) publishEvent(e pb2.Event) {
 	r.handlersLock.Lock()
 	r.handlersLock.Unlock()
@@ -235,7 +248,9 @@ func (r *SyncedRegistry) connected() {
 		log.Printf("could not listen to registry server events: %s\n", err)
 		return
 	}
-	defer log.Println("stream close:", stream.CloseSend())
+
+	log.Printf("[Registry Sync]:\tStreaming with server at %s\n", r.serverAddress)
+	defer stream.CloseSend()
 	for !r.stop {
 		event, err := stream.Recv()
 		if err != nil {
@@ -247,7 +262,7 @@ func (r *SyncedRegistry) connected() {
 			go h.Handle(event)
 		}
 
-		log.Printf("registry -> %s: %s\n", event.Type.String(), event.Name)
+		log.Printf("[Registry Sync]:\t Event -> %s: %s\n", event.Type.String(), event.Name)
 
 		switch event.Type {
 		case pb2.EventType_Updated, pb2.EventType_Registered:
