@@ -11,17 +11,18 @@ enum Protocol {
 
 enum Type {
     UnknownType = 0;
-    Authority = 1;
-    IDM = 2;
-    TokenStore = 3;
-    UserTree = 4;
-    UserData = 5;
-    Storage = 6;
+    CA = 1;
+    Auth = 2;
+    Organization = 3;
+    TokenDB = 4;
+    UserDatabase = 5;
+    FileStorage = 6;
+    ServiceProvider = 7;
 }
 
 enum Security {
     None = 0;
-    ServerTLS = 1;
+    TLS = 1;
     MutualTLS = 2;
 }
 

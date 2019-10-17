@@ -138,12 +138,13 @@
             "type": "string",
             "enum": [
               "UnknownType",
-              "Authority",
-              "IDM",
-              "TokenStore",
-              "UserTree",
-              "UserData",
-              "Storage"
+              "CA",
+              "Auth",
+              "Organization",
+              "TokenDB",
+              "UserDatabase",
+              "FileStorage",
+              "ServiceProvider"
             ],
             "default": "UnknownType"
           }
@@ -287,7 +288,7 @@
       "type": "string",
       "enum": [
         "None",
-        "ServerTLS",
+        "TLS",
         "MutualTLS"
       ],
       "default": "None"
@@ -296,12 +297,13 @@
       "type": "string",
       "enum": [
         "UnknownType",
-        "Authority",
-        "IDM",
-        "TokenStore",
-        "UserTree",
-        "UserData",
-        "Storage"
+        "CA",
+        "Auth",
+        "Organization",
+        "TokenDB",
+        "UserDatabase",
+        "FileStorage",
+        "ServiceProvider"
       ],
       "default": "UnknownType"
     },

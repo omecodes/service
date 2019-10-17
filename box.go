@@ -578,7 +578,7 @@ func (box *Box) StartService(name string, g *server.Service) error {
 	g.RegisterHandlerFunc(srv)
 	go srv.Serve(listener)
 
-	if g.Info != nil {
+	if g.Info != nil && box.registry != nil {
 		g.Info.Namespace = box.params.Namespace
 		g.Info.ServiceNode.Address = address
 		g.Info.ServiceNode.Protocol = pb.Protocol_Grpc
@@ -597,7 +597,7 @@ func (box *Box) StopService(name string) {
 	defer box.serverMutex.Unlock()
 	rs := box.services[name]
 	delete(box.services, name)
-	if rs != nil {
+	if rs != nil && box.registry != nil {
 		err := box.registry.DeregisterService(rs.registryId)
 		if err != nil {
 			log.Println("could not deregister service:", name)
@@ -609,11 +609,13 @@ func (box *Box) StopService(name string) {
 func (box *Box) stopServices() error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
-	for name, rs := range box.services {
-		rs.server.Stop()
-		err := box.registry.DeregisterService(rs.registryId)
-		if err != nil {
-			log.Println("could not deregister service:", name)
+	if box.registry != nil {
+		for name, rs := range box.services {
+			rs.server.Stop()
+			err := box.registry.DeregisterService(rs.registryId)
+			if err != nil {
+				log.Println("could not deregister service:", name)
+			}
 		}
 	}
 	box.services = map[string]*runningService{}

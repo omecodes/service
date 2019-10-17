@@ -4,17 +4,12 @@ package pb;
 
 import "google/api/annotations.proto";
 
-enum Purpose {
-    ServiceProvider = 0;
-    CertificateSigning = 1;
-}
 
 message CSRData {
     repeated string addresses = 1;
     repeated string domains = 2;
     bytes public_key = 3;
     string subject = 4;
-    Purpose purpose = 5;
 }
 
 message SignCertificateRequest {

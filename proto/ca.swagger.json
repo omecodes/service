@@ -64,19 +64,8 @@
         },
         "subject": {
           "type": "string"
-        },
-        "purpose": {
-          "$ref": "#/definitions/pbPurpose"
         }
       }
-    },
-    "pbPurpose": {
-      "type": "string",
-      "enum": [
-        "ServiceProvider",
-        "CertificateSigning"
-      ],
-      "default": "ServiceProvider"
     },
     "pbSignCertificateRequest": {
       "type": "object",

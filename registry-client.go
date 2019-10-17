@@ -30,6 +30,7 @@ func (hf *eventHandlerFunc) Handle(event *pb2.Event) {
 }
 
 type SyncedRegistry struct {
+	isClient     bool
 	servicesLock sync.Mutex
 	handlersLock sync.Mutex
 	services     map[string]*pb2.Info
@@ -92,6 +93,12 @@ func (r *SyncedRegistry) Disconnect() error {
 }
 
 func (r *SyncedRegistry) RegisterService(i *pb2.Info) (string, error) {
+	if !r.isClient {
+		id := i.Namespace + ":" + i.Name
+		r.saveService(i)
+		return id, nil
+	}
+
 	err := r.Connect()
 	if err != nil {
 		return "", fmt.Errorf("could not connect to server: %s", err)
@@ -106,6 +113,11 @@ func (r *SyncedRegistry) RegisterService(i *pb2.Info) (string, error) {
 }
 
 func (r *SyncedRegistry) DeregisterService(id string) error {
+	if !r.isClient {
+		r.deleteService(id)
+		return nil
+	}
+
 	err := r.Connect()
 	if err != nil {
 		return fmt.Errorf("could not connect to server: %s", err)
@@ -288,6 +300,7 @@ func NewSyncedRegistryClient(server string, tlsConfig *tls.Config) *SyncedRegist
 
 func NewSyncedRegistryServer() *SyncedRegistry {
 	return &SyncedRegistry{
+		isClient:      true,
 		services:      map[string]*pb2.Info{},
 		eventHandlers: map[string]discovery.RegistryEventHandler{},
 		listeners:     map[int]chan *pb2.Event{},

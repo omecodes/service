@@ -33,6 +33,7 @@ func (r *SyncedRegistry) Serve(addr string, tc *tls.Config) error {
 
 	log.Println("starting Registry.gRPC at", listener.Addr())
 	go srv.Serve(listener)
+	r.isClient = false
 	return nil
 }
 
