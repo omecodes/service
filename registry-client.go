@@ -291,18 +291,10 @@ func (r *SyncedRegistry) disconnected() {
 
 func NewSyncedRegistryClient(server string, tlsConfig *tls.Config) *SyncedRegistry {
 	return &SyncedRegistry{
+		isClient:      true,
 		services:      map[string]*pb2.Info{},
 		tlsConfig:     tlsConfig,
 		serverAddress: server,
 		eventHandlers: map[string]discovery.RegistryEventHandler{},
-	}
-}
-
-func NewSyncedRegistryServer() *SyncedRegistry {
-	return &SyncedRegistry{
-		isClient:      true,
-		services:      map[string]*pb2.Info{},
-		eventHandlers: map[string]discovery.RegistryEventHandler{},
-		listeners:     map[int]chan *pb2.Event{},
 	}
 }

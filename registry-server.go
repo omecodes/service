@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"github.com/zoenion/service/discovery"
 	pb "github.com/zoenion/service/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/peer"
@@ -152,4 +153,13 @@ func (r *SyncedRegistry) deRegisterEventChannel(key int) {
 	r.listenersMutex.Lock()
 	defer r.listenersMutex.Unlock()
 	delete(r.listeners, key)
+}
+
+func NewSyncedRegistryServer() *SyncedRegistry {
+	return &SyncedRegistry{
+		isClient:      false,
+		services:      map[string]*pb.Info{},
+		eventHandlers: map[string]discovery.RegistryEventHandler{},
+		listeners:     map[int]chan *pb.Event{},
+	}
 }
