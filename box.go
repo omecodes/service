@@ -143,6 +143,10 @@ func (box *Box) loadKeyPair() error {
 			}
 
 			conn, err := grpc.Dial(box.params.CAAddress, grpc.WithTransportCredentials(box.caGRPCTransportCredentials), grpc.WithPerRPCCredentials(box.caClientAuthentication))
+			if err != nil {
+				return err
+			}
+
 			client := pb.NewCSRClient(conn)
 			rsp, err := client.SignCertificate(context.Background(), &pb.SignCertificateRequest{
 				Csr: &pb.CSRData{
@@ -480,8 +484,7 @@ func (box *Box) startCA(credentialsProvider func(...string) string) error {
 		},
 	}, interceptors.NewBasic("box-ca", credentialsProvider))
 	opts = append(opts, grpc.StreamInterceptor(interceptor.InterceptStream), grpc.UnaryInterceptor(interceptor.InterceptUnary))
-
-	gs := grpc.NewServer()
+	gs := grpc.NewServer(opts...)
 	pb.RegisterCSRServer(gs, &csrServerHandler{
 		PrivateKey:  box.privateKey,
 		Certificate: box.cert,
@@ -554,7 +557,7 @@ func (box *Box) StartService(name string, g *server.Service) error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
 
-	listener, err := box.listen(true, true, g.Port, g.Tls)
+	listener, err := box.listen(false, true, g.Port, g.Tls)
 	if err != nil {
 		return err
 	}
