@@ -444,12 +444,8 @@ func (box *Box) Init(opts ...InitOption) error {
 	if syncedRegistry == nil || registryHost != "" && registryHost != RegistryDefaultHost && registryHost != box.Host() {
 		var syncedRegistry *SyncedRegistry
 		var tc *tls.Config
-		//if box.params.RegistrySecure {
 		tc = box.clientMutualTLS()
 		syncedRegistry = NewSyncedRegistryClient(box.params.RegistryAddress, tc)
-		/*} else {
-			syncedRegistry = NewSyncedRegistryClient(box.params.RegistryAddress, nil)
-		}*/
 		box.registry = syncedRegistry
 	} else {
 		box.registry = syncedRegistry

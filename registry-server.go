@@ -116,13 +116,13 @@ func (r *SyncedRegistry) Listen(in *pb.ListenRequest, stream pb.Registry_ListenS
 	for {
 		e, _ := <-channel
 		if e == nil {
-			log.Printf("[Registry Server]:\t Closed sync stream with client client@%s\n", peerAddress)
+			log.Printf("[Registry Server]:\tclosed sync stream with client client@%s\n", peerAddress)
 			return nil
 		}
 
 		err := stream.Send(e)
 		if err != nil {
-			log.Printf("[Registry Server]:\tCould not send event to client at client@%s: %s\n", peerAddress, err)
+			log.Printf("[Registry Server]:\tcould not send event to client at client@%s: %s\n", peerAddress, err)
 			return nil
 		}
 	}

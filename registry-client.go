@@ -30,15 +30,15 @@ func (hf *eventHandlerFunc) Handle(event *pb2.Event) {
 }
 
 type SyncedRegistry struct {
-	isClient     bool
 	servicesLock sync.Mutex
 	handlersLock sync.Mutex
-	services     map[string]*pb2.Info
-	client       pb2.RegistryClient
+	syncMutex    sync.Mutex
+
+	services map[string]*pb2.Info
+	client   pb2.RegistryClient
 
 	tlsConfig     *tls.Config
 	serverAddress string
-	stop          bool
 	conn          *grpc.ClientConn
 	eventHandlers map[string]discovery.RegistryEventHandler
 
@@ -46,41 +46,10 @@ type SyncedRegistry struct {
 	listenersMutex sync.Mutex
 	listeners      map[int]chan *pb2.Event
 	eventHandler   func(*pb2.Event)
-}
 
-func (r *SyncedRegistry) Connect() error {
-	if r.conn != nil && r.conn.GetState() == connectivity.Ready {
-		return nil
-	}
-
-	var opts []grpc.DialOption
-
-	if r.tlsConfig != nil {
-		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(r.tlsConfig)))
-	} else {
-		opts = append(opts, grpc.WithInsecure())
-	}
-	opts = append(opts, grpc.WithBackoffMaxDelay(time.Second))
-
-	attempt := 0
-	for !r.stop || r.conn != nil && r.conn.GetState() != connectivity.Ready {
-		attempt++
-		var err error
-		r.conn, err = grpc.Dial(r.serverAddress, opts...)
-		if err != nil {
-			log.Printf("connection to registry server failed: %s\n", err)
-			<-time.After(time.Second)
-			if attempt == 3 {
-				return fmt.Errorf("could not connect to server: %s", err)
-			}
-		} else {
-			break
-		}
-	}
-
-	r.client = pb2.NewRegistryClient(r.conn)
-	go r.connected()
-	return nil
+	isClient bool
+	stop     bool
+	syncing  bool
 }
 
 func (r *SyncedRegistry) Disconnect() error {
@@ -98,17 +67,18 @@ func (r *SyncedRegistry) RegisterService(i *pb2.Info) (string, error) {
 		r.saveService(i)
 		return id, nil
 	}
-	err := r.Connect()
+	err := r.connect()
 	if err != nil {
-		return "", fmt.Errorf("could not connect to server: %s", err)
+		return "", err
 	}
+	go r.sync()
 
 	rsp, err := r.client.Register(context.Background(), &pb2.RegisterRequest{Service: i})
 	if err != nil {
-		log.Printf("[Registry Client]:\tCould not register %s: %s\n", i.Name, err)
+		log.Printf("[Registry]:\tCould not register %s: %s\n", i.Name, err)
 		return "", err
 	}
-	log.Println("[Registry Client]:\tRegistered")
+	log.Println("[Registry]:\tRegistered")
 	return rsp.RegistryId, nil
 }
 
@@ -118,14 +88,15 @@ func (r *SyncedRegistry) DeregisterService(id string) error {
 		return nil
 	}
 
-	err := r.Connect()
+	err := r.connect()
 	if err != nil {
-		return fmt.Errorf("could not connect to server: %s", err)
+		return err
 	}
+	go r.sync()
 
 	_, err = r.client.Deregister(context.Background(), &pb2.DeregisterRequest{RegistryId: id})
 	if err == nil {
-		log.Println("[Registry Client]:\tDeregistered")
+		log.Println("[Registry]:\tDeregistered")
 	}
 	return err
 }
@@ -253,20 +224,68 @@ func (r *SyncedRegistry) deleteService(name string) {
 	delete(r.services, name)
 }
 
-func (r *SyncedRegistry) connected() {
-	ctx := context.Background()
-	stream, err := r.client.Listen(ctx, &pb2.ListenRequest{})
+func (r *SyncedRegistry) connect() error {
+	if r.conn != nil && r.conn.GetState() == connectivity.Ready {
+		return nil
+	}
+
+	var opts []grpc.DialOption
+	if r.tlsConfig != nil {
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(r.tlsConfig)))
+	} else {
+		opts = append(opts, grpc.WithInsecure())
+	}
+	opts = append(opts, grpc.WithBackoffMaxDelay(time.Second))
+
+	var err error
+	r.conn, err = grpc.Dial(r.serverAddress, opts...)
 	if err != nil {
-		log.Printf("could not listen to registry server events: %s\n", err)
+		log.Printf("connection to registry server failed: %s\n", err)
+		return err
+	}
+	r.client = pb2.NewRegistryClient(r.conn)
+	return nil
+}
+
+func (r *SyncedRegistry) sync() {
+	if r.isSyncing() {
+		return
+	}
+	r.setSyncing()
+
+	for !r.stop {
+		err := r.connect()
+		if err != nil {
+			log.Printf("[Registry]:\tcould not initialize connection to server at %s: %s\n", r.serverAddress, err)
+			time.After(time.Second * 2)
+			continue
+		}
+		r.listen()
+	}
+}
+
+func (r *SyncedRegistry) listen() {
+	for _, info := range r.services {
+		_, err := r.RegisterService(info)
+		if err != nil {
+			return
+		}
+	}
+
+	stream, err := r.client.Listen(context.Background(), &pb2.ListenRequest{})
+	if err != nil {
+		r.conn = nil
+		log.Printf("[Registry]:\tcould not sync with registry server: %s\n", err)
 		return
 	}
 
-	log.Printf("[Registry Sync]:\tStreaming with server at %s\n", r.serverAddress)
+	log.Printf("[Registry]:\tconnected to %s\n", r.serverAddress)
 	defer stream.CloseSend()
+
 	for !r.stop {
 		event, err := stream.Recv()
 		if err != nil {
-			log.Printf("could not get event: %s\n", err)
+			log.Printf("[Registry]:\tcould not get event: %s\n", err)
 			return
 		}
 
@@ -274,7 +293,7 @@ func (r *SyncedRegistry) connected() {
 			go h.Handle(event)
 		}
 
-		log.Printf("[Registry Sync]:\t Event -> %s: %s\n", event.Type.String(), event.Name)
+		log.Printf("[Registry]:\tevent -> %s: %s\n", event.Type.String(), event.Name)
 
 		switch event.Type {
 		case pb2.EventType_Updated, pb2.EventType_Registered:
@@ -283,6 +302,18 @@ func (r *SyncedRegistry) connected() {
 			r.deleteService(event.Name)
 		}
 	}
+}
+
+func (r *SyncedRegistry) isSyncing() bool {
+	r.syncMutex.Lock()
+	defer r.syncMutex.Unlock()
+	return r.syncing
+}
+
+func (r *SyncedRegistry) setSyncing() {
+	r.syncMutex.Lock()
+	defer r.syncMutex.Unlock()
+	r.syncing = true
 }
 
 func (r *SyncedRegistry) disconnected() {
