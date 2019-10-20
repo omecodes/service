@@ -71,7 +71,8 @@ func (r *SyncedRegistry) RegisterService(i *pb2.Info) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	go r.sync()
+
+	defer func() { go r.sync() }()
 
 	rsp, err := r.client.Register(context.Background(), &pb2.RegisterRequest{Service: i})
 	if err != nil {
@@ -92,7 +93,7 @@ func (r *SyncedRegistry) DeregisterService(id string) error {
 	if err != nil {
 		return err
 	}
-	go r.sync()
+	defer func() { go r.sync() }()
 
 	_, err = r.client.Deregister(context.Background(), &pb2.DeregisterRequest{RegistryId: id})
 	if err == nil {
@@ -265,22 +266,24 @@ func (r *SyncedRegistry) sync() {
 }
 
 func (r *SyncedRegistry) listen() {
-	for _, info := range r.services {
-		_, err := r.RegisterService(info)
-		if err != nil {
-			return
-		}
-	}
-
 	stream, err := r.client.Listen(context.Background(), &pb2.ListenRequest{})
 	if err != nil {
 		r.conn = nil
 		log.Printf("[Registry]:\tcould not sync with registry server: %s\n", err)
 		return
 	}
+	defer stream.CloseSend()
 
 	log.Printf("[Registry]:\tconnected to %s\n", r.serverAddress)
-	defer stream.CloseSend()
+	for _, info := range r.services {
+		_, err := r.client.Register(context.Background(), &pb2.RegisterRequest{Service: info})
+		if err != nil {
+			log.Printf("[Registry]:\tCould not register %s: %s\n", info.Name, err)
+			return
+		} else {
+			log.Printf("[Registry]:\tregistered %s\n", info.Name)
+		}
+	}
 
 	for !r.stop {
 		event, err := stream.Recv()
