@@ -8,7 +8,6 @@ import (
 	pb "github.com/zoenion/service/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/peer"
-	"io"
 	"log"
 	"net"
 )
@@ -118,13 +117,13 @@ func (r *SyncedRegistry) Listen(in *pb.ListenRequest, stream pb.Registry_ListenS
 		e, _ := <-channel
 		if e == nil {
 			log.Printf("[Registry Server]:\t Closed sync stream with client client@%s\n", peerAddress)
-			return io.EOF
+			return nil
 		}
 
 		err := stream.Send(e)
 		if err != nil {
 			log.Printf("[Registry Server]:\tCould not send event to client at client@%s: %s\n", peerAddress, err)
-			return io.EOF
+			return nil
 		}
 	}
 }

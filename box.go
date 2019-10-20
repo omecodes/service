@@ -109,6 +109,9 @@ func (box *Box) loadKeyPair() error {
 		if box.cert != nil {
 			_, err = box.cert.Verify(x509.VerifyOptions{Roots: CAPool})
 			if err != nil || time.Now().After(box.cert.NotAfter) || time.Now().Before(box.cert.NotBefore) {
+				if err != nil {
+					log.Println("service certificate verification failed:", err)
+				}
 				shouldGenerateNewPair = true
 			}
 		}
@@ -122,16 +125,17 @@ func (box *Box) loadKeyPair() error {
 		pub := box.privateKey.(*ecdsa.PrivateKey).PublicKey
 
 		if box.params.CA {
-			box.cert, err = crypto2.GenerateCACertificate(&crypto2.CertificateTemplate{
+			caCertTemplate := &crypto2.CertificateTemplate{
 				Organization:      "oe",
-				Name:              "",
+				Name:              "CA-" + box.params.Name,
 				Domains:           []string{box.params.Domain},
 				IPs:               []net.IP{net.ParseIP(box.params.Ip)},
 				Expiry:            time.Hour * 24 * 370,
 				PublicKey:         &pub,
 				SignerPrivateKey:  box.privateKey,
-				SignerCertificate: nil,
-			})
+				SignerCertificate: box.cert,
+			}
+			box.cert, err = crypto2.GenerateCACertificate(caCertTemplate)
 			if err != nil {
 				return fmt.Errorf("could not generate CA cert: %s", err)
 			}
@@ -173,11 +177,15 @@ func (box *Box) loadKeyPair() error {
 }
 
 func (box *Box) serverMutualTLS() *tls.Config {
-	if box.privateKey == nil || box.cert == nil || box.caCert == nil {
+	if box.privateKey == nil || box.cert == nil || box.caCert == nil && !box.params.CA {
 		return nil
 	}
 	CAPool := x509.NewCertPool()
-	CAPool.AddCert(box.caCert)
+	if box.params.CA {
+		CAPool.AddCert(box.cert)
+	} else {
+		CAPool.AddCert(box.caCert)
+	}
 	tlsCert := tls.Certificate{
 		Certificate: [][]byte{box.cert.Raw},
 		PrivateKey:  box.privateKey,
@@ -191,7 +199,7 @@ func (box *Box) serverMutualTLS() *tls.Config {
 }
 
 func (box *Box) serverTLS() *tls.Config {
-	if box.privateKey == nil || box.cert == nil || box.caCert == nil {
+	if box.privateKey == nil || box.cert == nil || box.caCert == nil && !box.params.CA {
 		return nil
 	}
 	tlsCert := tls.Certificate{
@@ -205,11 +213,15 @@ func (box *Box) serverTLS() *tls.Config {
 }
 
 func (box *Box) clientMutualTLS() *tls.Config {
-	if box.privateKey == nil || box.cert == nil || box.caCert == nil {
+	if box.privateKey == nil || box.cert == nil || box.caCert == nil && !box.params.CA {
 		return nil
 	}
 	CAPool := x509.NewCertPool()
-	CAPool.AddCert(box.caCert)
+	if box.params.CA {
+		CAPool.AddCert(box.cert)
+	} else {
+		CAPool.AddCert(box.caCert)
+	}
 	tlsCert := tls.Certificate{
 		Certificate: [][]byte{box.cert.Raw},
 		PrivateKey:  box.privateKey.(*ecdsa.PrivateKey),
@@ -408,12 +420,8 @@ func (box *Box) Init(opts ...InitOption) error {
 	}
 
 	syncedRegistry := NewSyncedRegistryServer()
-	if box.params.CAAddress != "" {
+	if box.params.CAAddress != "" || box.params.CA {
 		err = syncedRegistry.Serve(box.Host()+RegistryDefaultHost, box.serverMutualTLS())
-
-	} else if box.params.CA {
-		err = syncedRegistry.Serve(box.Host()+RegistryDefaultHost, box.serverTLS())
-
 	} else {
 		err = syncedRegistry.Serve(box.Host()+RegistryDefaultHost, nil)
 	}
@@ -424,7 +432,7 @@ func (box *Box) Init(opts ...InitOption) error {
 	}
 
 	if box.params.RegistryAddress == "" {
-		box.params.RegistryAddress = RegistryDefaultHost
+		box.params.RegistryAddress = fmt.Sprintf("%s%s", box.Host(), RegistryDefaultHost)
 	}
 
 	parts := strings.Split(box.params.RegistryAddress, ":")
@@ -436,12 +444,12 @@ func (box *Box) Init(opts ...InitOption) error {
 	if syncedRegistry == nil || registryHost != "" && registryHost != RegistryDefaultHost && registryHost != box.Host() {
 		var syncedRegistry *SyncedRegistry
 		var tc *tls.Config
-		if box.params.RegistrySecure {
-			tc = box.clientMutualTLS()
-			syncedRegistry = NewSyncedRegistryClient(box.params.RegistryAddress, tc)
-		} else {
+		//if box.params.RegistrySecure {
+		tc = box.clientMutualTLS()
+		syncedRegistry = NewSyncedRegistryClient(box.params.RegistryAddress, tc)
+		/*} else {
 			syncedRegistry = NewSyncedRegistryClient(box.params.RegistryAddress, nil)
-		}
+		}*/
 		box.registry = syncedRegistry
 	} else {
 		box.registry = syncedRegistry

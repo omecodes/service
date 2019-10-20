@@ -98,11 +98,11 @@ func (r *SyncedRegistry) RegisterService(i *pb2.Info) (string, error) {
 		r.saveService(i)
 		return id, nil
 	}
-
 	err := r.Connect()
 	if err != nil {
 		return "", fmt.Errorf("could not connect to server: %s", err)
 	}
+
 	rsp, err := r.client.Register(context.Background(), &pb2.RegisterRequest{Service: i})
 	if err != nil {
 		log.Printf("[Registry Client]:\tCould not register %s: %s\n", i.Name, err)
