@@ -37,8 +37,8 @@ type Box struct {
 	boxDir string
 
 	serverMutex sync.Mutex
-	services    map[string]*runningService
-	gateways    map[string]*http.Server
+	services    map[string]*server.Service
+	gateways    map[string]*server.Gateway
 
 	registry                   *SyncedRegistry
 	caCert                     *x509.Certificate
@@ -58,8 +58,8 @@ func NewBox(p Params) (*Box, error) {
 	if err != nil {
 		return nil, err
 	}
-	b.gateways = map[string]*http.Server{}
-	b.services = map[string]*runningService{}
+	b.gateways = map[string]*server.Gateway{}
+	b.services = map[string]*server.Service{}
 	b.ctx, b.ctxCancelFunc = context.WithCancel(context.WithValue(context.Background(), ctxBox, b))
 	return b, nil
 }
@@ -308,7 +308,7 @@ func (box *Box) validateParams() error {
 	return nil
 }
 
-func (box *Box) host() string {
+func (box *Box) Host() string {
 	if box.params.Domain != "" {
 		return box.params.Domain
 	}
@@ -409,13 +409,13 @@ func (box *Box) Init(opts ...InitOption) error {
 
 	syncedRegistry := NewSyncedRegistryServer()
 	if box.params.CAAddress != "" {
-		err = syncedRegistry.Serve(box.host()+RegistryDefaultHost, box.serverMutualTLS())
+		err = syncedRegistry.Serve(box.Host()+RegistryDefaultHost, box.serverMutualTLS())
 
 	} else if box.params.CA {
-		err = syncedRegistry.Serve(box.host()+RegistryDefaultHost, box.serverTLS())
+		err = syncedRegistry.Serve(box.Host()+RegistryDefaultHost, box.serverTLS())
 
 	} else {
-		err = syncedRegistry.Serve(box.host()+RegistryDefaultHost, nil)
+		err = syncedRegistry.Serve(box.Host()+RegistryDefaultHost, nil)
 	}
 
 	if err != nil {
@@ -433,7 +433,7 @@ func (box *Box) Init(opts ...InitOption) error {
 	}
 
 	registryHost := parts[0]
-	if syncedRegistry == nil || registryHost != "" && registryHost != RegistryDefaultHost && registryHost != box.host() {
+	if syncedRegistry == nil || registryHost != "" && registryHost != RegistryDefaultHost && registryHost != box.Host() {
 		var syncedRegistry *SyncedRegistry
 		var tc *tls.Config
 		if box.params.RegistrySecure {
@@ -442,6 +442,8 @@ func (box *Box) Init(opts ...InitOption) error {
 		} else {
 			syncedRegistry = NewSyncedRegistryClient(box.params.RegistryAddress, nil)
 		}
+		box.registry = syncedRegistry
+	} else {
 		box.registry = syncedRegistry
 	}
 
@@ -493,7 +495,7 @@ func (box *Box) startCA(credentialsProvider func(...string) string) error {
 	return nil
 }
 
-func (box *Box) StartGatewayGRPCMapping(name string, g *server.GatewayServiceMapping) error {
+func (box *Box) StartGatewayGRPCMapping(name string, params *server.GatewayServiceMappingParams) error {
 	if box.registry == nil {
 		box.serverMutex.Lock()
 		defer box.serverMutex.Unlock()
@@ -503,7 +505,7 @@ func (box *Box) StartGatewayGRPCMapping(name string, g *server.GatewayServiceMap
 			return err
 		}
 
-		listener, err := box.listen(true, g.SecureConnection, g.Port, g.Tls)
+		listener, err := box.listen(true, params.SecureConnection, params.Port, params.Tls)
 		if err != nil {
 			return err
 		}
@@ -514,7 +516,7 @@ func (box *Box) StartGatewayGRPCMapping(name string, g *server.GatewayServiceMap
 		mux := runtime.NewServeMux()
 		opts := []grpc.DialOption{grpc.WithInsecure()}
 
-		err = g.Binder(ctx, mux, *grpcServerEndpoint, opts)
+		err = params.Binder(ctx, mux, *grpcServerEndpoint, opts)
 		if err != nil {
 			return err
 		}
@@ -524,70 +526,91 @@ func (box *Box) StartGatewayGRPCMapping(name string, g *server.GatewayServiceMap
 			Addr:    address,
 			Handler: mux,
 		}
-		box.gateways[name] = srv
+		gt := &server.Gateway{}
+		gt.Server = srv
+		gt.Address = address
+		if params.Tls != nil {
+			gt.Scheme = "https"
+		} else {
+			gt.Scheme = "http"
+		}
+
+		box.gateways[name] = gt
 		go srv.Serve(listener)
 		return nil
 	}
 	return errors.New("not found")
 }
 
-func (box *Box) StartGateway(name string, g *server.Gateway) error {
+func (box *Box) StartGateway(name string, params *server.GatewayParams) error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
 
-	listener, err := box.listen(true, g.SecureConnection, g.Port, g.Tls)
+	listener, err := box.listen(true, params.SecureConnection, params.Port, params.Tls)
 	if err != nil {
 		return err
 	}
 
 	address := listener.Addr().String()
-	router := g.ProvideRouter()
+	router := params.ProvideRouter()
 
 	log.Printf("starting %s.HTTP at %s", name, address)
 	srv := &http.Server{
 		Addr:    address,
 		Handler: router,
 	}
-	box.gateways[name] = srv
+	gt := &server.Gateway{}
+	gt.Server = srv
+	gt.Address = address
+	if params.Tls != nil {
+		gt.Scheme = "https"
+	} else {
+		gt.Scheme = "http"
+	}
+
+	box.gateways[name] = gt
+
 	go srv.Serve(listener)
 	return nil
 }
 
-func (box *Box) StartService(name string, g *server.Service) error {
+func (box *Box) StartService(name string, params *server.ServiceParams) error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
 
-	listener, err := box.listen(false, true, g.Port, g.Tls)
+	listener, err := box.listen(false, true, params.Port, params.Tls)
 	if err != nil {
 		return err
 	}
 	address := listener.Addr().String()
-	if g.Info == nil {
-		g.Info = new(pb.Info)
+	if params.Info == nil {
+		params.Info = new(pb.Info)
 	}
 
 	log.Printf("starting %s.gRPC at %s", name, address)
 	var opts []grpc.ServerOption
-	if g.Interceptor != nil {
-		opts = append(opts, grpc.StreamInterceptor(g.Interceptor.InterceptStream), grpc.UnaryInterceptor(g.Interceptor.InterceptUnary))
+	if params.Interceptor != nil {
+		opts = append(opts, grpc.StreamInterceptor(params.Interceptor.InterceptStream), grpc.UnaryInterceptor(params.Interceptor.InterceptUnary))
 	}
 
 	srv := grpc.NewServer(opts...)
-	rs := new(runningService)
-	rs.service = g
-	rs.server = srv
+	rs := new(server.Service)
+	rs.Address = address
+	rs.Server = srv
+	rs.Secure = params.Tls != nil
+
 	box.services[name] = rs
 
-	g.RegisterHandlerFunc(srv)
+	params.RegisterHandlerFunc(srv)
 	go srv.Serve(listener)
 
-	if g.Info != nil && box.registry != nil {
-		g.Info.Namespace = box.params.Namespace
-		g.Info.ServiceNode.Address = address
-		g.Info.ServiceNode.Protocol = pb.Protocol_Grpc
-		g.Info.ServiceNode.Security = pb.Security_MutualTLS
-		g.Info.ServiceNode.Ttl = 0
-		rs.registryId, err = box.registry.RegisterService(g.Info)
+	if params.Info != nil && box.registry != nil {
+		params.Info.Namespace = box.params.Namespace
+		params.Info.ServiceNode.Address = address
+		params.Info.ServiceNode.Protocol = pb.Protocol_Grpc
+		params.Info.ServiceNode.Security = pb.Security_MutualTLS
+		params.Info.ServiceNode.Ttl = 0
+		rs.RegistryID, err = box.registry.RegisterService(params.Info)
 		if err != nil {
 			log.Println("could not register service")
 		}
@@ -601,11 +624,11 @@ func (box *Box) StopService(name string) {
 	rs := box.services[name]
 	delete(box.services, name)
 	if rs != nil && box.registry != nil {
-		err := box.registry.DeregisterService(rs.registryId)
+		err := box.registry.DeregisterService(rs.RegistryID)
 		if err != nil {
 			log.Println("could not deregister service:", name)
 		}
-		rs.server.Stop()
+		rs.Stop()
 	}
 }
 
@@ -614,14 +637,14 @@ func (box *Box) stopServices() error {
 	defer box.serverMutex.Unlock()
 	if box.registry != nil {
 		for name, rs := range box.services {
-			rs.server.Stop()
-			err := box.registry.DeregisterService(rs.registryId)
+			rs.Stop()
+			err := box.registry.DeregisterService(rs.RegistryID)
 			if err != nil {
 				log.Println("could not deregister service:", name)
 			}
 		}
 	}
-	box.services = map[string]*runningService{}
+	box.services = map[string]*server.Service{}
 	return nil
 }
 
@@ -629,7 +652,7 @@ func (box *Box) stopGateways() error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
 	for name, srv := range box.gateways {
-		err := srv.Close()
+		err := srv.Stop()
 		log.Printf("name: %s\t state:stopped\t error:%s\n", name, err)
 	}
 	return nil

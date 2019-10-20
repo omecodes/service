@@ -12,7 +12,7 @@ import (
 )
 
 type runningService struct {
-	service    *server.Service
+	service    *server.ServiceParams
 	registryId string
 	server     *grpc.Server
 }

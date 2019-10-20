@@ -88,6 +88,18 @@ func ID(ctx context.Context) string {
 	return fmt.Sprintf("%s:%s", box.params.Namespace, box.params.Name)
 }
 
+func GatewayAddress(ctx context.Context, name string) string {
+	box := serviceBox(ctx)
+	if box == nil {
+		return ""
+	}
+	gt, ok := box.gateways[name]
+	if !ok {
+		return ""
+	}
+	return gt.URL()
+}
+
 func ClientTLSConfig(ctx context.Context) *tls.Config {
 	box := serviceBox(ctx)
 	if box == nil {
@@ -108,6 +120,6 @@ func ContextWithUser(ctx context.Context, user string) context.Context {
 	return context.WithValue(ctx, context2.User, user)
 }
 
-func AddBoxContext(ctx context.Context, serviceContext context.Context) context.Context {
-	return context.WithValue(ctx, context2.ServiceContext, serviceContext)
+func ContextWithBox(ctx context.Context, b *Box) context.Context {
+	return context.WithValue(ctx, ctxBox, b)
 }
