@@ -251,9 +251,9 @@ func (box *Box) listen(web bool, secure bool, port int, tc *tls.Config) (net.Lis
 	)
 
 	if port > 0 {
-		address = fmt.Sprintf("%s:%d", box.Ip(), port)
+		address = fmt.Sprintf("%s:%d", box.Host(), port)
 	} else {
-		address = fmt.Sprintf("%s:", box.Ip())
+		address = fmt.Sprintf("%s:", box.Host())
 	}
 
 	if secure {
@@ -556,12 +556,24 @@ func (box *Box) StartGateway(name string, params *server.GatewayParams) error {
 	}
 
 	address := listener.Addr().String()
+	if box.params.Domain != "" {
+		address = strings.Replace(address, strings.Split(address, ":")[0], box.params.Domain, 1)
+	}
 	router := params.ProvideRouter()
+
+	var handler http.Handler
+	if len(params.MiddlewareList) > 0 {
+		for _, m := range params.MiddlewareList {
+			handler = m.Middleware(router)
+		}
+	} else {
+		handler = router
+	}
 
 	log.Printf("starting %s.HTTP at %s", name, address)
 	srv := &http.Server{
 		Addr:    address,
-		Handler: router,
+		Handler: handler,
 	}
 	gt := &server.Gateway{}
 	gt.Server = srv

@@ -20,6 +20,7 @@ type GatewayServiceMappingParams struct {
 }
 
 type GatewayParams struct {
+	MiddlewareList   []mux.MiddlewareFunc
 	Port             int
 	SecureConnection bool
 	ProvideRouter    func() *mux.Router
