@@ -1,5 +1,7 @@
 package service
 
+import "github.com/zoenion/service/discovery"
+
 type Options struct {
 	afterStart []func() error
 	afterStop  []func()
@@ -20,6 +22,7 @@ func WithAfterStop(f func()) Option {
 }
 
 type initOptions struct {
+	registry            discovery.Registry
 	credentialsProvider func(...string) string
 }
 

@@ -179,9 +179,14 @@ func (r *SyncedRegistry) GetOfType(t pb2.Type) ([]*pb2.Info, error) {
 
 func (r *SyncedRegistry) Stop() {
 	r.stop = true
-	for _, channel := range r.listeners {
-		close(channel)
+	if !r.isClient {
+		for _, channel := range r.listeners {
+			close(channel)
+		}
+	} else {
+		_ = r.conn.Close()
 	}
+
 	r.services = nil
 }
 
