@@ -14,6 +14,7 @@ type Params struct {
 	Ip              string
 	CertificatePath string
 	KeyPath         string
+	Autonomous      bool
 
 	RegistryAddress string
 	RegistrySecure  bool
@@ -30,6 +31,10 @@ type Params struct {
 func (box *Box) validateParams() error {
 	if box.params.Name == "" {
 		return errors.New("command line: --name flags is required")
+	}
+
+	if box.params.Autonomous {
+		return nil
 	}
 
 	if box.params.Domain == "" && box.params.Ip == "" {

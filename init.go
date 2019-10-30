@@ -12,6 +12,12 @@ import (
 )
 
 func (box *Box) Init(opts ...InitOption) error {
+	log.Println("initializing box:", box.params.Autonomous)
+
+	if box.params.Autonomous {
+		return nil
+	}
+
 	var err error
 	options := &initOptions{}
 	for _, opt := range opts {

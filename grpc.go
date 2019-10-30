@@ -103,7 +103,7 @@ func (box *Box) StartService(name string, params *server.ServiceParams) error {
 	params.RegisterHandlerFunc(srv)
 	go srv.Serve(listener)
 
-	if params.Info != nil && box.registry != nil {
+	if !box.params.Autonomous && params.Info != nil && box.registry != nil {
 		params.Info.Namespace = box.params.Namespace
 		params.Info.Name = box.Name()
 		params.Info.ServiceNode = new(pb.Node)
@@ -124,7 +124,7 @@ func (box *Box) StopService(name string) {
 	defer box.serverMutex.Unlock()
 	rs := box.services[name]
 	delete(box.services, name)
-	if rs != nil && box.registry != nil {
+	if !box.params.Autonomous && rs != nil && box.registry != nil {
 		err := box.registry.DeregisterService(rs.RegistryID)
 		if err != nil {
 			log.Println("could not deregister service:", name)
@@ -139,9 +139,11 @@ func (box *Box) stopServices() error {
 	if box.registry != nil {
 		for name, rs := range box.services {
 			rs.Stop()
-			err := box.registry.DeregisterService(rs.RegistryID)
-			if err != nil {
-				log.Println("could not deregister service:", name)
+			if !box.params.Autonomous {
+				err := box.registry.DeregisterService(rs.RegistryID)
+				if err != nil {
+					log.Println("could not deregister service:", name)
+				}
 			}
 		}
 	}
