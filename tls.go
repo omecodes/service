@@ -63,6 +63,10 @@ func (box *Box) loadOrGenerateCACertificateKeyPair() (err error) {
 			SignerPrivateKey:  box.privateKey,
 			SignerCertificate: box.cert,
 		}
+		if box.params.ExternalIp != "" {
+			caCertTemplate.IPs = append(caCertTemplate.IPs, net.ParseIP(box.params.ExternalIp))
+		}
+
 		box.cert, err = crypto2.GenerateCACertificate(caCertTemplate)
 		if err != nil {
 			return fmt.Errorf("could not generate CA cert: %s", err)

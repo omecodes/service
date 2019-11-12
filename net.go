@@ -51,9 +51,18 @@ func (box *Box) Host() string {
 	if box.params.Domain != "" {
 		return box.params.Domain
 	}
+
+	if box.params.ExternalIp != "" {
+		return box.params.ExternalIp
+	}
+
 	return box.params.Ip
 }
 
 func (box *Box) Ip() string {
 	return box.params.Ip
+}
+
+func (box *Box) ExternalIP() string {
+	return box.params.ExternalIp
 }

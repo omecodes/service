@@ -7,6 +7,7 @@ import (
 const (
 	CmdFlagAutonomous     = "auto"
 	CmdFlagIP             = "ip"
+	CmdFlagExternalIP     = "eip"
 	CmdFlagName           = "name"
 	CmdFlagDomain         = "domain"
 	CmdFlagCert           = "cert"
@@ -43,8 +44,9 @@ func CMD(use string, params *Params) *cobra.Command {
 	flags.BoolVar(&params.RegistrySecure, CmdFlagRegistrySecure, false, "Registry Secure Mode - enable secure connection to registry")
 	flags.StringVar(&params.Namespace, CmdFlagNamespace, "", "Namespace - Group identifier for registryAddress")
 
-	flags.StringVar(&params.Ip, CmdFlagIP, "", "Network - ip address to listen to. Must matching domain if provided")
-	flags.StringVar(&params.Domain, CmdFlagDomain, "", "Domain - Domain name to bind to")
+	flags.StringVar(&params.Ip, CmdFlagIP, "", "Bind ip address. Must match the domain if provided and no eip is provided")
+	flags.StringVar(&params.Ip, CmdFlagExternalIP, "", "External ip. Must matching domain if provided")
+	flags.StringVar(&params.Domain, CmdFlagDomain, "", "Domain name")
 
 	flags.BoolVar(&params.CA, CmdFlagCA, false, "Is CA - Runs service as CA")
 	flags.StringVar(&params.CACertPath, CmdFlagCACert, "", "Authority Certificate - file path")
