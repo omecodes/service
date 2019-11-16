@@ -59,10 +59,18 @@ func (box *Box) Host() string {
 	return box.params.Ip
 }
 
-func (box *Box) Ip() string {
+func (box *Box) BindIP() string {
 	return box.params.Ip
 }
 
 func (box *Box) ExternalIP() string {
 	return box.params.ExternalIp
+}
+
+func (box *Box) IpList() []string {
+	l := []string{box.params.Ip}
+	if box.params.ExternalIp != "" && box.params.ExternalIp != box.params.Ip {
+		l = append(l, box.params.ExternalIp)
+	}
+	return l
 }

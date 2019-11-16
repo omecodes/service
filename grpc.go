@@ -172,7 +172,7 @@ func (box *Box) startCA(credentialsProvider func(...string) string) error {
 		return err
 	}
 
-	address := fmt.Sprintf("%s:9090", box.Ip())
+	address := fmt.Sprintf("%s:9090", box.BindIP())
 	listener, err := tls.Listen("tcp", address, tc)
 	if err != nil {
 		return err

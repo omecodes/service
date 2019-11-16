@@ -146,13 +146,15 @@ func (box *Box) loadOrGenerateCertificateKeyPair() (err error) {
 		}
 
 		client := pb.NewCSRClient(conn)
+		csrData := &pb.CSRData{
+			Domains:   []string{box.params.Domain},
+			Addresses: box.IpList(),
+			Subject:   strcase.ToDelimited(box.params.Name, '.'),
+			PublicKey: elliptic.Marshal(elliptic.P256(), pub.X, pub.Y),
+		}
+
 		rsp, err := client.SignCertificate(context.Background(), &pb.SignCertificateRequest{
-			Csr: &pb.CSRData{
-				Domains:   []string{box.params.Domain},
-				Addresses: []string{box.params.Ip},
-				Subject:   strcase.ToDelimited(box.params.Name, '.'),
-				PublicKey: elliptic.Marshal(elliptic.P256(), pub.X, pub.Y),
-			},
+			Csr: csrData,
 		})
 		if err != nil {
 			return fmt.Errorf("could not sign certificate: %s", err)
