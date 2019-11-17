@@ -6,16 +6,9 @@ import (
 	"fmt"
 	"github.com/zoenion/service/connection"
 	pb "github.com/zoenion/service/proto"
-	"github.com/zoenion/service/server"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
-
-type runningService struct {
-	service    *server.ServiceParams
-	registryId string
-	server     *grpc.Server
-}
 
 func GRPCConnectionDialer(ctx context.Context, serviceType pb.Type) (connection.Dialer, error) {
 	reg := Registry(ctx)

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	crypto2 "github.com/zoenion/common/crypto"
 	"github.com/zoenion/service/authentication"
+	"github.com/zoenion/service/discovery/default/client"
+	"github.com/zoenion/service/discovery/default/server"
 	"github.com/zoenion/service/errors"
 	"google.golang.org/grpc/credentials"
 	"log"
@@ -111,8 +113,17 @@ func (box *Box) initRegistry() (err error) {
 		registryHost = parts[0]
 	}
 
-	syncedRegistry := NewSyncedRegistryServer()
-	err = syncedRegistry.Serve(box.Host()+RegistryDefaultHost, box.serverMutualTLS())
+	cfg := &server.Configs{
+		Name:        "registry",
+		BindAddress: box.Host() + RegistryDefaultHost,
+		TLS:         box.serverMutualTLS(),
+	}
+
+	syncedRegistry, err := server.New(cfg)
+	if err == nil {
+		err = syncedRegistry.Start()
+	}
+	// err = syncedRegistry.Serve(box.Host()+RegistryDefaultHost, box.serverMutualTLS())
 	if err != nil {
 		log.Println("An instance of registry might already be running on this machine")
 		syncedRegistry = nil
@@ -120,13 +131,12 @@ func (box *Box) initRegistry() (err error) {
 	}
 
 	if syncedRegistry == nil || registryHost != "" && registryHost != RegistryDefaultHost && registryHost != box.Host() {
-		var syncedRegistry *SyncedRegistry
+		// var syncedRegistry *SyncedRegistry
 		var tc *tls.Config
 		tc = box.clientMutualTLS()
-		syncedRegistry = NewSyncedRegistryClient(box.params.RegistryAddress, tc)
-		box.registry = syncedRegistry
+		box.registry = client.NewSyncedRegistryClient(box.params.RegistryAddress, tc)
 	} else {
-		box.registry = syncedRegistry
+		box.registry = syncedRegistry.Client()
 	}
 	return
 }
@@ -135,8 +145,6 @@ func (box *Box) Stop() {
 	_ = box.stopServices()
 	_ = box.stopGateways()
 	if box.registry != nil {
-		if sr, ok := box.registry.(*SyncedRegistry); ok {
-			sr.Stop()
-		}
+		_ = box.registry.Stop()
 	}
 }

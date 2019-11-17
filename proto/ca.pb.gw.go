@@ -107,7 +107,7 @@ func RegisterCSRHandlerClient(ctx context.Context, mux *runtime.ServeMux, client
 }
 
 var (
-	pattern_CSR_SignCertificate_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"cert", "sign"}, ""))
+	pattern_CSR_SignCertificate_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1}, []string{"cert", "sign"}, "", runtime.AssumeColonVerbOpt(true)))
 )
 
 var (

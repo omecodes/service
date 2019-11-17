@@ -9,6 +9,8 @@ import (
 	proto "github.com/golang/protobuf/proto"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	grpc "google.golang.org/grpc"
+	codes "google.golang.org/grpc/codes"
+	status "google.golang.org/grpc/status"
 	math "math"
 )
 
@@ -229,6 +231,14 @@ func (c *cSRClient) SignCertificate(ctx context.Context, in *SignCertificateRequ
 // CSRServer is the server API for CSR service.
 type CSRServer interface {
 	SignCertificate(context.Context, *SignCertificateRequest) (*SignCertificateResponse, error)
+}
+
+// UnimplementedCSRServer can be embedded to have forward compatible implementations.
+type UnimplementedCSRServer struct {
+}
+
+func (*UnimplementedCSRServer) SignCertificate(ctx context.Context, req *SignCertificateRequest) (*SignCertificateResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SignCertificate not implemented")
 }
 
 func RegisterCSRServer(s *grpc.Server, srv CSRServer) {

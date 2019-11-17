@@ -25,4 +25,5 @@ type Registry interface {
 	RegisterEventHandler(h RegistryEventHandler) string
 	DeregisterEventHandler(string)
 	GetOfType(t pb2.Type) ([]*pb2.Info, error)
+	Stop() error
 }

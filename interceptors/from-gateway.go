@@ -2,7 +2,6 @@ package interceptors
 
 import (
 	"context"
-	"crypto/x509"
 	"github.com/zoenion/service/errors"
 	"google.golang.org/grpc/metadata"
 	"strings"
@@ -10,7 +9,6 @@ import (
 
 type Gateway struct {
 	sharedSecret string
-	ca           *x509.Certificate
 }
 
 func (g *Gateway) Name() string {
@@ -52,9 +50,8 @@ func (g *Gateway) validateCert(ctx context.Context) (context.Context, error) {
 	return ctx, nil
 }
 
-func NewGateway(sharedSecret string, caCert *x509.Certificate) *Gateway {
+func NewGateway(sharedSecret string) *Gateway {
 	return &Gateway{
 		sharedSecret: sharedSecret,
-		ca:           caCert,
 	}
 }

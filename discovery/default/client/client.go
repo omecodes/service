@@ -1,4 +1,4 @@
-package service
+package client
 
 import (
 	"context"
@@ -21,14 +21,6 @@ type RegistryEventHandler interface {
 	Handle(*pb2.Event)
 }
 
-type eventHandlerFunc struct {
-	f func(event *pb2.Event)
-}
-
-func (hf *eventHandlerFunc) Handle(event *pb2.Event) {
-	hf.f(event)
-}
-
 type SyncedRegistry struct {
 	servicesLock sync.Mutex
 	handlersLock sync.Mutex
@@ -47,9 +39,8 @@ type SyncedRegistry struct {
 	listeners      map[int]chan *pb2.Event
 	eventHandler   func(*pb2.Event)
 
-	isClient bool
-	stop     bool
-	syncing  bool
+	stop    bool
+	syncing bool
 }
 
 func (r *SyncedRegistry) Disconnect() error {
@@ -62,11 +53,6 @@ func (r *SyncedRegistry) Disconnect() error {
 }
 
 func (r *SyncedRegistry) RegisterService(i *pb2.Info) (string, error) {
-	if !r.isClient {
-		id := i.Namespace + ":" + i.Name
-		r.saveService(i)
-		return id, nil
-	}
 	err := r.connect()
 	if err != nil {
 		return "", err
@@ -84,11 +70,6 @@ func (r *SyncedRegistry) RegisterService(i *pb2.Info) (string, error) {
 }
 
 func (r *SyncedRegistry) DeregisterService(id string) error {
-	if !r.isClient {
-		r.deleteService(id)
-		return nil
-	}
-
 	err := r.connect()
 	if err != nil {
 		return err
@@ -177,17 +158,10 @@ func (r *SyncedRegistry) GetOfType(t pb2.Type) ([]*pb2.Info, error) {
 	return result, nil
 }
 
-func (r *SyncedRegistry) Stop() {
+func (r *SyncedRegistry) Stop() error {
 	r.stop = true
-	if !r.isClient {
-		for _, channel := range r.listeners {
-			close(channel)
-		}
-	} else {
-		_ = r.conn.Close()
-	}
-
 	r.services = nil
+	return r.conn.Close()
 }
 
 func (r *SyncedRegistry) publishEvent(e pb2.Event) {
@@ -330,7 +304,6 @@ func (r *SyncedRegistry) disconnected() {
 
 func NewSyncedRegistryClient(server string, tlsConfig *tls.Config) *SyncedRegistry {
 	return &SyncedRegistry{
-		isClient:      true,
 		services:      map[string]*pb2.Info{},
 		tlsConfig:     tlsConfig,
 		serverAddress: server,
