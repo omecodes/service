@@ -30,8 +30,9 @@ func (s *Server) startAPIServer() error {
 		return err
 	}
 
-	address := s.apiListener.Addr().String()
+	address := s.gRPCListener.Addr().String()
 	grpcServerEndpoint := flag.String("grpc-server-endpoint", address, "gRPC server endpoint")
+
 	ctx := context.Background()
 	mux := runtime.NewServeMux()
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(credentials.NewTLS(s.configs.TLS))}
@@ -43,7 +44,7 @@ func (s *Server) startAPIServer() error {
 
 	log.Printf("starting %s.HTTP at %s", s.configs.BindAddress, address)
 	srv := &http.Server{
-		Addr:    address,
+		Addr:    s.apiListener.Addr().String(),
 		Handler: mux,
 	}
 	go srv.Serve(s.apiListener)

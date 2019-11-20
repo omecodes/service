@@ -115,7 +115,7 @@ func (box *Box) initRegistry() (err error) {
 
 	cfg := &server.Configs{
 		Name:        "registry",
-		BindAddress: box.Host() + RegistryDefaultHost,
+		BindAddress: box.Host(),
 		TLS:         box.serverMutualTLS(),
 	}
 

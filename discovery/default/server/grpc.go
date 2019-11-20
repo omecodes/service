@@ -2,6 +2,7 @@ package server
 
 import (
 	"crypto/tls"
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/zoenion/service/interceptors"
 	pb "github.com/zoenion/service/proto"
@@ -37,19 +38,22 @@ func (s *Server) startGRPCServer() error {
 		err error
 	)
 
+	addr := fmt.Sprintf("%s:9777", s.configs.BindAddress)
+
 	if s.configs.TLS == nil {
-		s.gRPCListener, err = net.Listen("tcp", s.configs.BindAddress)
+		s.gRPCListener, err = net.Listen("tcp", addr)
 	} else {
-		s.gRPCListener, err = tls.Listen("tcp", s.configs.BindAddress, s.configs.TLS)
+		s.gRPCListener, err = tls.Listen("tcp", addr, s.configs.TLS)
 	}
 	if err != nil {
 		return err
 	}
 
+	address := s.gRPCListener.Addr().String()
 	srv := grpc.NewServer()
 	pb.RegisterRegistryServer(srv, s.gRPCHandler)
 
-	log.Println("starting Registry.gRPC at", s.gRPCListener.Addr())
+	log.Println("starting Registry.gRPC at", address)
 	go srv.Serve(s.gRPCListener)
 
 	return nil

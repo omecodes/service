@@ -280,6 +280,7 @@ func (r *SyncedRegistry) listen() {
 		switch event.Type {
 		case pb2.EventType_Updated, pb2.EventType_Registered:
 			r.saveService(event.Info)
+
 		case pb2.EventType_DeRegistered:
 			r.deleteService(event.Name)
 		}
