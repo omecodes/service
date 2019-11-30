@@ -6,7 +6,7 @@ import (
 	"net"
 )
 
-func (box *Box) listen(web bool, secure bool, port int, tc *tls.Config) (net.Listener, error) {
+func (box *Box) listen(web bool, port int, secure bool, tc *tls.Config) (net.Listener, error) {
 	var (
 		listener net.Listener
 		err      error
@@ -19,13 +19,13 @@ func (box *Box) listen(web bool, secure bool, port int, tc *tls.Config) (net.Lis
 		address = fmt.Sprintf("%s:", box.Host())
 	}
 
-	if secure {
-		err = box.loadOrGenerateCertificateKeyPair()
-		if err != nil {
-			return nil, err
-		}
-
+	if tc != nil || secure {
 		if tc == nil {
+			err = box.loadOrGenerateCertificateKeyPair()
+			if err != nil {
+				return nil, err
+			}
+
 			if web {
 				tc = box.serverTLS()
 			} else {

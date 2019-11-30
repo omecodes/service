@@ -11,7 +11,7 @@ func (box *Box) StartGateway(name string, params *server.GatewayParams) error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
 
-	listener, err := box.listen(true, params.SecureConnection, params.Port, params.Tls)
+	listener, err := box.listen(true, params.Port, params.SecureConnection, params.Tls)
 	if err != nil {
 		return err
 	}

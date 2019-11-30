@@ -36,7 +36,7 @@ func (box *Box) StartGatewayGRPCMapping(name string, params *server.GatewayServi
 			return err
 		}
 
-		listener, err := box.listen(true, params.SecureConnection, params.Port, params.Tls)
+		listener, err := box.listen(true, params.Port, params.SecureConnection, params.Tls)
 		if err != nil {
 			return err
 		}
@@ -77,7 +77,7 @@ func (box *Box) StartService(name string, params *server.ServiceParams) error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
 
-	listener, err := box.listen(false, true, params.Port, params.Tls)
+	listener, err := box.listen(false, params.Port, !box.params.Autonomous, params.Tls)
 	if err != nil {
 		return err
 	}
