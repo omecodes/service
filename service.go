@@ -10,6 +10,17 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
+func (box *Box) ServiceAddress(name string) (string, error) {
+	box.serverMutex.Lock()
+	defer box.serverMutex.Unlock()
+
+	s, exists := box.services[name]
+	if !exists {
+		return "", errors.New("not found")
+	}
+	return s.Address, nil
+}
+
 func GRPCConnectionDialer(ctx context.Context, serviceType pb.Type) (connection.Dialer, error) {
 	reg := Registry(ctx)
 	if reg == nil {
