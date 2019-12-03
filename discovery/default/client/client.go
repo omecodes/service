@@ -30,14 +30,9 @@ type SyncedRegistry struct {
 	client   pb2.RegistryClient
 
 	tlsConfig     *tls.Config
-	serverAddress string
 	conn          *grpc.ClientConn
+	serverAddress string
 	eventHandlers map[string]discovery.RegistryEventHandler
-
-	keyCounter     int
-	listenersMutex sync.Mutex
-	listeners      map[int]chan *pb2.Event
-	eventHandler   func(*pb2.Event)
 
 	stop    bool
 	syncing bool

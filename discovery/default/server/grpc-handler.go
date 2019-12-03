@@ -148,7 +148,7 @@ func (h *gRPCServerHandler) Listen(in *pb2.ListenRequest, stream pb2.Registry_Li
 	channel := make(chan *pb2.Event, 1)
 	registrationKey := h.registerEventChannel(channel)
 	defer h.deRegisterEventChannel(registrationKey)
-	defer close(channel)
+	//defer close(channel)
 
 	for {
 		e, _ := <-channel
@@ -157,6 +157,7 @@ func (h *gRPCServerHandler) Listen(in *pb2.ListenRequest, stream pb2.Registry_Li
 			return errors.New("event channel closed")
 		}
 
+		log.Println(e.Type, e.Name)
 		err := stream.Send(e)
 		if err != nil {
 			return fmt.Errorf("could not send event: %s", err)
@@ -171,6 +172,7 @@ func (h *gRPCServerHandler) RegisterEventHandler(eh func(event *pb2.Event)) {
 func (h *gRPCServerHandler) broadcastEvent(e *pb2.Event) {
 	h.listenersMutex.Lock()
 	defer h.listenersMutex.Unlock()
+
 	for _, c := range h.listeners {
 		c <- e
 	}
@@ -191,6 +193,10 @@ func (h *gRPCServerHandler) registerEventChannel(channel chan *pb2.Event) int {
 func (h *gRPCServerHandler) deRegisterEventChannel(key int) {
 	h.listenersMutex.Lock()
 	defer h.listenersMutex.Unlock()
+
+	c := h.listeners[key]
+	defer close(c)
+
 	delete(h.listeners, key)
 }
 
