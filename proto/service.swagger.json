@@ -32,6 +32,16 @@
             "in": "path",
             "required": true,
             "type": "string"
+          },
+          {
+            "name": "nodes",
+            "in": "query",
+            "required": false,
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "collectionFormat": "multi"
           }
         ],
         "tags": [
@@ -156,6 +166,16 @@
     }
   },
   "definitions": {
+    "pbActionOnRegisterExistingService": {
+      "type": "string",
+      "enum": [
+        "Replace",
+        "UpdateExisting",
+        "AddNodes",
+        "RemoveOld"
+      ],
+      "default": "Replace"
+    },
     "pbDeregisterResponse": {
       "type": "object"
     },
@@ -179,6 +199,7 @@
         "UnknownEvent",
         "Registered",
         "DeRegistered",
+        "DeRegisteredNode",
         "Updated"
       ],
       "default": "UnknownEvent"
@@ -206,11 +227,11 @@
         "label": {
           "type": "string"
         },
-        "serviceNode": {
-          "$ref": "#/definitions/pbNode"
-        },
-        "gatewayNode": {
-          "$ref": "#/definitions/pbNode"
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/pbNode"
+          }
         },
         "meta": {
           "type": "object",
@@ -234,6 +255,9 @@
     "pbNode": {
       "type": "object",
       "properties": {
+        "Name": {
+          "type": "string"
+        },
         "protocol": {
           "$ref": "#/definitions/pbProtocol"
         },
@@ -246,6 +270,12 @@
         "ttl": {
           "type": "string",
           "format": "int64"
+        },
+        "meta": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     },
@@ -262,6 +292,9 @@
       "properties": {
         "service": {
           "$ref": "#/definitions/pbInfo"
+        },
+        "action": {
+          "$ref": "#/definitions/pbActionOnRegisterExistingService"
         }
       }
     },

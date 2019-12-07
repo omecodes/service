@@ -5,30 +5,78 @@ import (
 	"fmt"
 	"github.com/zoenion/common/errors"
 	"github.com/zoenion/registry/server/dao"
+	"github.com/zoenion/service/discovery"
 	pb2 "github.com/zoenion/service/proto"
 	"log"
 	"sync"
 )
 
 type gRPCServerHandler struct {
+	sync.Mutex
 	dao            dao.ServicesDAO
 	keyCounter     int
 	listenersMutex sync.Mutex
 	listeners      map[int]chan *pb2.Event
 	eventHandler   func(*pb2.Event)
+	idGenerator    discovery.IDGenerator
 }
 
 func (h *gRPCServerHandler) Register(ctx context.Context, in *pb2.RegisterRequest) (*pb2.RegisterResponse, error) {
+	h.Lock()
+	defer h.Unlock()
+
 	var exists bool
-	id := fmt.Sprintf("%s:%s", in.Service.Namespace, in.Service.Name)
+	id := h.idGenerator.GenerateID(in.Service)
 	info, err := h.dao.Find(id)
 	if err != nil {
 		if err != errors.NotFound {
 			return nil, err
 		}
-		exists = false
 	}
+
 	exists = info != nil
+	if info != nil && in.Action != pb2.ActionOnRegisterExistingService_Replace {
+		// merge nodes
+		var added []*pb2.Node
+		var deleted []*pb2.Node
+		var updated []*pb2.Node
+
+		for _, newNode := range in.Service.Nodes {
+			for _, oldNode := range info.Nodes {
+				if oldNode.Name == newNode.Name {
+					updated = append(updated, newNode)
+				} else {
+					added = append(added, newNode)
+				}
+			}
+		}
+		for _, oldNode := range info.Nodes {
+			nodeDeleted := true
+			for _, newNode := range in.Service.Nodes {
+				if oldNode.Name == newNode.Name {
+					nodeDeleted = false
+					break
+				}
+			}
+
+			if nodeDeleted {
+				deleted = append(deleted, oldNode)
+			}
+		}
+
+		var nodes []*pb2.Node
+		if int(pb2.ActionOnRegisterExistingService_AddNodes) == int(in.Action)&int(pb2.ActionOnRegisterExistingService_AddNodes) {
+			nodes = append(nodes, added...)
+		}
+		if int(pb2.ActionOnRegisterExistingService_UpdateExisting) == int(in.Action)&int(pb2.ActionOnRegisterExistingService_UpdateExisting) {
+			nodes = append(nodes, updated...)
+		}
+		if int(pb2.ActionOnRegisterExistingService_RemoveOld) != int(in.Action)&int(pb2.ActionOnRegisterExistingService_RemoveOld) {
+			nodes = append(nodes, deleted...)
+		}
+
+		in.Service.Nodes = nodes
+	}
 
 	err = h.dao.Save(in.Service)
 	if err != nil {
@@ -49,21 +97,67 @@ func (h *gRPCServerHandler) Register(ctx context.Context, in *pb2.RegisterReques
 }
 
 func (h *gRPCServerHandler) Deregister(ctx context.Context, in *pb2.DeregisterRequest) (*pb2.DeregisterResponse, error) {
-	err := h.dao.Delete(in.RegistryId)
-	if err != nil {
-		return nil, err
-	}
+	h.Lock()
+	defer h.Unlock()
 
-	event := &pb2.Event{
-		Type: pb2.EventType_DeRegistered,
-		Name: in.RegistryId,
+	var (
+		err   error
+		event *pb2.Event
+	)
+
+	if len(in.Nodes) == 0 {
+		err = h.dao.Delete(in.RegistryId)
+		if err != nil {
+			return nil, err
+		}
+		event = &pb2.Event{
+			Type: pb2.EventType_DeRegistered,
+			Name: in.RegistryId,
+		}
+		h.broadcastEvent(event)
+
+	} else {
+		var info *pb2.Info
+		info, err = h.dao.Find(in.RegistryId)
+		if err != nil {
+			return nil, err
+		}
+
+		var newNodes []*pb2.Node
+		for _, node := range info.Nodes {
+			deleted := false
+			for _, nodeID := range in.Nodes {
+				if node.Name == nodeID {
+					deleted = true
+					break
+				}
+			}
+
+			if !deleted {
+				newNodes = append(newNodes, node)
+			} else {
+				event = &pb2.Event{
+					Type: pb2.EventType_DeRegisteredNode,
+					Name: in.RegistryId,
+					Info: &pb2.Info{
+						Nodes: []*pb2.Node{node},
+					},
+				}
+				h.broadcastEvent(event)
+			}
+		}
+
+		info.Nodes = newNodes
+		err = h.dao.Save(info)
 	}
-	h.broadcastEvent(event)
 
 	return &pb2.DeregisterResponse{}, err
 }
 
 func (h *gRPCServerHandler) List(ctx context.Context, in *pb2.ListRequest) (*pb2.ListResponse, error) {
+	h.Lock()
+	defer h.Unlock()
+
 	cursor, err := h.dao.List()
 	if err != nil {
 		return nil, err
@@ -87,11 +181,17 @@ func (h *gRPCServerHandler) List(ctx context.Context, in *pb2.ListRequest) (*pb2
 }
 
 func (h *gRPCServerHandler) Get(ctx context.Context, in *pb2.GetRequest) (*pb2.GetResponse, error) {
+	h.Lock()
+	defer h.Unlock()
+
 	info, err := h.dao.Find(in.RegistryId)
 	return &pb2.GetResponse{Info: info}, err
 }
 
 func (h *gRPCServerHandler) Search(ctx context.Context, in *pb2.SearchRequest) (*pb2.SearchResponse, error) {
+	h.Lock()
+	defer h.Unlock()
+
 	if in.Namespace == "" {
 		return nil, errors.BadInput
 	}
@@ -117,7 +217,6 @@ func (h *gRPCServerHandler) Search(ctx context.Context, in *pb2.SearchRequest) (
 }
 
 func (h *gRPCServerHandler) Listen(in *pb2.ListenRequest, stream pb2.Registry_ListenServer) error {
-
 	c, err := h.dao.List()
 	if err != nil {
 		return err
@@ -133,7 +232,7 @@ func (h *gRPCServerHandler) Listen(in *pb2.ListenRequest, stream pb2.Registry_Li
 		i := o.(*pb2.Info)
 		ev := &pb2.Event{
 			Type: pb2.EventType_Registered,
-			Name: fmt.Sprintf("%s:%s", i.Namespace, i.Name),
+			Name: h.idGenerator.GenerateID(i),
 			Info: i,
 		}
 
@@ -210,7 +309,8 @@ func (h *gRPCServerHandler) Stop() {
 
 func NewGRPCServerHandler(dao dao.ServicesDAO) *gRPCServerHandler {
 	return &gRPCServerHandler{
-		listeners: map[int]chan *pb2.Event{},
-		dao:       dao,
+		listeners:   map[int]chan *pb2.Event{},
+		dao:         dao,
+		idGenerator: idGenerator(0),
 	}
 }

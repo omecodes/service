@@ -12,27 +12,34 @@ import (
 )
 
 type GatewayServiceMappingParams struct {
-	ServiceName      string
-	Port             int
-	SecureConnection bool
-	Tls              *tls.Config
-	Binder           gateway.WireEndpointFunc
+	Name        string
+	ForNode     string
+	GRPCNodeID  string
+	Port        int
+	Tls         *tls.Config
+	Binder      gateway.WireEndpointFunc
+	ServiceType pb.Type
+	Node        *pb.Node
 }
 
 type GatewayParams struct {
-	MiddlewareList   []mux.MiddlewareFunc
-	Port             int
-	SecureConnection bool
-	ProvideRouter    func() *mux.Router
-	Tls              *tls.Config
+	Name           string
+	MiddlewareList []mux.MiddlewareFunc
+	Port           int
+	ProvideRouter  func() *mux.Router
+	Tls            *tls.Config
+	ServiceType    pb.Type
+	Node           *pb.Node
 }
 
 type ServiceParams struct {
+	Name                string
 	Port                int
 	Tls                 *tls.Config
 	Interceptor         interceptors.GRPC
 	RegisterHandlerFunc func(*grpc.Server)
-	Info                *pb.Info
+	ServiceType         pb.Type
+	Node                *pb.Node
 }
 
 type Service struct {
@@ -47,9 +54,10 @@ func (s *Service) Stop() {
 }
 
 type Gateway struct {
-	Scheme  string
-	Address string
-	Server  *http.Server
+	RegistryID string
+	Scheme     string
+	Address    string
+	Server     *http.Server
 }
 
 func (g *Gateway) URL() string {

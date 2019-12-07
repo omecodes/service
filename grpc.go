@@ -26,8 +26,8 @@ func (box *Box) CAClientTransportCredentials() credentials.TransportCredentials 
 	return box.caGRPCTransportCredentials
 }
 
-func (box *Box) StartGatewayGRPCMapping(name string, params *server.GatewayServiceMappingParams) error {
-	if box.registry == nil {
+func (box *Box) StartGatewayGRPCMapping(name string, forNode string, params *server.GatewayServiceMappingParams) error {
+	if box.registry == nil && !box.params.Autonomous {
 		box.serverMutex.Lock()
 		defer box.serverMutex.Unlock()
 
@@ -36,57 +36,80 @@ func (box *Box) StartGatewayGRPCMapping(name string, params *server.GatewayServi
 			return err
 		}
 
-		listener, err := box.listen(true, params.Port, params.SecureConnection, params.Tls)
+		listener, err := box.listen(true, params.Port, params.Node.Security, params.Tls)
 		if err != nil {
 			return err
 		}
 
-		address := listener.Addr().String()
-		grpcServerEndpoint := flag.String("grpc-server-endpoint", info.ServiceNode.Address, "gRPC server endpoint")
-		ctx := context.Background()
-		mux := runtime.NewServeMux()
-		opts := []grpc.DialOption{grpc.WithInsecure()}
+		for _, node := range info.Nodes {
+			if node.Name != forNode {
+				continue
+			}
 
-		err = params.Binder(ctx, mux, *grpcServerEndpoint, opts)
-		if err != nil {
-			return err
-		}
+			address := listener.Addr().String()
+			grpcServerEndpoint := flag.String("grpc-server-endpoint", node.Address, "gRPC server endpoint")
+			ctx := context.Background()
+			mux := runtime.NewServeMux()
+			opts := []grpc.DialOption{grpc.WithInsecure()}
 
-		log.Printf("starting %s.HTTP at %s", name, address)
-		srv := &http.Server{
-			Addr:    address,
-			Handler: mux,
-		}
-		gt := &server.Gateway{}
-		gt.Server = srv
-		gt.Address = address
-		if params.Tls != nil {
-			gt.Scheme = "https"
-		} else {
-			gt.Scheme = "http"
-		}
+			err = params.Binder(ctx, mux, *grpcServerEndpoint, opts)
+			if err != nil {
+				return err
+			}
 
-		box.gateways[name] = gt
-		go srv.Serve(listener)
-		return nil
+			log.Printf("starting %s.HTTP at %s", name, address)
+			srv := &http.Server{
+				Addr:    address,
+				Handler: mux,
+			}
+			gt := &server.Gateway{}
+			gt.Server = srv
+			gt.Address = address
+			if params.Tls != nil {
+				gt.Scheme = "https"
+			} else {
+				gt.Scheme = "http"
+			}
+
+			box.gateways[name] = gt
+			go srv.Serve(listener)
+
+			if params.Node != nil && box.registry != nil {
+				info := &pb.Info{}
+				info.Namespace = box.params.Namespace
+				info.Name = box.Name()
+				info.Type = params.ServiceType
+
+				n := new(pb.Node)
+				n.Name = params.Name
+				n.Address = address
+				n.Protocol = pb.Protocol_Grpc
+				n.Security = pb.Security_MutualTLS
+				n.Ttl = 0
+				info.Nodes = []*pb.Node{n}
+
+				gt.RegistryID, err = box.registry.RegisterService(info, pb.ActionOnRegisterExistingService_AddNodes|pb.ActionOnRegisterExistingService_UpdateExisting)
+				if err != nil {
+					log.Println("could not register service")
+				}
+			}
+			return nil
+		}
 	}
-	return errors.New("not found")
+	return errors.New("matching gRPC service not found")
 }
 
-func (box *Box) StartService(name string, params *server.ServiceParams) error {
+func (box *Box) StartService(params *server.ServiceParams) error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
 
-	listener, err := box.listen(false, params.Port, !box.params.Autonomous, params.Tls)
+	listener, err := box.listen(false, params.Port, pb.Security_MutualTLS, params.Tls)
 	if err != nil {
 		return err
 	}
 	address := listener.Addr().String()
-	if params.Info == nil {
-		params.Info = new(pb.Info)
-	}
 
-	log.Printf("starting %s.gRPC at %s", name, address)
+	log.Printf("starting %s.gRPC at %s", params.Node.Name, address)
 	var opts []grpc.ServerOption
 	if params.Interceptor != nil {
 		opts = append(opts, grpc.StreamInterceptor(params.Interceptor.InterceptStream), grpc.UnaryInterceptor(params.Interceptor.InterceptUnary))
@@ -98,20 +121,21 @@ func (box *Box) StartService(name string, params *server.ServiceParams) error {
 	rs.Server = srv
 	rs.Secure = params.Tls != nil
 
-	box.services[name] = rs
+	box.services[params.Node.Name] = rs
 
 	params.RegisterHandlerFunc(srv)
 	go srv.Serve(listener)
 
-	if !box.params.Autonomous && params.Info != nil && box.registry != nil {
-		params.Info.Namespace = box.params.Namespace
-		params.Info.Name = box.Name()
-		params.Info.ServiceNode = new(pb.Node)
-		params.Info.ServiceNode.Address = address
-		params.Info.ServiceNode.Protocol = pb.Protocol_Grpc
-		params.Info.ServiceNode.Security = pb.Security_MutualTLS
-		params.Info.ServiceNode.Ttl = 0
-		rs.RegistryID, err = box.registry.RegisterService(params.Info)
+	if !box.params.Autonomous && params.Node != nil && box.registry != nil {
+		info := &pb.Info{}
+		info.Namespace = box.params.Namespace
+		info.Name = box.Name()
+		info.Label = box.Name()
+
+		params.Node.Address = address
+		info.Nodes = []*pb.Node{params.Node}
+
+		rs.RegistryID, err = box.registry.RegisterService(info, pb.ActionOnRegisterExistingService_AddNodes|pb.ActionOnRegisterExistingService_UpdateExisting)
 		if err != nil {
 			log.Println("could not register service")
 		}

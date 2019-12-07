@@ -37,12 +37,12 @@ func GRPCConnectionDialer(ctx context.Context, serviceType pb.Type) (connection.
 	}
 
 	for _, info := range infos {
-		if info.ServiceNode != nil {
+		for _, node := range info.Nodes {
 			tlsConf := ClientTLSConfig(ctx)
 			if tlsConf == nil {
-				return connection.NewDialer(info.ServiceNode.Address), nil
+				return connection.NewDialer(node.Address), nil
 			} else {
-				return connection.NewDialer(info.ServiceNode.Address, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf))), nil
+				return connection.NewDialer(node.Address, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf))), nil
 			}
 		}
 	}

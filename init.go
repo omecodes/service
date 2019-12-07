@@ -9,7 +9,6 @@ import (
 	"github.com/zoenion/service/discovery/default/server"
 	"github.com/zoenion/service/errors"
 	"google.golang.org/grpc/credentials"
-	"log"
 	"strings"
 )
 
@@ -121,15 +120,13 @@ func (box *Box) initRegistry() (err error) {
 	if err == nil {
 		err = syncedRegistry.Start()
 	}
-	// err = syncedRegistry.Serve(box.Host()+RegistryDefaultHost, box.serverMutualTLS())
+
 	if err != nil {
-		log.Println("An instance of registry might already be running on this machine")
 		syncedRegistry = nil
 		err = nil
 	}
 
 	if syncedRegistry == nil || registryHost != "" && registryHost != RegistryDefaultHost && registryHost != box.Host() {
-		// var syncedRegistry *SyncedRegistry
 		var tc *tls.Config
 		tc = box.clientMutualTLS()
 		box.registry = client.NewSyncedRegistryClient(box.params.RegistryAddress, tc)

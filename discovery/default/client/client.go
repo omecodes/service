@@ -34,8 +34,14 @@ type SyncedRegistry struct {
 	serverAddress string
 	eventHandlers map[string]discovery.RegistryEventHandler
 
+	idGenerator discovery.IDGenerator
+
 	stop    bool
 	syncing bool
+}
+
+func (r *SyncedRegistry) DeregisterNode(name string) error {
+	panic("implement me")
 }
 
 func (r *SyncedRegistry) Disconnect() error {
@@ -47,7 +53,7 @@ func (r *SyncedRegistry) Disconnect() error {
 	return nil
 }
 
-func (r *SyncedRegistry) RegisterService(i *pb2.Info) (string, error) {
+func (r *SyncedRegistry) RegisterService(i *pb2.Info, action pb2.ActionOnRegisterExistingService) (string, error) {
 	err := r.connect()
 	if err != nil {
 		return "", err
@@ -55,7 +61,7 @@ func (r *SyncedRegistry) RegisterService(i *pb2.Info) (string, error) {
 
 	defer func() { go r.sync() }()
 
-	rsp, err := r.client.Register(context.Background(), &pb2.RegisterRequest{Service: i})
+	rsp, err := r.client.Register(context.Background(), &pb2.RegisterRequest{Service: i, Action: action})
 	if err != nil {
 		log.Printf("[Registry]:\tCould not register %s: %s\n", i.Name, err)
 		return "", err
@@ -64,14 +70,14 @@ func (r *SyncedRegistry) RegisterService(i *pb2.Info) (string, error) {
 	return rsp.RegistryId, nil
 }
 
-func (r *SyncedRegistry) DeregisterService(id string) error {
+func (r *SyncedRegistry) DeregisterService(id string, nodes ...string) error {
 	err := r.connect()
 	if err != nil {
 		return err
 	}
 	defer func() { go r.sync() }()
 
-	_, err = r.client.Deregister(context.Background(), &pb2.DeregisterRequest{RegistryId: id})
+	_, err = r.client.Deregister(context.Background(), &pb2.DeregisterRequest{RegistryId: id, Nodes: nodes})
 	if err == nil {
 		log.Println("[Registry]:\tDeregistered")
 	}
@@ -105,21 +111,18 @@ func (r *SyncedRegistry) ConnectionInfo(id string, protocol pb2.Protocol) (*pb2.
 	ci := new(pb2.ConnectionInfo)
 
 	for _, s := range r.services {
-		if id == fmt.Sprintf("%s.%s", s.Namespace, s.Name) {
-			var node *pb2.Node
-			if protocol == pb2.Protocol_Grpc {
-				node = s.ServiceNode
-			} else {
-				node = s.GatewayNode
+		if id == r.idGenerator.GenerateID(s) {
+			for _, n := range s.Nodes {
+				if protocol == n.Protocol {
+					ci.Address = n.Address
+					strCert, found := s.Meta["certificate"]
+					if !found {
+						return ci, nil
+					}
+					ci.Certificate = []byte(strCert)
+					return ci, nil
+				}
 			}
-
-			ci.Address = node.Address
-			strCert, found := s.Meta["certificate"]
-			if !found {
-				return ci, nil
-			}
-			ci.Certificate = []byte(strCert)
-			return ci, nil
 		}
 	}
 	return nil, errors.NotFound
@@ -197,6 +200,23 @@ func (r *SyncedRegistry) deleteService(name string) {
 	r.servicesLock.Lock()
 	defer r.servicesLock.Unlock()
 	delete(r.services, name)
+}
+
+func (r *SyncedRegistry) deleteServiceNode(name string, node *pb2.Info) {
+	r.servicesLock.Lock()
+	defer r.servicesLock.Unlock()
+	service, exists := r.services[name]
+	if !exists {
+		return
+	}
+
+	var newNodes []*pb2.Node
+	for _, oldNode := range service.Nodes {
+		if oldNode.Name != node.Name {
+			newNodes = append(newNodes, oldNode)
+		}
+	}
+	service.Nodes = newNodes
 }
 
 func (r *SyncedRegistry) connect() error {
@@ -278,6 +298,9 @@ func (r *SyncedRegistry) listen() {
 
 		case pb2.EventType_DeRegistered:
 			r.deleteService(event.Name)
+
+		case pb2.EventType_DeRegisteredNode:
+			r.deleteServiceNode(event.Name, event.Info)
 		}
 	}
 }

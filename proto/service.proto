@@ -36,7 +36,15 @@ enum EventType {
     UnknownEvent = 0;
     Registered = 1;
     DeRegistered = 2;
-    Updated = 3;
+    DeRegisteredNode = 3;
+    Updated = 4;
+}
+
+enum ActionOnRegisterExistingService {
+    Replace = 0;
+    UpdateExisting = 1;
+    AddNodes = 2;
+    RemoveOld = 4;
 }
 
 message State {
@@ -51,10 +59,12 @@ message ConnectionInfo {
 }
 
 message Node {
-    Protocol protocol = 1;
-    string address = 2;
-    Security security = 3;
+    string Name = 1;
+    Protocol protocol = 2;
+    string address = 3;
+    Security security = 4;
     int64 ttl = 5;
+    map<string, string> meta = 6;
 }
 
 message Info {
@@ -62,8 +72,7 @@ message Info {
     string namespace = 2;
     Type type = 3;
     string label = 4;
-    Node serviceNode = 5;
-    Node gatewayNode = 6;
+    repeated Node nodes = 5;
     map<string, string> meta = 7;
 }
 
@@ -75,6 +84,7 @@ message Event {
 
 message RegisterRequest {
     Info service = 1;
+    ActionOnRegisterExistingService action = 2;
 }
 message RegisterResponse {
     string registry_id = 1;
@@ -82,6 +92,7 @@ message RegisterResponse {
 
 message DeregisterRequest {
     string registry_id = 1;
+    repeated string nodes = 2;
 }
 message DeregisterResponse {}
 
@@ -121,6 +132,7 @@ service Registry {
     rpc Deregister(DeregisterRequest)returns(DeregisterResponse){
             option(google.api.http).get = "/service/deregister/{registry_id}";
     };
+
     rpc List(ListRequest)returns(ListResponse){
             option(google.api.http).get = "/service/list";
     };

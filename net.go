@@ -3,10 +3,11 @@ package service
 import (
 	"crypto/tls"
 	"fmt"
+	pb "github.com/zoenion/service/proto"
 	"net"
 )
 
-func (box *Box) listen(web bool, port int, secure bool, tc *tls.Config) (net.Listener, error) {
+func (box *Box) listen(web bool, port int, security pb.Security, tc *tls.Config) (net.Listener, error) {
 	var (
 		listener net.Listener
 		err      error
@@ -19,7 +20,7 @@ func (box *Box) listen(web bool, port int, secure bool, tc *tls.Config) (net.Lis
 		address = fmt.Sprintf("%s:", box.Host())
 	}
 
-	if tc != nil || secure {
+	if !box.params.Autonomous && (tc != nil || security != pb.Security_None) {
 		if tc == nil {
 			err = box.loadOrGenerateCertificateKeyPair()
 			if err != nil {
@@ -32,7 +33,6 @@ func (box *Box) listen(web bool, port int, secure bool, tc *tls.Config) (net.Lis
 				tc = box.serverMutualTLS()
 			}
 		}
-
 		listener, err = tls.Listen("tcp", address, tc)
 		if err != nil {
 			return nil, err

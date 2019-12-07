@@ -17,10 +17,11 @@ type client struct {
 	servicesLock sync.Mutex
 	handlersLock sync.Mutex
 	syncMutex    sync.Mutex
+	idGenerator  discovery.IDGenerator
 }
 
-func (r *client) RegisterService(i *pb2.Info) (string, error) {
-	rsp, err := r.handler.Register(context.Background(), &pb2.RegisterRequest{Service: i})
+func (r *client) RegisterService(i *pb2.Info, action pb2.ActionOnRegisterExistingService) (string, error) {
+	rsp, err := r.handler.Register(context.Background(), &pb2.RegisterRequest{Service: i, Action: action})
 	if err != nil {
 		log.Printf("[Registry]:\tCould not register %s: %s\n", i.Name, err)
 		return "", err
@@ -30,8 +31,8 @@ func (r *client) RegisterService(i *pb2.Info) (string, error) {
 	return rsp.RegistryId, nil
 }
 
-func (r *client) DeregisterService(id string) error {
-	_, err := r.handler.Deregister(context.Background(), &pb2.DeregisterRequest{RegistryId: id})
+func (r *client) DeregisterService(id string, nodes ...string) error {
+	_, err := r.handler.Deregister(context.Background(), &pb2.DeregisterRequest{RegistryId: id, Nodes: nodes})
 	if err == nil {
 		log.Println("[Registry]:\tDeregistered")
 	}
@@ -69,21 +70,20 @@ func (r *client) ConnectionInfo(id string, protocol pb2.Protocol) (*pb2.Connecti
 	ci := new(pb2.ConnectionInfo)
 
 	for _, s := range r.services() {
-		if id == fmt.Sprintf("%s.%s", s.Namespace, s.Name) {
-			var node *pb2.Node
-			if protocol == pb2.Protocol_Grpc {
-				node = s.ServiceNode
-			} else {
-				node = s.GatewayNode
+		if id == r.idGenerator.GenerateID(s) {
+			if id == r.idGenerator.GenerateID(s) {
+				for _, n := range s.Nodes {
+					if protocol == n.Protocol {
+						ci.Address = n.Address
+						strCert, found := s.Meta["certificate"]
+						if !found {
+							return ci, nil
+						}
+						ci.Certificate = []byte(strCert)
+						return ci, nil
+					}
+				}
 			}
-
-			ci.Address = node.Address
-			strCert, found := s.Meta["certificate"]
-			if !found {
-				return ci, nil
-			}
-			ci.Certificate = []byte(strCert)
-			return ci, nil
 		}
 	}
 	return nil, errors.NotFound
