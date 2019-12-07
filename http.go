@@ -12,7 +12,7 @@ func (box *Box) StartGateway(params *server.GatewayParams) error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
 
-	listener, err := box.listen(true, params.Port, params.Node.Security, params.Tls)
+	listener, err := box.listen(params.Port, params.Node.Security, params.Tls)
 	if err != nil {
 		return err
 	}
@@ -46,7 +46,7 @@ func (box *Box) StartGateway(params *server.GatewayParams) error {
 		gt.Scheme = "http"
 	}
 
-	box.gateways[params.Name] = gt
+	box.gateways[params.Node.Name] = gt
 	go srv.Serve(listener)
 
 	if !box.params.Autonomous && box.registry != nil {
@@ -54,12 +54,8 @@ func (box *Box) StartGateway(params *server.GatewayParams) error {
 		info.Namespace = box.params.Namespace
 		info.Name = box.Name()
 
-		n := new(pb.Node)
-		n.Name = params.Name
+		n := params.Node
 		n.Address = address
-		n.Protocol = pb.Protocol_Grpc
-		n.Security = pb.Security_MutualTLS
-		n.Ttl = 0
 		info.Nodes = []*pb.Node{n}
 
 		gt.RegistryID, err = box.registry.RegisterService(info, pb.ActionOnRegisterExistingService_AddNodes|pb.ActionOnRegisterExistingService_UpdateExisting)
@@ -75,7 +71,9 @@ func (box *Box) stopGateways() error {
 	defer box.serverMutex.Unlock()
 	for name, srv := range box.gateways {
 		err := srv.Stop()
-		log.Printf("name: %s\t state:stopped\t error:%s\n", name, err)
+		if err != nil {
+			log.Printf("name: %s\t state:stopped\t error:%s\n", name, err)
+		}
 	}
 	return nil
 }

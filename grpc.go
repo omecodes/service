@@ -36,7 +36,7 @@ func (box *Box) StartGatewayGRPCMapping(name string, forNode string, params *ser
 			return err
 		}
 
-		listener, err := box.listen(true, params.Port, params.Node.Security, params.Tls)
+		listener, err := box.listen(params.Port, params.Node.Security, params.Tls)
 		if err != nil {
 			return err
 		}
@@ -80,12 +80,10 @@ func (box *Box) StartGatewayGRPCMapping(name string, forNode string, params *ser
 				info.Name = box.Name()
 				info.Type = params.ServiceType
 
-				n := new(pb.Node)
-				n.Name = params.Name
+				n := params.Node
 				n.Address = address
 				n.Protocol = pb.Protocol_Grpc
 				n.Security = pb.Security_MutualTLS
-				n.Ttl = 0
 				info.Nodes = []*pb.Node{n}
 
 				gt.RegistryID, err = box.registry.RegisterService(info, pb.ActionOnRegisterExistingService_AddNodes|pb.ActionOnRegisterExistingService_UpdateExisting)
@@ -103,7 +101,7 @@ func (box *Box) StartService(params *server.ServiceParams) error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
 
-	listener, err := box.listen(false, params.Port, pb.Security_MutualTLS, params.Tls)
+	listener, err := box.listen(params.Port, pb.Security_MutualTLS, params.Tls)
 	if err != nil {
 		return err
 	}

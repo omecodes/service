@@ -17,7 +17,7 @@ func (s *sqlApplicationDAO) Save(application *pb2.Info) error {
 	if err != nil {
 		return err
 	}
-	name := fmt.Sprintf("%s:%s", application.Namespace, application.Name)
+	name := fmt.Sprintf("%s.%s", application.Namespace, application.Name)
 	err = s.Exec("insert", name, serialized).Error
 	if err != nil {
 		err = s.Exec("update", serialized, name).Error

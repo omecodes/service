@@ -5,8 +5,9 @@ package pb;
 import "google/api/annotations.proto";
 
 enum Protocol {
-    Grpc = 0;
-    Http = 1;
+    Unknown = 0;
+    Grpc = 1;
+    Http = 2;
 }
 
 enum Type {

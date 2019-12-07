@@ -3,11 +3,12 @@ package service
 import (
 	"crypto/tls"
 	"fmt"
+	"github.com/zoenion/service/errors"
 	pb "github.com/zoenion/service/proto"
 	"net"
 )
 
-func (box *Box) listen(web bool, port int, security pb.Security, tc *tls.Config) (net.Listener, error) {
+func (box *Box) listen(port int, security pb.Security, tc *tls.Config) (net.Listener, error) {
 	var (
 		listener net.Listener
 		err      error
@@ -27,10 +28,12 @@ func (box *Box) listen(web bool, port int, security pb.Security, tc *tls.Config)
 				return nil, err
 			}
 
-			if web {
+			if security == pb.Security_TLS {
 				tc = box.serverTLS()
-			} else {
+			} else if security == pb.Security_MutualTLS {
 				tc = box.serverMutualTLS()
+			} else {
+				return nil, errors.New("unsupported security type")
 			}
 		}
 		listener, err = tls.Listen("tcp", address, tc)

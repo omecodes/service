@@ -12,7 +12,6 @@ import (
 )
 
 type GatewayServiceMappingParams struct {
-	Name        string
 	ForNode     string
 	GRPCNodeID  string
 	Port        int
@@ -23,7 +22,6 @@ type GatewayServiceMappingParams struct {
 }
 
 type GatewayParams struct {
-	Name           string
 	MiddlewareList []mux.MiddlewareFunc
 	Port           int
 	ProvideRouter  func() *mux.Router
@@ -33,7 +31,6 @@ type GatewayParams struct {
 }
 
 type ServiceParams struct {
-	Name                string
 	Port                int
 	Tls                 *tls.Config
 	Interceptor         interceptors.GRPC

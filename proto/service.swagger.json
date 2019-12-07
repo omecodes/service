@@ -282,10 +282,11 @@
     "pbProtocol": {
       "type": "string",
       "enum": [
+        "Unknown",
         "Grpc",
         "Http"
       ],
-      "default": "Grpc"
+      "default": "Unknown"
     },
     "pbRegisterRequest": {
       "type": "object",
