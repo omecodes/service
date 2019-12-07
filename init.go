@@ -3,6 +3,7 @@ package service
 import (
 	"crypto/tls"
 	"fmt"
+	"github.com/zoenion/common/conf"
 	crypto2 "github.com/zoenion/common/crypto"
 	"github.com/zoenion/service/authentication"
 	"github.com/zoenion/service/discovery/default/client"
@@ -50,7 +51,7 @@ func (box *Box) Init(opts ...InitOption) error {
 
 	box.registry = options.registry
 	if options.registry == nil {
-		err = box.initRegistry()
+		err = box.initRegistry(options.RegistryServerDBConf)
 		if err != nil {
 			return errors.Errorf("could not initialize registry: %s", err)
 		}
@@ -96,7 +97,7 @@ func (box *Box) loadCACredentials() (err error) {
 	return
 }
 
-func (box *Box) initRegistry() (err error) {
+func (box *Box) initRegistry(dbCfg conf.Map) (err error) {
 	var registryHost string
 	if box.params.RegistryAddress == "" {
 		registryHost = box.Host()
@@ -114,6 +115,7 @@ func (box *Box) initRegistry() (err error) {
 		Name:        "registry",
 		BindAddress: box.Host(),
 		TLS:         box.serverMutualTLS(),
+		DB:          dbCfg,
 	}
 
 	syncedRegistry, err := server.New(cfg)

@@ -1,6 +1,9 @@
 package service
 
-import "github.com/zoenion/service/discovery"
+import (
+	"github.com/zoenion/common/conf"
+	"github.com/zoenion/service/discovery"
+)
 
 type Options struct {
 	afterStart []func() error
@@ -22,8 +25,9 @@ func WithAfterStop(f func()) Option {
 }
 
 type initOptions struct {
-	registry            discovery.Registry
-	credentialsProvider func(...string) string
+	registry             discovery.Registry
+	credentialsProvider  func(...string) string
+	RegistryServerDBConf conf.Map
 }
 
 type InitOption func(*initOptions)
@@ -31,5 +35,11 @@ type InitOption func(*initOptions)
 func WithCACredentialsProvider(cp func(...string) string) InitOption {
 	return func(opts *initOptions) {
 		opts.credentialsProvider = cp
+	}
+}
+
+func WithRegistryServerDBConf(cfg conf.Map) InitOption {
+	return func(options *initOptions) {
+		options.RegistryServerDBConf = cfg
 	}
 }
