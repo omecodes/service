@@ -2,6 +2,7 @@ package server
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/zoenion/service/interceptors"
@@ -40,20 +41,35 @@ func (s *Server) startGRPCServer() error {
 
 	addr := fmt.Sprintf("%s:9777", s.configs.BindAddress)
 
-	if s.configs.TLS == nil {
+	if s.configs.Certificate == nil {
 		s.gRPCListener, err = net.Listen("tcp", addr)
+
 	} else {
-		s.gRPCListener, err = tls.Listen("tcp", addr, s.configs.TLS)
+		pool := x509.NewCertPool()
+		pool.AddCert(s.configs.Certificate)
+
+		tlsCert := tls.Certificate{
+			Certificate: [][]byte{s.configs.Certificate.Raw},
+			PrivateKey:  s.configs.PrivateKey,
+		}
+
+		tc := &tls.Config{
+			Certificates: []tls.Certificate{tlsCert},
+			ClientAuth:   tls.RequireAndVerifyClientCert,
+			ServerName:   s.configs.Domain,
+			ClientCAs:    pool,
+		}
+
+		s.gRPCListener, err = tls.Listen("tcp", addr, tc)
 	}
 	if err != nil {
 		return err
 	}
 
-	address := s.gRPCListener.Addr().String()
 	srv := grpc.NewServer()
 	pb.RegisterRegistryServer(srv, s.gRPCHandler)
 
-	log.Println("starting Registry.gRPC at", address)
+	log.Println("starting Registry.gRPC at", addr)
 	go srv.Serve(s.gRPCListener)
 
 	return nil

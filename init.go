@@ -114,7 +114,9 @@ func (box *Box) initRegistry(dbCfg conf.Map) (err error) {
 	cfg := &server.Configs{
 		Name:        "registry",
 		BindAddress: box.Host(),
-		TLS:         box.serverMutualTLS(),
+		Certificate: box.ServiceCert(),
+		PrivateKey:  box.ServiceKey(),
+		Domain:      box.params.Domain,
 		DB:          dbCfg,
 	}
 

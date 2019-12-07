@@ -8,11 +8,11 @@ import (
 	"strings"
 )
 
-func (box *Box) StartGateway(name string, params *server.GatewayParams) error {
+func (box *Box) StartGateway(params *server.GatewayParams) error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
 
-	listener, err := box.listen(true, params.Port, pb.Security_None, params.Tls)
+	listener, err := box.listen(true, params.Port, params.Node.Security, params.Tls)
 	if err != nil {
 		return err
 	}
@@ -32,7 +32,7 @@ func (box *Box) StartGateway(name string, params *server.GatewayParams) error {
 		handler = router
 	}
 
-	log.Printf("starting %s.HTTP at %s", name, address)
+	log.Printf("starting %s.HTTP at %s", params.Node.Name, address)
 	srv := &http.Server{
 		Addr:    address,
 		Handler: handler,
@@ -46,10 +46,10 @@ func (box *Box) StartGateway(name string, params *server.GatewayParams) error {
 		gt.Scheme = "http"
 	}
 
-	box.gateways[name] = gt
+	box.gateways[params.Name] = gt
 	go srv.Serve(listener)
 
-	if !box.params.Autonomous && params.Node != nil && box.registry != nil {
+	if !box.params.Autonomous && box.registry != nil {
 		info := &pb.Info{}
 		info.Namespace = box.params.Namespace
 		info.Name = box.Name()

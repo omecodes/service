@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"flag"
 	"fmt"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
@@ -19,12 +20,33 @@ func (s *Server) startAPIServer() error {
 		err error
 	)
 
-	addr := fmt.Sprintf("%s:", s.configs.BindAddress)
+	addr := fmt.Sprintf("%s:9780", s.configs.BindAddress)
+	var opts []grpc.DialOption
 
-	if s.configs.TLS == nil {
+	if s.configs.Certificate == nil {
+		opts = []grpc.DialOption{grpc.WithInsecure()}
 		s.apiListener, err = net.Listen("tcp", addr)
+
 	} else {
-		s.apiListener, err = tls.Listen("tcp", addr, s.configs.TLS)
+		// HTTP server TLS config
+		tlsCert := tls.Certificate{
+			Certificate: [][]byte{s.configs.Certificate.Raw},
+			PrivateKey:  s.configs.PrivateKey,
+		}
+		tc := &tls.Config{
+			Certificates: []tls.Certificate{tlsCert},
+		}
+
+		// HTTP to gRPC mapping client TLS config
+		pool := x509.NewCertPool()
+		pool.AddCert(s.configs.Certificate)
+		clientTLS := &tls.Config{
+			Certificates: []tls.Certificate{tlsCert},
+			RootCAs:      pool,
+		}
+
+		opts = []grpc.DialOption{grpc.WithTransportCredentials(credentials.NewTLS(clientTLS))}
+		s.apiListener, err = tls.Listen("tcp", addr, tc)
 	}
 	if err != nil {
 		return err
@@ -35,14 +57,13 @@ func (s *Server) startAPIServer() error {
 
 	ctx := context.Background()
 	mux := runtime.NewServeMux()
-	opts := []grpc.DialOption{grpc.WithTransportCredentials(credentials.NewTLS(s.configs.TLS))}
 
-	err = pb.RegisterCSRHandlerFromEndpoint(ctx, mux, *grpcServerEndpoint, opts)
+	err = pb.RegisterRegistryHandlerFromEndpoint(ctx, mux, *grpcServerEndpoint, opts)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("starting %s.HTTP at %s", s.configs.BindAddress, address)
+	log.Printf("starting Registry.HTTP at %s", addr)
 	srv := &http.Server{
 		Addr:    s.apiListener.Addr().String(),
 		Handler: mux,

@@ -1,10 +1,12 @@
 package server
 
 import (
+	"crypto"
 	"crypto/tls"
+	"crypto/x509"
 	"github.com/zoenion/common/conf"
-	"github.com/zoenion/registry/server/dao"
 	"github.com/zoenion/service/discovery"
+	"github.com/zoenion/service/discovery/default/server/dao"
 	"github.com/zoenion/service/errors"
 	"github.com/zoenion/service/interceptors"
 	"log"
@@ -29,8 +31,11 @@ type Server struct {
 type Configs struct {
 	Name        string
 	BindAddress string
-	TLS         *tls.Config
-	DB          conf.Map
+	Certificate *x509.Certificate
+	PrivateKey  crypto.PrivateKey
+	Domain      string
+	//TLS         *tls.Config
+	DB conf.Map
 }
 
 func New(configs *Configs) (*Server, error) {

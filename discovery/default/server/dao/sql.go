@@ -6,7 +6,6 @@ import (
 	"github.com/zoenion/common/conf"
 	"github.com/zoenion/common/dao"
 	pb2 "github.com/zoenion/service/proto"
-	"log"
 )
 
 type sqlApplicationDAO struct {
@@ -22,9 +21,6 @@ func (s *sqlApplicationDAO) Save(application *pb2.Info) error {
 	err = s.Exec("insert", name, serialized).Error
 	if err != nil {
 		err = s.Exec("update", serialized, name).Error
-		if err == nil {
-			log.Printf("updated %s service\n", name)
-		}
 	}
 	return err
 }

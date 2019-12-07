@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/zoenion/common/errors"
-	"github.com/zoenion/registry/server/dao"
 	"github.com/zoenion/service/discovery"
+	"github.com/zoenion/service/discovery/default/server/dao"
 	pb2 "github.com/zoenion/service/proto"
 	"log"
 	"sync"
@@ -83,16 +83,18 @@ func (h *gRPCServerHandler) Register(ctx context.Context, in *pb2.RegisterReques
 		return nil, err
 	}
 
-	event := &pb2.Event{
-		Info: in.Service,
-		Type: pb2.EventType_Registered,
-		Name: id,
-	}
+	if broadcastEnabled(ctx) {
+		event := &pb2.Event{
+			Info: in.Service,
+			Type: pb2.EventType_Registered,
+			Name: id,
+		}
 
-	if exists {
-		event.Type = pb2.EventType_Updated
+		if exists {
+			event.Type = pb2.EventType_Updated
+		}
+		h.broadcastEvent(event)
 	}
-	h.broadcastEvent(event)
 	return &pb2.RegisterResponse{RegistryId: id}, nil
 }
 
@@ -110,11 +112,14 @@ func (h *gRPCServerHandler) Deregister(ctx context.Context, in *pb2.DeregisterRe
 		if err != nil {
 			return nil, err
 		}
-		event = &pb2.Event{
-			Type: pb2.EventType_DeRegistered,
-			Name: in.RegistryId,
+
+		if broadcastEnabled(ctx) {
+			event = &pb2.Event{
+				Type: pb2.EventType_DeRegistered,
+				Name: in.RegistryId,
+			}
+			h.broadcastEvent(event)
 		}
-		h.broadcastEvent(event)
 
 	} else {
 		var info *pb2.Info
@@ -136,14 +141,16 @@ func (h *gRPCServerHandler) Deregister(ctx context.Context, in *pb2.DeregisterRe
 			if !deleted {
 				newNodes = append(newNodes, node)
 			} else {
-				event = &pb2.Event{
-					Type: pb2.EventType_DeRegisteredNode,
-					Name: in.RegistryId,
-					Info: &pb2.Info{
-						Nodes: []*pb2.Node{node},
-					},
+				if broadcastEnabled(ctx) {
+					event = &pb2.Event{
+						Type: pb2.EventType_DeRegisteredNode,
+						Name: in.RegistryId,
+						Info: &pb2.Info{
+							Nodes: []*pb2.Node{node},
+						},
+					}
+					h.broadcastEvent(event)
 				}
-				h.broadcastEvent(event)
 			}
 		}
 
