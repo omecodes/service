@@ -40,10 +40,6 @@ type SyncedRegistry struct {
 	syncing bool
 }
 
-func (r *SyncedRegistry) DeregisterNode(name string) error {
-	panic("implement me")
-}
-
 func (r *SyncedRegistry) Disconnect() error {
 	r.stop = true
 	r.disconnected()

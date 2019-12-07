@@ -31,9 +31,6 @@ func (r *client) RegisterService(i *pb2.Info, action pb2.ActionOnRegisterExistin
 
 func (r *client) DeregisterService(id string, nodes ...string) error {
 	_, err := r.handler.Deregister(withBroadcastEnabled(context.Background(), false), &pb2.DeregisterRequest{RegistryId: id, Nodes: nodes})
-	if err == nil {
-		log.Println("[Registry]:\tDeregistered")
-	}
 	return err
 }
 
