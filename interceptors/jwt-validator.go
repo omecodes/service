@@ -6,7 +6,7 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-type JwtVerifyFunc func(ctx context.Context, jwt string) error
+type JwtVerifyFunc func(ctx context.Context, jwt string) (context.Context, error)
 
 type Jwt struct {
 	acceptAnonymous bool
@@ -33,8 +33,7 @@ func (j *Jwt) Validate(ctx context.Context) (context.Context, error) {
 		return ctx, nil
 	}
 
-	err := j.verifyFunc(ctx, authorization)
-	return ctx, err
+	return j.verifyFunc(ctx, authorization)
 }
 
 func NewJwt(verifyFunc JwtVerifyFunc, acceptAnonymous bool) *Jwt {

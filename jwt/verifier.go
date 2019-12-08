@@ -24,7 +24,6 @@ type jwtVerifier struct {
 	serviceCert    *x509.Certificate
 	serviceKey     crypto.PrivateKey
 	cacheDir       string
-	withValidated  authpb.WithTokenValidated
 }
 
 func (j *jwtVerifier) Verify(ctx context.Context, t *authpb.JWT) (authpb.JWTState, error) {
@@ -43,7 +42,7 @@ func (j *jwtVerifier) Verify(ctx context.Context, t *authpb.JWT) (authpb.JWTStat
 			return 0, errors.Forbidden
 		}
 
-		verifier = authpb.NewTokenVerifier(issCert, j.withValidated)
+		verifier = authpb.NewTokenVerifier(issCert)
 		j.saveJwtVerifier(t.Claims.Iss, verifier)
 	}
 
@@ -115,7 +114,7 @@ func (j *jwtVerifier) saveStore(name string, s *SyncedStore) {
 	j.syncedStores[name] = s
 }
 
-func NewVerifier(caCert, cert *x509.Certificate, privateKey crypto.PrivateKey, registry discovery.Registry, cacheDir string, withValidated authpb.WithTokenValidated) authpb.TokenVerifier {
+func NewVerifier(caCert, cert *x509.Certificate, privateKey crypto.PrivateKey, registry discovery.Registry, cacheDir string) authpb.TokenVerifier {
 	verifier := &jwtVerifier{
 		tokenVerifiers: map[string]authpb.TokenVerifier{},
 		syncedStores:   map[string]*SyncedStore{},
@@ -124,7 +123,6 @@ func NewVerifier(caCert, cert *x509.Certificate, privateKey crypto.PrivateKey, r
 		serviceKey:     privateKey,
 		serviceCert:    cert,
 		CaCert:         caCert,
-		withValidated:  withValidated,
 	}
 	return verifier
 }
