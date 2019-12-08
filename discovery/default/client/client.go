@@ -226,7 +226,6 @@ func (r *SyncedRegistry) connect() error {
 	} else {
 		opts = append(opts, grpc.WithInsecure())
 	}
-	opts = append(opts, grpc.WithBackoffMaxDelay(time.Second))
 
 	var err error
 	r.conn, err = grpc.Dial(r.serverAddress, opts...)

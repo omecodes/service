@@ -83,7 +83,7 @@ func (h *gRPCServerHandler) Register(ctx context.Context, in *pb2.RegisterReques
 		return nil, err
 	}
 
-	if broadcastEnabled(ctx) {
+	if !broadcastDisabled(ctx) {
 		event := &pb2.Event{
 			Info: in.Service,
 			Type: pb2.EventType_Registered,
@@ -113,7 +113,7 @@ func (h *gRPCServerHandler) Deregister(ctx context.Context, in *pb2.DeregisterRe
 			return nil, err
 		}
 
-		if broadcastEnabled(ctx) {
+		if !broadcastDisabled(ctx) {
 			event = &pb2.Event{
 				Type: pb2.EventType_DeRegistered,
 				Name: in.RegistryId,
@@ -141,7 +141,7 @@ func (h *gRPCServerHandler) Deregister(ctx context.Context, in *pb2.DeregisterRe
 			if !deleted {
 				newNodes = append(newNodes, node)
 			} else {
-				if broadcastEnabled(ctx) {
+				if !broadcastDisabled(ctx) {
 					event = &pb2.Event{
 						Type: pb2.EventType_DeRegisteredNode,
 						Name: in.RegistryId,
@@ -245,6 +245,7 @@ func (h *gRPCServerHandler) Listen(in *pb2.ListenRequest, stream pb2.Registry_Li
 
 		err = stream.Send(ev)
 		if err != nil {
+			log.Println("failed to stream event:", ev, err)
 			_ = c.Close()
 			return err
 		}
@@ -264,6 +265,7 @@ func (h *gRPCServerHandler) Listen(in *pb2.ListenRequest, stream pb2.Registry_Li
 		}
 
 		log.Println(e.Type, e.Name)
+
 		err := stream.Send(e)
 		if err != nil {
 			return fmt.Errorf("could not send event: %s", err)

@@ -5,11 +5,11 @@ import "context"
 type ctxType string
 
 const (
-	contextBroadcastEnabled = ctxType("broadcastEnabled")
+	contextBroadcastDisabled = ctxType("broadcastDisabled")
 )
 
-func broadcastEnabled(ctx context.Context) bool {
-	val := ctx.Value(contextBroadcastEnabled)
+func broadcastDisabled(ctx context.Context) bool {
+	val := ctx.Value(contextBroadcastDisabled)
 	if val == nil {
 		return false
 	}
@@ -18,6 +18,6 @@ func broadcastEnabled(ctx context.Context) bool {
 	return castOK && boolVal
 }
 
-func withBroadcastEnabled(ctx context.Context, enabled bool) context.Context {
-	return context.WithValue(ctx, contextBroadcastEnabled, enabled)
+func withBroadcastEnabled(ctx context.Context, disabled bool) context.Context {
+	return context.WithValue(ctx, contextBroadcastDisabled, disabled)
 }
