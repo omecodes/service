@@ -3,7 +3,7 @@ package interceptors
 import (
 	"context"
 	"encoding/base64"
-	"github.com/zoenion/service/errors"
+	"github.com/zoenion/common/errors"
 	"google.golang.org/grpc/metadata"
 	"strings"
 )

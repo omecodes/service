@@ -3,8 +3,8 @@ package server
 import (
 	"github.com/iancoleman/strcase"
 	"github.com/zoenion/common/database"
+	"github.com/zoenion/common/errors"
 	"github.com/zoenion/service/discovery/default/server/dao"
-	"github.com/zoenion/service/errors"
 )
 
 func (s *Server) initDB() error {

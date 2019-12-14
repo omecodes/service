@@ -3,7 +3,7 @@ package service
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/zoenion/service/errors"
+	"github.com/zoenion/common/errors"
 	pb "github.com/zoenion/service/proto"
 	"net"
 )

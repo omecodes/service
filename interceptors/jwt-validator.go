@@ -2,7 +2,7 @@ package interceptors
 
 import (
 	"context"
-	"github.com/zoenion/service/errors"
+	"github.com/zoenion/common/errors"
 	"google.golang.org/grpc/metadata"
 )
 

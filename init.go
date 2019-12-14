@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"github.com/zoenion/common/conf"
 	crypto2 "github.com/zoenion/common/crypto"
+	"github.com/zoenion/common/errors"
 	"github.com/zoenion/service/authentication"
 	"github.com/zoenion/service/discovery/default/client"
 	"github.com/zoenion/service/discovery/default/server"
-	"github.com/zoenion/service/errors"
 	"google.golang.org/grpc/credentials"
 	"strings"
 )
