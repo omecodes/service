@@ -151,10 +151,9 @@
               "CA",
               "Auth",
               "Organization",
-              "TokenDB",
-              "UserDatabase",
-              "FileStorage",
-              "ServiceProvider"
+              "TokenStore",
+              "Data",
+              "FileStorage"
             ],
             "default": "UnknownType"
           }
@@ -334,10 +333,9 @@
         "CA",
         "Auth",
         "Organization",
-        "TokenDB",
-        "UserDatabase",
-        "FileStorage",
-        "ServiceProvider"
+        "TokenStore",
+        "Data",
+        "FileStorage"
       ],
       "default": "UnknownType"
     },

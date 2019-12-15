@@ -130,6 +130,7 @@ func (box *Box) StartService(params *server.ServiceParams) error {
 		info.Name = box.Name()
 		info.Label = box.Name()
 		info.Type = params.ServiceType
+		info.Meta = params.Meta
 
 		params.Node.Address = address
 		info.Nodes = []*pb.Node{params.Node}

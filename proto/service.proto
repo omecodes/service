@@ -15,10 +15,9 @@ enum Type {
     CA = 1;
     Auth = 2;
     Organization = 3;
-    TokenDB = 4;
-    UserDatabase = 5;
+    TokenStore = 4;
+    Data = 5;
     FileStorage = 6;
-    ServiceProvider = 7;
 }
 
 enum Security {

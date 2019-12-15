@@ -3,8 +3,8 @@ package client
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
 	"github.com/google/uuid"
+	"github.com/zoenion/common"
 	"github.com/zoenion/common/clone"
 	"github.com/zoenion/common/errors"
 	"github.com/zoenion/service/discovery"
@@ -89,8 +89,8 @@ func (r *SyncedRegistry) Certificate(id string) ([]byte, error) {
 	defer r.servicesLock.Unlock()
 
 	for _, s := range r.services {
-		if id == fmt.Sprintf("%s.%s", s.Namespace, s.Name) {
-			strCert, found := s.Meta["certificate"]
+		if id == r.idGenerator.GenerateID(s.Namespace, s.Name) {
+			strCert, found := s.Meta[common.MetaServiceCertificate]
 			if !found {
 				return nil, errors.NotFound
 			}
@@ -107,7 +107,7 @@ func (r *SyncedRegistry) ConnectionInfo(id string, protocol pb2.Protocol) (*pb2.
 	ci := new(pb2.ConnectionInfo)
 
 	for _, s := range r.services {
-		if id == r.idGenerator.GenerateID(s) {
+		if id == r.idGenerator.GenerateID(s.Namespace, s.Name) {
 			for _, n := range s.Nodes {
 				if protocol == n.Protocol {
 					ci.Address = n.Address
@@ -189,7 +189,7 @@ func (r *SyncedRegistry) ofNamespace(namespace string) []*pb2.Info {
 func (r *SyncedRegistry) saveService(info *pb2.Info) {
 	r.servicesLock.Lock()
 	defer r.servicesLock.Unlock()
-	r.services[info.Namespace+":"+info.Name] = info
+	r.services[r.idGenerator.GenerateID(info.Namespace, info.Name)] = info
 }
 
 func (r *SyncedRegistry) deleteService(name string) {
@@ -316,11 +316,12 @@ func (r *SyncedRegistry) disconnected() {
 	r.services = nil
 }
 
-func NewSyncedRegistryClient(server string, tlsConfig *tls.Config) *SyncedRegistry {
+func NewSyncedRegistryClient(server string, tlsConfig *tls.Config, generator discovery.IDGenerator) *SyncedRegistry {
 	return &SyncedRegistry{
 		services:      map[string]*pb2.Info{},
 		tlsConfig:     tlsConfig,
 		serverAddress: server,
+		idGenerator:   generator,
 		eventHandlers: map[string]discovery.RegistryEventHandler{},
 	}
 }

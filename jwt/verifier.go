@@ -3,12 +3,14 @@ package jwt
 import (
 	"context"
 	"crypto"
+	"crypto/ecdsa"
 	"crypto/x509"
 	"fmt"
+	"github.com/zoenion/common"
+	crypto2 "github.com/zoenion/common/crypto"
 	"github.com/zoenion/common/errors"
 	authpb "github.com/zoenion/common/proto/auth"
 	"github.com/zoenion/service/discovery"
-	"log"
 	"sync"
 )
 
@@ -31,18 +33,18 @@ func (j *jwtVerifier) Verify(ctx context.Context, t *authpb.JWT) (authpb.JWTStat
 
 	verifier := j.getJwtVerifier(issuer)
 	if verifier == nil {
-		issCertBytes, err := j.registry.Certificate(issuer)
+		s, err := j.registry.GetService(issuer)
 		if err != nil {
 			return 0, errors.Forbidden
 		}
 
-		issCert, err := x509.ParseCertificate(issCertBytes)
+		encodedKey := s.Meta[common.MetaTokenVerifyingKey]
+		key, _, err := crypto2.PEMDecodePublicKey([]byte(encodedKey))
 		if err != nil {
-			log.Println("could not parse issuer certificate:", err)
-			return 0, errors.Forbidden
+			return 0, err
 		}
 
-		verifier = authpb.NewTokenVerifier(issCert)
+		verifier = authpb.NewTokenVerifier(key.(*ecdsa.PublicKey))
 		j.saveJwtVerifier(t.Claims.Iss, verifier)
 	}
 

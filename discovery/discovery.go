@@ -5,7 +5,19 @@ import (
 )
 
 type IDGenerator interface {
-	GenerateID(info *pb2.Info) string
+	GenerateID(namespace, name string) string
+}
+
+type idGeneratorFunc struct {
+	f func(string, string) string
+}
+
+func (ig *idGeneratorFunc) GenerateID(namespace, name string) string {
+	return ig.f(namespace, name)
+}
+
+func IDGeneratorFunc(generateFunc func(string, string) string) IDGenerator {
+	return &idGeneratorFunc{f: generateFunc}
 }
 
 type RegistryEventHandler interface {

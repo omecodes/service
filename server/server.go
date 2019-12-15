@@ -36,6 +36,7 @@ type ServiceParams struct {
 	Interceptor         interceptors.GRPC
 	RegisterHandlerFunc func(*grpc.Server)
 	ServiceType         pb.Type
+	Meta                map[string]string
 	Node                *pb.Node
 }
 

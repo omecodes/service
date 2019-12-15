@@ -26,7 +26,7 @@ func (h *gRPCServerHandler) Register(ctx context.Context, in *pb2.RegisterReques
 	defer h.Unlock()
 
 	var exists bool
-	id := h.idGenerator.GenerateID(in.Service)
+	id := h.idGenerator.GenerateID(in.Service.Namespace, in.Service.Name)
 	info, err := h.dao.Find(id)
 	if err != nil {
 		if err != errors.NotFound {
@@ -239,7 +239,7 @@ func (h *gRPCServerHandler) Listen(in *pb2.ListenRequest, stream pb2.Registry_Li
 		i := o.(*pb2.Info)
 		ev := &pb2.Event{
 			Type: pb2.EventType_Registered,
-			Name: h.idGenerator.GenerateID(i),
+			Name: h.idGenerator.GenerateID(i.Namespace, i.Name),
 			Info: i,
 		}
 
@@ -316,10 +316,10 @@ func (h *gRPCServerHandler) Stop() {
 	}
 }
 
-func NewGRPCServerHandler(dao dao.ServicesDAO) *gRPCServerHandler {
+func NewGRPCServerHandler(dao dao.ServicesDAO, generator discovery.IDGenerator) *gRPCServerHandler {
 	return &gRPCServerHandler{
 		listeners:   map[int]chan *pb2.Event{},
 		dao:         dao,
-		idGenerator: idGenerator(0),
+		idGenerator: generator,
 	}
 }

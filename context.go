@@ -105,7 +105,7 @@ func ClientTLSConfig(ctx context.Context) *tls.Config {
 	if box == nil {
 		return nil
 	}
-	return box.clientMutualTLS()
+	return box.ClientMutualTLS()
 }
 
 func RequestUser(ctx context.Context) (string, bool) {

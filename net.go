@@ -29,7 +29,7 @@ func (box *Box) listen(port int, security pb.Security, tc *tls.Config) (net.List
 			}
 
 			if security == pb.Security_TLS {
-				tc = box.serverTLS()
+				tc = box.ServerTLS()
 			} else if security == pb.Security_MutualTLS {
 				tc = box.serverMutualTLS()
 			} else {

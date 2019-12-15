@@ -65,18 +65,16 @@ func (r *client) ConnectionInfo(id string, protocol pb2.Protocol) (*pb2.Connecti
 	ci := new(pb2.ConnectionInfo)
 
 	for _, s := range r.services() {
-		if id == r.idGenerator.GenerateID(s) {
-			if id == r.idGenerator.GenerateID(s) {
-				for _, n := range s.Nodes {
-					if protocol == n.Protocol {
-						ci.Address = n.Address
-						strCert, found := s.Meta["certificate"]
-						if !found {
-							return ci, nil
-						}
-						ci.Certificate = []byte(strCert)
+		if id == r.idGenerator.GenerateID(s.Namespace, s.Name) {
+			for _, n := range s.Nodes {
+				if protocol == n.Protocol {
+					ci.Address = n.Address
+					strCert, found := s.Meta["certificate"]
+					if !found {
 						return ci, nil
 					}
+					ci.Certificate = []byte(strCert)
+					return ci, nil
 				}
 			}
 		}

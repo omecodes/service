@@ -193,7 +193,7 @@ func (box *Box) serverMutualTLS() *tls.Config {
 	}
 }
 
-func (box *Box) serverTLS() *tls.Config {
+func (box *Box) ServerTLS() *tls.Config {
 	if box.privateKey == nil || box.cert == nil || box.caCert == nil && !box.params.CA {
 		return nil
 	}
@@ -207,7 +207,7 @@ func (box *Box) serverTLS() *tls.Config {
 	}
 }
 
-func (box *Box) clientMutualTLS() *tls.Config {
+func (box *Box) ClientMutualTLS() *tls.Config {
 	if box.privateKey == nil || box.cert == nil || box.caCert == nil && !box.params.CA {
 		return nil
 	}
@@ -227,7 +227,7 @@ func (box *Box) clientMutualTLS() *tls.Config {
 	}
 }
 
-func (box *Box) gatewayToGRPCClientTls() *tls.Config {
+func (box *Box) GatewayToGRPCClientTls() *tls.Config {
 	if box.caCert != nil {
 		CAPool := x509.NewCertPool()
 		CAPool.AddCert(box.caCert)

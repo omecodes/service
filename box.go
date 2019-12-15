@@ -50,6 +50,10 @@ func (box *Box) Name() string {
 	return box.params.Name
 }
 
+func (box *Box) FullName() string {
+	return FullName(box.params.Namespace, box.params.Name)
+}
+
 func (box *Box) Dir() string {
 	return box.params.Dir
 }
