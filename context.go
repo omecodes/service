@@ -64,6 +64,14 @@ func Registry(ctx context.Context) discovery.Registry {
 	return box.registry
 }
 
+func Namespace(ctx context.Context) string {
+	box := serviceBox(ctx)
+	if box == nil {
+		return ""
+	}
+	return box.params.Namespace
+}
+
 func Name(ctx context.Context) string {
 	box := serviceBox(ctx)
 	if box == nil {
