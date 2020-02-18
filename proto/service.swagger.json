@@ -4,10 +4,6 @@
     "title": "service.proto",
     "version": "version not set"
   },
-  "schemes": [
-    "http",
-    "https"
-  ],
   "consumes": [
     "application/json"
   ],
@@ -153,7 +149,8 @@
               "Organization",
               "TokenStore",
               "Data",
-              "FileStorage"
+              "FileStorage",
+              "AppStore"
             ],
             "default": "UnknownType"
           }
@@ -335,7 +332,8 @@
         "Organization",
         "TokenStore",
         "Data",
-        "FileStorage"
+        "FileStorage",
+        "AppStore"
       ],
       "default": "UnknownType"
     },
@@ -375,20 +373,6 @@
           }
         }
       }
-    }
-  },
-  "x-stream-definitions": {
-    "pbEvent": {
-      "type": "object",
-      "properties": {
-        "result": {
-          "$ref": "#/definitions/pbEvent"
-        },
-        "error": {
-          "$ref": "#/definitions/runtimeStreamError"
-        }
-      },
-      "title": "Stream result of pbEvent"
     }
   }
 }

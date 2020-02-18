@@ -96,7 +96,7 @@ func (g *gRPCBinding) Router() (*mux.Router, error) {
 		return nil, err
 	}
 
-	var handler http.HandlerFunc
+	var handler http.Handler
 
 	if len(g.middlewareList) > 0 {
 		m := g.middlewareList[0]
@@ -104,9 +104,9 @@ func (g *gRPCBinding) Router() (*mux.Router, error) {
 		for _, mid := range g.middlewareList[1:] {
 			hf = mid(hf)
 		}
-		handler = xhttp.HttpBasicMiddlewareStack(context.Background(), hf, nil)
+		handler = xhttp.Logger(hf)
 	} else {
-		handler = xhttp.HttpBasicMiddlewareStack(context.Background(), serverMux.ServeHTTP, nil)
+		handler = xhttp.Logger(serverMux)
 	}
 
 	mr := mux.NewRouter()

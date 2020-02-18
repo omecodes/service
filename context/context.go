@@ -9,4 +9,8 @@ const (
 	//UserAgent      = Key("user-agent")
 	//PeerAddress    = Key("peer-address")
 	ServiceContext = Key("service-context")
+
+	AuthorizationToken    = Key("Authorization-Token")
+	StrAuthorizationToken = Key("St-Authorization-Token")
+	Credentials           = Key("Credentials")
 )

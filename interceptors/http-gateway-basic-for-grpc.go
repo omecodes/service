@@ -6,11 +6,11 @@ import (
 	"net/http"
 )
 
-type ServerBasic struct {
+type basicAuthForGRPC struct {
 	realm, username, password, gatewaySecret string
 }
 
-func (sb *ServerBasic) Handle(next http.HandlerFunc) http.HandlerFunc {
+func (sb *basicAuthForGRPC) Handle(next http.HandlerFunc) http.HandlerFunc {
 	reqAuth := &xhttp.RequireAuth{
 		Realm: sb.realm,
 		Type:  "Basic",
@@ -36,8 +36,8 @@ func (sb *ServerBasic) Handle(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func NewServerBasic(gatewaySecret, realm, username, password string) *ServerBasic {
-	return &ServerBasic{
+func NewServerBasic(gatewaySecret, realm, username, password string) *basicAuthForGRPC {
+	return &basicAuthForGRPC{
 		realm:         realm,
 		username:      username,
 		password:      password,
