@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"github.com/zoenion/common/conf"
 	crypto2 "github.com/zoenion/common/crypto"
+	"github.com/zoenion/common/database"
 	"github.com/zoenion/common/errors"
 	"github.com/zoenion/service/authentication"
 	"github.com/zoenion/service/discovery"
-	"github.com/zoenion/service/discovery/default/client"
-	"github.com/zoenion/service/discovery/default/server"
+	"github.com/zoenion/service/discovery/registry"
 	"google.golang.org/grpc/credentials"
+	"path/filepath"
 	"strings"
 )
 
@@ -52,6 +53,10 @@ func (box *Box) Init(opts ...InitOption) error {
 
 	box.registry = options.registry
 	if options.registry == nil {
+		if options.RegistryServerDBConf == nil {
+			options.RegistryServerDBConf = database.SQLiteConfig(filepath.Join(box.params.Dir, "registry.db"))
+		}
+
 		err = box.initRegistry(options.RegistryServerDBConf)
 		if err != nil {
 			return errors.Errorf("could not initialize registry: %s", err)
@@ -112,7 +117,7 @@ func (box *Box) initRegistry(dbCfg conf.Map) (err error) {
 		registryHost = parts[0]
 	}
 
-	cfg := &server.Configs{
+	cfg := &registry.Configs{
 		Name:        "registry",
 		BindAddress: box.Host(),
 		Certificate: box.ServiceCert(),
@@ -122,20 +127,27 @@ func (box *Box) initRegistry(dbCfg conf.Map) (err error) {
 		DB:          dbCfg,
 	}
 
-	syncedRegistry, err := server.New(cfg)
-	if err == nil {
-		err = syncedRegistry.Start()
+	if box.params.StartRegistry {
+
 	}
 
-	if err != nil {
-		syncedRegistry = nil
-		err = nil
+	var syncedRegistry *registry.Server = nil
+	if box.params.StartRegistry {
+		syncedRegistry, err = registry.NewServer(cfg)
+		if err == nil {
+			err = syncedRegistry.Start()
+		}
+
+		if err != nil {
+			syncedRegistry = nil
+			err = nil
+		}
 	}
 
 	if syncedRegistry == nil || registryHost != "" && registryHost != RegistryDefaultHost && registryHost != box.Host() {
 		var tc *tls.Config
 		tc = box.ClientMutualTLS()
-		box.registry = client.NewSyncedRegistryClient(box.params.RegistryAddress, tc, discovery.IDGeneratorFunc(FullName))
+		box.registry = registry.NewSyncedRegistryClient(box.params.RegistryAddress, tc, discovery.IDGeneratorFunc(FullName))
 	} else {
 		box.registry = syncedRegistry.Client()
 	}

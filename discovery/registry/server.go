@@ -1,4 +1,4 @@
-package server
+package registry
 
 import (
 	"crypto"
@@ -7,7 +7,7 @@ import (
 	"github.com/zoenion/common/conf"
 	"github.com/zoenion/common/errors"
 	"github.com/zoenion/service/discovery"
-	"github.com/zoenion/service/discovery/default/server/dao"
+	"github.com/zoenion/service/discovery/registry/dao"
 	"github.com/zoenion/service/interceptors"
 	"log"
 	"net"
@@ -39,7 +39,7 @@ type Configs struct {
 	DB        conf.Map
 }
 
-func New(configs *Configs) (*Server, error) {
+func NewServer(configs *Configs) (*Server, error) {
 	s := new(Server)
 	s.configs = configs
 

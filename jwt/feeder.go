@@ -13,7 +13,7 @@ type Feeder struct {
 	serverAddress string
 	tlsConfig     *tls.Config
 	conn          *grpc.ClientConn
-	stream        authpb.JWTStore_FeedClient
+	stream        authpb.TokenStoreService_FeedClient
 }
 
 func (f *Feeder) connect() (err error) {
@@ -35,7 +35,7 @@ func (f *Feeder) Register(info *authpb.JwtInfo) (err error) {
 	}
 
 	if f.stream == nil {
-		client := authpb.NewJWTStoreClient(f.conn)
+		client := authpb.NewTokenStoreServiceClient(f.conn)
 		f.stream, err = client.Feed(context.Background())
 		if err != nil {
 			return
@@ -54,7 +54,7 @@ func (f *Feeder) Revoke(jti string) (err error) {
 	}
 
 	if f.stream == nil {
-		client := authpb.NewJWTStoreClient(f.conn)
+		client := authpb.NewTokenStoreServiceClient(f.conn)
 		f.stream, err = client.Feed(context.Background())
 		if err != nil {
 			return

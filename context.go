@@ -6,8 +6,11 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"github.com/zoenion/common/errors"
 	context2 "github.com/zoenion/service/context"
 	"github.com/zoenion/service/discovery"
+	pb "github.com/zoenion/service/proto"
+	"google.golang.org/grpc"
 )
 
 type contextKey string
@@ -122,6 +125,14 @@ func RequestUser(ctx context.Context) (string, bool) {
 		return user, true
 	}
 	return "", false
+}
+
+func Dial(ctx context.Context, st pb.Type, selectors ...pb.Selector) (*grpc.ClientConn, error) {
+	box := serviceBox(ctx)
+	if box == nil {
+		return nil, errors.New("no service box associated to context")
+	}
+	return box.dialToService(st, selectors...)
 }
 
 func ContextWithUser(ctx context.Context, user string) context.Context {

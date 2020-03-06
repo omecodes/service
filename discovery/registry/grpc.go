@@ -1,4 +1,4 @@
-package server
+package registry
 
 import (
 	"crypto/tls"
@@ -70,7 +70,12 @@ func (s *Server) startGRPCServer() error {
 	pb.RegisterRegistryServer(srv, s.gRPCHandler)
 
 	log.Println("starting Registry.gRPC at", addr)
-	go srv.Serve(s.gRPCListener)
+	go func() {
+		err = srv.Serve(s.gRPCListener)
+		if err != nil {
+			log.Println("could not start registry server:", err)
+		}
+	}()
 
 	return nil
 }

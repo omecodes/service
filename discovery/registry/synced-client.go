@@ -1,4 +1,4 @@
-package client
+package registry
 
 import (
 	"context"
@@ -21,7 +21,7 @@ type RegistryEventHandler interface {
 	Handle(*pb2.Event)
 }
 
-type SyncedRegistry struct {
+type SyncedClient struct {
 	servicesLock sync.Mutex
 	handlersLock sync.Mutex
 	syncMutex    sync.Mutex
@@ -40,7 +40,7 @@ type SyncedRegistry struct {
 	syncing bool
 }
 
-func (r *SyncedRegistry) Disconnect() error {
+func (r *SyncedClient) Disconnect() error {
 	r.stop = true
 	r.disconnected()
 	if r.conn != nil {
@@ -49,7 +49,7 @@ func (r *SyncedRegistry) Disconnect() error {
 	return nil
 }
 
-func (r *SyncedRegistry) RegisterService(i *pb2.Info, action pb2.ActionOnRegisterExistingService) (string, error) {
+func (r *SyncedClient) RegisterService(i *pb2.Info, action pb2.ActionOnRegisterExistingService) (string, error) {
 	err := r.connect()
 	if err != nil {
 		return "", err
@@ -66,7 +66,7 @@ func (r *SyncedRegistry) RegisterService(i *pb2.Info, action pb2.ActionOnRegiste
 	return rsp.RegistryId, nil
 }
 
-func (r *SyncedRegistry) DeregisterService(id string, nodes ...string) error {
+func (r *SyncedClient) DeregisterService(id string, nodes ...string) error {
 	err := r.connect()
 	if err != nil {
 		return err
@@ -80,11 +80,11 @@ func (r *SyncedRegistry) DeregisterService(id string, nodes ...string) error {
 	return err
 }
 
-func (r *SyncedRegistry) GetService(id string) (*pb2.Info, error) {
+func (r *SyncedClient) GetService(id string) (*pb2.Info, error) {
 	return r.get(id), nil
 }
 
-func (r *SyncedRegistry) Certificate(id string) ([]byte, error) {
+func (r *SyncedClient) Certificate(id string) ([]byte, error) {
 	r.servicesLock.Lock()
 	defer r.servicesLock.Unlock()
 
@@ -100,7 +100,7 @@ func (r *SyncedRegistry) Certificate(id string) ([]byte, error) {
 	return nil, errors.NotFound
 }
 
-func (r *SyncedRegistry) ConnectionInfo(id string, protocol pb2.Protocol) (*pb2.ConnectionInfo, error) {
+func (r *SyncedClient) ConnectionInfo(id string, protocol pb2.Protocol) (*pb2.ConnectionInfo, error) {
 	r.servicesLock.Lock()
 	defer r.servicesLock.Unlock()
 
@@ -124,7 +124,7 @@ func (r *SyncedRegistry) ConnectionInfo(id string, protocol pb2.Protocol) (*pb2.
 	return nil, errors.NotFound
 }
 
-func (r *SyncedRegistry) RegisterEventHandler(h discovery.RegistryEventHandler) string {
+func (r *SyncedClient) RegisterEventHandler(h discovery.RegistryEventHandler) string {
 	r.handlersLock.Lock()
 	defer r.handlersLock.Unlock()
 	hid := uuid.New().String()
@@ -132,13 +132,13 @@ func (r *SyncedRegistry) RegisterEventHandler(h discovery.RegistryEventHandler) 
 	return hid
 }
 
-func (r *SyncedRegistry) DeregisterEventHandler(hid string) {
+func (r *SyncedClient) DeregisterEventHandler(hid string) {
 	r.handlersLock.Lock()
 	defer r.handlersLock.Unlock()
 	delete(r.eventHandlers, hid)
 }
 
-func (r *SyncedRegistry) GetOfType(t pb2.Type) ([]*pb2.Info, error) {
+func (r *SyncedClient) GetOfType(t pb2.Type) ([]*pb2.Info, error) {
 	r.servicesLock.Lock()
 	defer r.servicesLock.Unlock()
 
@@ -152,13 +152,13 @@ func (r *SyncedRegistry) GetOfType(t pb2.Type) ([]*pb2.Info, error) {
 	return result, nil
 }
 
-func (r *SyncedRegistry) Stop() error {
+func (r *SyncedClient) Stop() error {
 	r.stop = true
 	r.services = nil
 	return r.conn.Close()
 }
 
-func (r *SyncedRegistry) publishEvent(e pb2.Event) {
+func (r *SyncedClient) publishEvent(e pb2.Event) {
 	r.handlersLock.Lock()
 	r.handlersLock.Unlock()
 
@@ -167,14 +167,14 @@ func (r *SyncedRegistry) publishEvent(e pb2.Event) {
 	}
 }
 
-func (r *SyncedRegistry) get(name string) *pb2.Info {
+func (r *SyncedClient) get(name string) *pb2.Info {
 	r.servicesLock.Lock()
 	defer r.servicesLock.Unlock()
 	info := r.services[name]
 	return clone.New(info).(*pb2.Info)
 }
 
-func (r *SyncedRegistry) ofNamespace(namespace string) []*pb2.Info {
+func (r *SyncedClient) ofNamespace(namespace string) []*pb2.Info {
 	r.servicesLock.Lock()
 	defer r.servicesLock.Unlock()
 	var services []*pb2.Info
@@ -186,19 +186,19 @@ func (r *SyncedRegistry) ofNamespace(namespace string) []*pb2.Info {
 	return services
 }
 
-func (r *SyncedRegistry) saveService(info *pb2.Info) {
+func (r *SyncedClient) saveService(info *pb2.Info) {
 	r.servicesLock.Lock()
 	defer r.servicesLock.Unlock()
 	r.services[r.idGenerator.GenerateID(info.Namespace, info.Name)] = info
 }
 
-func (r *SyncedRegistry) deleteService(name string) {
+func (r *SyncedClient) deleteService(name string) {
 	r.servicesLock.Lock()
 	defer r.servicesLock.Unlock()
 	delete(r.services, name)
 }
 
-func (r *SyncedRegistry) deleteServiceNode(name string, node *pb2.Info) {
+func (r *SyncedClient) deleteServiceNode(name string, node *pb2.Info) {
 	r.servicesLock.Lock()
 	defer r.servicesLock.Unlock()
 	service, exists := r.services[name]
@@ -215,7 +215,7 @@ func (r *SyncedRegistry) deleteServiceNode(name string, node *pb2.Info) {
 	service.Nodes = newNodes
 }
 
-func (r *SyncedRegistry) connect() error {
+func (r *SyncedClient) connect() error {
 	if r.conn != nil && r.conn.GetState() == connectivity.Ready {
 		return nil
 	}
@@ -237,7 +237,7 @@ func (r *SyncedRegistry) connect() error {
 	return nil
 }
 
-func (r *SyncedRegistry) sync() {
+func (r *SyncedClient) sync() {
 	if r.isSyncing() {
 		return
 	}
@@ -254,7 +254,7 @@ func (r *SyncedRegistry) sync() {
 	}
 }
 
-func (r *SyncedRegistry) listen() {
+func (r *SyncedClient) listen() {
 	stream, err := r.client.Listen(context.Background(), &pb2.ListenRequest{})
 	if err != nil {
 		r.conn = nil
@@ -300,24 +300,24 @@ func (r *SyncedRegistry) listen() {
 	}
 }
 
-func (r *SyncedRegistry) isSyncing() bool {
+func (r *SyncedClient) isSyncing() bool {
 	r.syncMutex.Lock()
 	defer r.syncMutex.Unlock()
 	return r.syncing
 }
 
-func (r *SyncedRegistry) setSyncing() {
+func (r *SyncedClient) setSyncing() {
 	r.syncMutex.Lock()
 	defer r.syncMutex.Unlock()
 	r.syncing = true
 }
 
-func (r *SyncedRegistry) disconnected() {
+func (r *SyncedClient) disconnected() {
 	r.services = nil
 }
 
-func NewSyncedRegistryClient(server string, tlsConfig *tls.Config, generator discovery.IDGenerator) *SyncedRegistry {
-	return &SyncedRegistry{
+func NewSyncedRegistryClient(server string, tlsConfig *tls.Config, generator discovery.IDGenerator) *SyncedClient {
+	return &SyncedClient{
 		services:      map[string]*pb2.Info{},
 		tlsConfig:     tlsConfig,
 		serverAddress: server,

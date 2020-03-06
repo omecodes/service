@@ -1,11 +1,11 @@
-package server
+package registry
 
 import (
 	"context"
 	"fmt"
 	"github.com/zoenion/common/errors"
 	"github.com/zoenion/service/discovery"
-	"github.com/zoenion/service/discovery/default/server/dao"
+	"github.com/zoenion/service/discovery/registry/dao"
 	pb2 "github.com/zoenion/service/proto"
 	"log"
 	"sync"

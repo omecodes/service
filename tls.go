@@ -57,14 +57,15 @@ func (box *Box) loadOrGenerateCACertificateKeyPair() (err error) {
 			Organization:      "oe",
 			Name:              "CA-" + box.params.Name,
 			Domains:           []string{box.params.Domain},
-			IPs:               []net.IP{net.ParseIP(box.params.Ip)},
+			IPs:               []net.IP{},
 			Expiry:            time.Hour * 24 * 370,
 			PublicKey:         &pub,
 			SignerPrivateKey:  box.privateKey,
 			SignerCertificate: box.cert,
 		}
-		if box.params.ExternalIp != "" {
-			caCertTemplate.IPs = append(caCertTemplate.IPs, net.ParseIP(box.params.ExternalIp))
+
+		for _, ip := range box.IpList() {
+			caCertTemplate.IPs = append(caCertTemplate.IPs, net.ParseIP(ip))
 		}
 
 		box.cert, err = crypto2.GenerateCACertificate(caCertTemplate)
@@ -160,7 +161,7 @@ func (box *Box) loadOrGenerateCertificateKeyPair() (err error) {
 			return fmt.Errorf("could not sign certificate: %s", err)
 		}
 
-		box.cert, err = x509.ParseCertificate([]byte(rsp.RawCertificate))
+		box.cert, err = x509.ParseCertificate(rsp.RawCertificate)
 		if err != nil {
 			return err
 		}

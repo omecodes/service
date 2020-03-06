@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto"
 	"crypto/x509"
+	"github.com/zoenion/service/connection"
 	"github.com/zoenion/service/discovery"
 	"github.com/zoenion/service/server"
 	"google.golang.org/grpc/credentials"
@@ -15,8 +16,9 @@ type Box struct {
 	boxDir string
 
 	serverMutex sync.Mutex
-	services    map[string]*server.Service
-	gateways    map[string]*server.Gateway
+
+	services map[string]*server.Service
+	gateways map[string]*server.Gateway
 
 	registry                   discovery.Registry
 	caCert                     *x509.Certificate
@@ -28,6 +30,9 @@ type Box struct {
 
 	ctx           context.Context
 	ctxCancelFunc context.CancelFunc
+
+	dialerMutex sync.Mutex
+	dialerCache map[string]connection.Dialer
 }
 
 func NewBox(p Params) (*Box, error) {
@@ -36,9 +41,25 @@ func NewBox(p Params) (*Box, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	b.dialerCache = map[string]connection.Dialer{}
 	b.gateways = map[string]*server.Gateway{}
 	b.services = map[string]*server.Service{}
 	b.ctx, b.ctxCancelFunc = context.WithCancel(context.WithValue(context.Background(), ctxBox, b))
+	return b, nil
+}
+
+func NewBoxWithContext(ctx context.Context, p Params) (*Box, error) {
+	b := &Box{params: p}
+	err := b.validateParams()
+	if err != nil {
+		return nil, err
+	}
+
+	b.dialerCache = map[string]connection.Dialer{}
+	b.gateways = map[string]*server.Gateway{}
+	b.services = map[string]*server.Service{}
+	b.ctx, b.ctxCancelFunc = context.WithCancel(context.WithValue(ctx, ctxBox, b))
 	return b, nil
 }
 

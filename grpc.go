@@ -4,11 +4,13 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
 	"flag"
 	"fmt"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	crypto2 "github.com/zoenion/common/crypto"
+	"github.com/zoenion/common/errors"
+	"github.com/zoenion/service/authentication"
+	context2 "github.com/zoenion/service/context"
 	"github.com/zoenion/service/interceptors"
 	pb "github.com/zoenion/service/proto"
 	"github.com/zoenion/service/server"
@@ -225,4 +227,30 @@ func (box *Box) startCA(credentialsProvider func(...string) string) error {
 
 	go gs.Serve(listener)
 	return nil
+}
+
+type GRPCCallOption int
+
+const (
+	CallOptToken GRPCCallOption = iota + 1
+	CallOptCredentials
+)
+
+func GRPCCallOptionsFromContext(ctx context.Context, ot ...GRPCCallOption) ([]grpc.CallOption, error) {
+	var gRPCCallOptions []grpc.CallOption
+
+	for _, t := range ot {
+		if t == CallOptToken {
+			strTokenValue := ctx.Value(context2.StrAuthorizationToken)
+			if strTokenValue != nil {
+				strToken, ok := strTokenValue.(string)
+				if !ok {
+					return gRPCCallOptions, errors.New(fmt.Sprintf("Unsupported object type for key: %s", context2.StrAuthorizationToken))
+				}
+				gRPCCallOptions = append(gRPCCallOptions, grpc.PerRPCCredentials(authentication.NewGRPCClientJwt(strToken)))
+			}
+		}
+	}
+
+	return gRPCCallOptions, nil
 }

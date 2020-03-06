@@ -1,17 +1,17 @@
-package server
+package registry
 
 import (
 	"github.com/iancoleman/strcase"
 	"github.com/zoenion/common/database"
 	"github.com/zoenion/common/errors"
-	"github.com/zoenion/service/discovery/default/server/dao"
+	"github.com/zoenion/service/discovery/registry/dao"
+	"path/filepath"
 )
 
 func (s *Server) initDB() error {
 	var err error
 	if s.configs.DB == nil {
-		// todo set config path
-		s.configs.DB = database.SQLiteConfig("registry.db")
+		s.configs.DB = database.SQLiteConfig(filepath.Join(s.dir, "registry.db"))
 	}
 
 	s.store, err = dao.NewSQLDAO(strcase.ToSnake(s.configs.Name)+"_reg", s.configs.DB)

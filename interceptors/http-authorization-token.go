@@ -43,7 +43,6 @@ func (atv *authorizationTokenValidator) Handle(next http.Handler) http.Handler {
 			ctx = context.WithValue(ctx, context2.StrAuthorizationToken, strJWT)
 			r = r.WithContext(ctx)
 		}
-
 		next.ServeHTTP(w, r)
 	})
 }

@@ -24,10 +24,13 @@ func (box *Box) StartGateway(params *server.GatewayParams) error {
 	router := params.ProvideRouter()
 
 	var handler http.Handler
+
 	if len(params.MiddlewareList) > 0 {
+		handler = router
 		for _, m := range params.MiddlewareList {
-			handler = m.Middleware(router)
+			handler = m.Middleware(handler)
 		}
+
 	} else {
 		handler = router
 	}

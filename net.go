@@ -71,7 +71,12 @@ func (box *Box) ExternalIP() string {
 }
 
 func (box *Box) IpList() []string {
-	l := []string{box.params.Ip}
+	var l []string
+
+	if box.params.Ip != "" {
+		l = append(l, box.params.Ip)
+	}
+
 	if box.params.ExternalIp != "" && box.params.ExternalIp != box.params.Ip {
 		l = append(l, box.params.ExternalIp)
 	}

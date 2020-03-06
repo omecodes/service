@@ -41,7 +41,7 @@ func (s *SyncedStore) connect() (err error) {
 }
 
 func (s *SyncedStore) connected() {
-	client := authpb.NewJWTStoreClient(s.conn)
+	client := authpb.NewTokenStoreServiceClient(s.conn)
 	stream, err := client.Listen(context.Background(), &authpb.ListenRequest{})
 	if err != nil {
 		log.Printf("could not listen to jwt events: %s\n", err)
