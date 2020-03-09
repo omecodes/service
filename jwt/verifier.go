@@ -92,6 +92,15 @@ func (j *jwtVerifier) Verify(ctx context.Context, t *authpb.JWT) (authpb.JWTStat
 	return authpb.JWTState_VALID, nil
 }
 
+func (j *jwtVerifier) VerifyJWT(ctx context.Context, jwt string) (authpb.JWTState, error) {
+	t, err := authpb.TokenFromJWT(jwt)
+	if err != nil {
+		return authpb.JWTState_NOT_VALID, err
+	}
+
+	return j.Verify(ctx, t)
+}
+
 func (j *jwtVerifier) saveJwtVerifier(name string, v authpb.TokenVerifier) {
 	j.Lock()
 	defer j.Unlock()

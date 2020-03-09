@@ -1,7 +1,8 @@
 package metadata
 
-type Name string
-
 const (
-	route Name = "route"
+	Route              = "route"
+	Authorization      = "authorization"
+	AuthorizationToken = "token"
+	Credentials        = "credentials"
 )
