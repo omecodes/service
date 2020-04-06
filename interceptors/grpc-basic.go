@@ -4,20 +4,15 @@ import (
 	"context"
 	"encoding/base64"
 	"github.com/zoenion/common/errors"
+	"github.com/zoenion/service/interceptors/authentication"
 	"google.golang.org/grpc/metadata"
 	"strings"
 )
 
 type Basic struct {
-	realm          string
-	secretProvider func(in ...string) string
 }
 
-func (b *Basic) Name() string {
-	return BasicValidator
-}
-
-func (b *Basic) Validate(ctx context.Context) (context.Context, error) {
+func (b *Basic) Intercept(ctx context.Context) (context.Context, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return nil, errors.Forbidden
@@ -25,7 +20,7 @@ func (b *Basic) Validate(ctx context.Context) (context.Context, error) {
 
 	meta := md.Get("authorization")
 	if len(meta) == 0 {
-		return nil, errors.Forbidden
+		return ctx, nil
 	}
 
 	authorization := meta[0]
@@ -45,18 +40,14 @@ func (b *Basic) Validate(ctx context.Context) (context.Context, error) {
 		user := parts[0]
 		secret := parts[1]
 
-		if secret != b.secretProvider(user) {
-			return nil, errors.Forbidden
-		}
-		return ctx, nil
-	} else {
-		return nil, errors.Forbidden
+		ctx = authentication.ContextWithCredentials(ctx, &authentication.Credentials{
+			Username: user,
+			Password: secret,
+		})
 	}
+	return ctx, nil
 }
 
-func NewBasic(realm string, secretProvider func(in ...string) string) *Basic {
-	return &Basic{
-		realm:          realm,
-		secretProvider: secretProvider,
-	}
+func NewBasic() *Basic {
+	return &Basic{}
 }

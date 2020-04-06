@@ -6,14 +6,19 @@ import (
 	"crypto/x509"
 	"flag"
 	"fmt"
+	"github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
+	grpc_opentracing "github.com/grpc-ecosystem/go-grpc-middleware/tracing/opentracing"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	crypto2 "github.com/zoenion/common/crypto"
 	"github.com/zoenion/common/errors"
 	"github.com/zoenion/service/authentication"
 	context2 "github.com/zoenion/service/context"
 	"github.com/zoenion/service/interceptors"
+	authentication2 "github.com/zoenion/service/interceptors/authentication"
 	pb "github.com/zoenion/service/proto"
 	"github.com/zoenion/service/server"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"log"
@@ -111,9 +116,39 @@ func (box *Box) StartService(params *server.ServiceParams) error {
 
 	log.Printf("starting %s.gRPC at %s", params.Node.Name, address)
 	var opts []grpc.ServerOption
+
+	defaultInterceptor := interceptors.Default(
+		interceptors.NewGateway(""),
+		interceptors.NewProxyBasic(),
+		interceptors.NewBasic(),
+		interceptors.NewJwt(box.JwtVerifyFunc),
+	)
+
+	var chainStreamInterceptor grpc.StreamServerInterceptor
+	var chainUnaryInterceptor grpc.UnaryServerInterceptor
+	logger, _ := zap.NewProduction()
+
 	if params.Interceptor != nil {
-		opts = append(opts, grpc.StreamInterceptor(params.Interceptor.InterceptStream), grpc.UnaryInterceptor(params.Interceptor.InterceptUnary))
+		chainStreamInterceptor = grpc_middleware.ChainStreamServer(
+			defaultInterceptor.InterceptStream,
+			grpc_opentracing.StreamServerInterceptor(),
+			grpc_zap.StreamServerInterceptor(logger),
+			params.Interceptor.InterceptStream,
+		)
+		chainUnaryInterceptor = grpc_middleware.ChainUnaryServer(
+			defaultInterceptor.InterceptUnary,
+			grpc_opentracing.UnaryServerInterceptor(),
+			grpc_zap.UnaryServerInterceptor(logger),
+			params.Interceptor.InterceptUnary,
+		)
+	} else {
+		chainStreamInterceptor = grpc_middleware.ChainStreamServer(defaultInterceptor.InterceptStream)
+		chainUnaryInterceptor = grpc_middleware.ChainUnaryServer(defaultInterceptor.InterceptUnary)
 	}
+
+	if params.Interceptor != nil {
+	}
+	opts = append(opts, grpc.StreamInterceptor(chainStreamInterceptor), grpc.UnaryInterceptor(chainUnaryInterceptor))
 
 	srv := grpc.NewServer(opts...)
 	rs := new(server.Service)
@@ -177,7 +212,7 @@ func (box *Box) stopServices() error {
 	return nil
 }
 
-func (box *Box) startCA(credentialsProvider func(...string) string) error {
+func (box *Box) startCA(pc *authentication2.ProxyCredentials) error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
 
@@ -206,15 +241,22 @@ func (box *Box) startCA(credentialsProvider func(...string) string) error {
 
 	log.Printf("starting CA.gRPC at %s", address)
 	var opts []grpc.ServerOption
-	interceptor := interceptors.NewChainedInterceptor(map[string]*interceptors.InterceptRule{
-		"SignCertificate": {
-			Secure: true,
-			Links:  []string{interceptors.BasicValidator},
-		},
-	}, interceptors.NewBasic("box-ca", credentialsProvider))
-	opts = append(opts, grpc.StreamInterceptor(interceptor.InterceptStream), grpc.UnaryInterceptor(interceptor.InterceptUnary))
+
+	defaultInterceptor := interceptors.Default(
+		interceptors.NewProxyBasic(),
+	)
+
+	logger, _ := zap.NewProduction()
+	chainUnaryInterceptor := grpc_middleware.ChainUnaryServer(
+		defaultInterceptor.InterceptUnary,
+		grpc_opentracing.UnaryServerInterceptor(),
+		grpc_zap.UnaryServerInterceptor(logger),
+	)
+
+	opts = append(opts, grpc.UnaryInterceptor(chainUnaryInterceptor))
 	gs := grpc.NewServer(opts...)
 	pb.RegisterCSRServer(gs, &csrServerHandler{
+		credentials: pc,
 		PrivateKey:  box.privateKey,
 		Certificate: box.cert,
 	})

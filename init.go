@@ -64,7 +64,7 @@ func (box *Box) Init(opts ...InitOption) error {
 	}
 
 	if box.params.CA {
-		return box.startCA(options.credentialsProvider)
+		return box.startCA(options.caProxyCredentials)
 	}
 	return nil
 }
@@ -98,7 +98,7 @@ func (box *Box) loadCACredentials() (err error) {
 	}
 
 	parts := strings.Split(box.params.CACredentials, ":")
-	box.caClientAuthentication = authentication.NewGRPCBasic(parts[0], parts[1])
+	box.caClientAuthentication = authentication.NewGRPCProxy(parts[0], parts[1])
 
 	return
 }

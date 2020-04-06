@@ -11,11 +11,7 @@ type Gateway struct {
 	sharedSecret string
 }
 
-func (g *Gateway) Name() string {
-	return GatewayValidator
-}
-
-func (g *Gateway) Validate(ctx context.Context) (context.Context, error) {
+func (g *Gateway) Intercept(ctx context.Context) (context.Context, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return g.validateCert(ctx)

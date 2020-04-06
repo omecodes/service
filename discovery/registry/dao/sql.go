@@ -5,45 +5,57 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/zoenion/common/conf"
 	"github.com/zoenion/common/dao"
+	"github.com/zoenion/common/persist"
 	pb2 "github.com/zoenion/service/proto"
 )
 
 type sqlApplicationDAO struct {
-	dao.SQL
+	objects persist.Objects
 }
 
 func (s *sqlApplicationDAO) Save(application *pb2.Info) error {
-	serialized, err := proto.Marshal(application)
-	if err != nil {
-		return err
-	}
 	name := fmt.Sprintf("%s.%s", application.Namespace, application.Name)
-	err = s.Exec("insert", name, serialized).Error
-	if err != nil {
-		err = s.Exec("update", serialized, name).Error
-	}
-	return err
+	return s.objects.Save(name, application)
 }
 
-func (s *sqlApplicationDAO) List() (dao.Cursor, error) {
-	return s.Query("list", "app_scanner")
+func (s *sqlApplicationDAO) List() ([]*pb2.Info, error) {
+	c, err := s.objects.List()
+	if err != nil {
+		return nil, err
+	}
+	// c.
+	defer c.Close()
+
+	var result []*pb2.Info
+	for c.HasNext() {
+		data, err := c.Next()
+		if err != nil {
+			return nil, err
+		}
+		var app pb2.Info
+		err = s.objects.DecoderFunc()([]byte(data.(string)), &app)
+
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, &app)
+	}
+	return result, nil
 }
 
 func (s *sqlApplicationDAO) Find(name string) (*pb2.Info, error) {
 	var app *pb2.Info
-	o, err := s.QueryOne("find", "app_scanner", name)
-	if err == nil {
-		app = o.(*pb2.Info)
-	}
+	err := s.objects.Read(name, &app)
 	return app, err
 }
 
 func (s *sqlApplicationDAO) Delete(applicationName string) error {
-	return s.Exec("delete", applicationName).Error
+	return s.objects.Delete(applicationName)
 }
 
 func (s *sqlApplicationDAO) Stop() error {
-	return s.DB.Close()
+	return s.objects.Close()
 }
 
 func (s *sqlApplicationDAO) scanApp(row dao.Row) (interface{}, error) {
@@ -64,15 +76,7 @@ func (s *sqlApplicationDAO) scanApp(row dao.Row) (interface{}, error) {
 
 func NewSQLDAO(prefix string, cfg conf.Map) (ServicesDAO, error) {
 	db := new(sqlApplicationDAO)
-	db.SetTablePrefix(prefix).AddTableDefinition("services", `create table if not exists $prefix$_services(
-		name varchar(255) not null primary key,
-		encoded blob not null
-	);`).
-		AddStatement("insert", `insert into $prefix$_services values (?, ?);`).
-		AddStatement("update", `update $prefix$_services set encoded=? where name=?;`).
-		AddStatement("delete", `delete from $prefix$_services where name=?;`).
-		AddStatement("find", `select * from $prefix$_services where name=?;`).
-		AddStatement("list", `select * from $prefix$_services;`).
-		RegisterScanner("app_scanner", dao.NewScannerFunc(db.scanApp))
-	return db, db.Init(cfg)
+	objects, err := persist.NewSQLObjectsDB(cfg, prefix)
+	db.objects = objects
+	return db, err
 }

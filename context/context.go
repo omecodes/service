@@ -17,7 +17,7 @@ const (
 	ServiceContext = Key("service-context")
 
 	AuthorizationToken    = Key("Authorization-Token")
-	StrAuthorizationToken = Key("St-Authorization-Token")
+	StrAuthorizationToken = Key("Str-Authorization-Token")
 	Credentials           = Key("Credentials")
 )
 
@@ -32,7 +32,6 @@ func TokenFromContext(ctx context.Context) (*authpb.JWT, error) {
 	if !ok {
 		return nil, errors.Errorf("Unsupported object token from request context: %s", authorizationTokenValue)
 	}
-
 	return token, nil
 }
 

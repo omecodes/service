@@ -3,18 +3,19 @@ package service
 import (
 	"github.com/zoenion/common/conf"
 	"github.com/zoenion/service/discovery"
+	"github.com/zoenion/service/interceptors/authentication"
 )
 
 type initOptions struct {
 	registry             discovery.Registry
-	credentialsProvider  func(...string) string
 	RegistryServerDBConf conf.Map
+	caProxyCredentials   *authentication.ProxyCredentials
 }
 
 type InitOption func(*initOptions)
 
-func WithCACredentialsProvider(cp func(...string) string) InitOption {
+func WithCACredentials(pc *authentication.ProxyCredentials) InitOption {
 	return func(opts *initOptions) {
-		opts.credentialsProvider = cp
+		opts.caProxyCredentials = pc
 	}
 }

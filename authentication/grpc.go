@@ -50,6 +50,29 @@ func NewGRPCBasic(user, password string) *gRPCClientBasic {
 	}
 }
 
+type gRPCProxyBasic struct {
+	key, secret string
+}
+
+func (g *gRPCProxyBasic) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
+	authentication := fmt.Sprintf("%s:%s", g.key, g.secret)
+	authentication = base64.StdEncoding.EncodeToString([]byte(authentication))
+	return map[string]string{
+		"proxy-authorization": fmt.Sprintf("Basic %s", authentication),
+	}, nil
+}
+
+func (g *gRPCProxyBasic) RequireTransportSecurity() bool {
+	return true
+}
+
+func NewGRPCProxy(user, password string) *gRPCProxyBasic {
+	return &gRPCProxyBasic{
+		key:    user,
+		secret: password,
+	}
+}
+
 type gRPCClientJwt struct {
 	jwt string
 }

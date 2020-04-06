@@ -8,17 +8,16 @@ import (
 	"github.com/zoenion/common/errors"
 	"github.com/zoenion/service/discovery"
 	"github.com/zoenion/service/discovery/registry/dao"
-	"github.com/zoenion/service/interceptors"
 	"log"
 	"net"
 )
 
 type Server struct {
-	name            string
-	dir             string
-	gRPCInterceptor interceptors.GRPC
-	gRPCHandler     *gRPCServerHandler
-	store           dao.ServicesDAO
+	name string
+	dir  string
+	// gRPCInterceptor interceptors.GRPC
+	gRPCHandler *gRPCServerHandler
+	store       dao.ServicesDAO
 
 	gRPCListener net.Listener
 	apiListener  net.Listener

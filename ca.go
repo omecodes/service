@@ -7,17 +7,27 @@ import (
 	"crypto/elliptic"
 	"crypto/x509"
 	crypto2 "github.com/zoenion/common/crypto"
+	"github.com/zoenion/common/errors"
+	"github.com/zoenion/service/interceptors/authentication"
 	pb "github.com/zoenion/service/proto"
 	"net"
 	"time"
 )
 
 type csrServerHandler struct {
+	credentials *authentication.ProxyCredentials
 	PrivateKey  crypto.PrivateKey
 	Certificate *x509.Certificate
 }
 
-func (C *csrServerHandler) SignCertificate(ctx context.Context, in *pb.SignCertificateRequest) (*pb.SignCertificateResponse, error) {
+func (h *csrServerHandler) SignCertificate(ctx context.Context, in *pb.SignCertificateRequest) (*pb.SignCertificateResponse, error) {
+	if h.credentials != nil {
+		proxyCredentials := authentication.ProxyCredentialsFromContext(ctx)
+		if proxyCredentials == nil || proxyCredentials.Key != h.credentials.Key || proxyCredentials.Secret != h.credentials.Secret {
+			return nil, errors.Forbidden
+		}
+	}
+
 	var ips []net.IP
 	for _, a := range in.Csr.Addresses {
 		ips = append(ips, net.ParseIP(a))
@@ -32,8 +42,8 @@ func (C *csrServerHandler) SignCertificate(ctx context.Context, in *pb.SignCerti
 
 	cert, err := crypto2.GenerateServiceCertificate(&crypto2.CertificateTemplate{
 		Name:              in.Csr.Subject,
-		SignerCertificate: C.Certificate,
-		SignerPrivateKey:  C.PrivateKey,
+		SignerCertificate: h.Certificate,
+		SignerPrivateKey:  h.PrivateKey,
 		PublicKey:         k,
 		Domains:           in.Csr.Domains,
 		IPs:               ips,

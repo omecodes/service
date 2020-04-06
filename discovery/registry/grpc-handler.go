@@ -165,20 +165,14 @@ func (h *gRPCServerHandler) List(ctx context.Context, in *pb2.ListRequest) (*pb2
 	h.Lock()
 	defer h.Unlock()
 
-	cursor, err := h.dao.List()
+	apps, err := h.dao.List()
 	if err != nil {
 		return nil, err
 	}
 
 	out := &pb2.ListResponse{}
 
-	for cursor.HasNext() {
-		o, err := cursor.Next()
-		if err != nil {
-			return out, err
-		}
-		a := o.(*pb2.Info)
-
+	for _, a := range apps {
 		if in.Namespace != "" && a.Namespace != a.Namespace {
 			continue
 		}
@@ -203,40 +197,24 @@ func (h *gRPCServerHandler) Search(ctx context.Context, in *pb2.SearchRequest) (
 		return nil, errors.BadInput
 	}
 
-	c, err := h.dao.List()
+	apps, err := h.dao.List()
 	if err != nil {
 		return nil, err
 	}
-	defer c.Close()
 
-	rsp := &pb2.SearchResponse{}
-	for err == nil && c.HasNext() {
-		var o interface{}
-		o, err = c.Next()
-		if err == nil {
-			s := o.(*pb2.Info)
-			if in.Type == 0 && s.Namespace == in.Namespace || in.Type != 0 && in.Type == s.Type && s.Namespace == in.Namespace {
-				rsp.Services = append(rsp.Services, s)
-			}
-		}
+	rsp := &pb2.SearchResponse{
+		Services: apps,
 	}
 	return rsp, err
 }
 
 func (h *gRPCServerHandler) Listen(in *pb2.ListenRequest, stream pb2.Registry_ListenServer) error {
-	c, err := h.dao.List()
+	services, err := h.dao.List()
 	if err != nil {
 		return err
 	}
 
-	for c.HasNext() {
-		o, err := c.Next()
-		if err != nil {
-			_ = c.Close()
-			return err
-		}
-
-		i := o.(*pb2.Info)
+	for _, i := range services {
 		ev := &pb2.Event{
 			Type: pb2.EventType_Registered,
 			Name: h.idGenerator.GenerateID(i.Namespace, i.Name),
@@ -246,11 +224,9 @@ func (h *gRPCServerHandler) Listen(in *pb2.ListenRequest, stream pb2.Registry_Li
 		err = stream.Send(ev)
 		if err != nil {
 			log.Println("failed to stream event:", ev, err)
-			_ = c.Close()
 			return err
 		}
 	}
-	_ = c.Close()
 
 	channel := make(chan *pb2.Event, 1)
 	registrationKey := h.registerEventChannel(channel)
@@ -260,7 +236,6 @@ func (h *gRPCServerHandler) Listen(in *pb2.ListenRequest, stream pb2.Registry_Li
 	for {
 		e, _ := <-channel
 		if e == nil {
-			log.Println("closed channel")
 			return errors.New("event channel closed")
 		}
 

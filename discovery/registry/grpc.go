@@ -4,33 +4,19 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/zoenion/service/interceptors"
 	pb "github.com/zoenion/service/proto"
 	"google.golang.org/grpc"
 	"log"
 	"net"
 )
 
-func (s *Server) gRPCInterceptRules() interceptors.MethodRules {
-	rule := &interceptors.InterceptRule{Secure: true, Links: []string{interceptors.GatewayValidator}}
-	return interceptors.MethodRules{
-		"Register":   rule,
-		"Deregister": rule,
-		"List":       rule,
-		"Get":        rule,
-		"Search":     rule,
-		"Listen":     rule,
-	}
-}
-
 func (s *Server) initGRPCHandler() {
 	// starting gateways
-	gatewaySharedSecret := uuid.New().String()
-	s.gRPCInterceptor = interceptors.NewChainedInterceptor(
+	// gatewaySharedSecret := uuid.New().String()
+	/* s.gRPCInterceptor = interceptors.NewChainedInterceptor(
 		s.gRPCInterceptRules(),
 		interceptors.NewGateway(gatewaySharedSecret),
-	)
+	) */
 	s.gRPCHandler = NewGRPCServerHandler(s.store, s.configs.Generator)
 }
 
