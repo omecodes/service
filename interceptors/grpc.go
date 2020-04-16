@@ -12,12 +12,12 @@ type loggedStream struct {
 }
 
 func (w *loggedStream) RecvMsg(m interface{}) error {
-	log.Printf("Receive a message (Type: %T) at %s\n", m, time.Now().Format(time.RFC3339))
+	log.Printf("Receive a message (Type: %v) at %s\n", m, time.Now().Format(time.RFC3339))
 	return w.ServerStream.RecvMsg(m)
 }
 
 func (w *loggedStream) SendMsg(m interface{}) error {
-	log.Printf("Send a message (Type: %T) at %v\n", m, time.Now().Format(time.RFC3339))
+	log.Printf("Send a message (Type: %v) at %v\n", m, time.Now().Format(time.RFC3339))
 	return w.ServerStream.SendMsg(m)
 }
 
