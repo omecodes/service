@@ -42,14 +42,22 @@ func (h *gRPCServerHandler) Register(ctx context.Context, in *pb2.RegisterReques
 		var updated []*pb2.Node
 
 		for _, newNode := range in.Service.Nodes {
+			var oldVersion *pb2.Node
+
 			for _, oldNode := range info.Nodes {
 				if oldNode.Name == newNode.Name {
-					updated = append(updated, newNode)
-				} else {
-					added = append(added, newNode)
+					oldVersion = oldNode
+					break
 				}
 			}
+
+			if oldVersion != nil {
+				updated = append(updated, newNode)
+			} else {
+				added = append(added, newNode)
+			}
 		}
+
 		for _, oldNode := range info.Nodes {
 			nodeDeleted := true
 			for _, newNode := range in.Service.Nodes {
@@ -68,9 +76,11 @@ func (h *gRPCServerHandler) Register(ctx context.Context, in *pb2.RegisterReques
 		if int(pb2.ActionOnRegisterExistingService_AddNodes) == int(in.Action)&int(pb2.ActionOnRegisterExistingService_AddNodes) {
 			nodes = append(nodes, added...)
 		}
+
 		if int(pb2.ActionOnRegisterExistingService_UpdateExisting) == int(in.Action)&int(pb2.ActionOnRegisterExistingService_UpdateExisting) {
 			nodes = append(nodes, updated...)
 		}
+
 		if int(pb2.ActionOnRegisterExistingService_RemoveOld) != int(in.Action)&int(pb2.ActionOnRegisterExistingService_RemoveOld) {
 			nodes = append(nodes, deleted...)
 		}
