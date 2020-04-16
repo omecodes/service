@@ -32,6 +32,7 @@ func (sb *basicAuthForGRPC) Handle(next http.HandlerFunc) http.HandlerFunc {
 		if userAuthorization != "" {
 			r.Header.Set("authorization", fmt.Sprintf("Gateway %s/%s", sb.gatewaySecret, userAuthorization))
 		}
+
 		next(w, r)
 	}
 }

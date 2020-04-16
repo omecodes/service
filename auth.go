@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	authpb "github.com/zoenion/common/proto/auth"
-	"github.com/zoenion/service/interceptors/authentication"
 	"github.com/zoenion/service/jwt"
 )
 
@@ -22,7 +21,7 @@ func (box *Box) JwtVerifyFunc(ctx context.Context, jwt string) (context.Context,
 	}
 
 	if state == authpb.JWTState_VALID {
-		ctx = authentication.ContextWithToken(ctx, t)
+		ctx = authpb.ContextWithToken(ctx, t)
 	}
 
 	return ctx, nil

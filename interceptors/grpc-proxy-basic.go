@@ -13,6 +13,10 @@ type ProxyBasic struct {
 }
 
 func (b *ProxyBasic) Intercept(ctx context.Context) (context.Context, error) {
+	if ctx == nil {
+		return ctx, nil
+	}
+
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return nil, errors.Forbidden

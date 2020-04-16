@@ -12,8 +12,8 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	crypto2 "github.com/zoenion/common/crypto"
 	"github.com/zoenion/common/errors"
+	authpb "github.com/zoenion/common/proto/auth"
 	"github.com/zoenion/service/authentication"
-	context2 "github.com/zoenion/service/context"
 	"github.com/zoenion/service/interceptors"
 	authentication2 "github.com/zoenion/service/interceptors/authentication"
 	pb "github.com/zoenion/service/proto"
@@ -275,7 +275,7 @@ type GRPCCallOption int
 
 const (
 	CallOptToken GRPCCallOption = iota + 1
-	CallOptCredentials
+	CallOptProxyCredentials
 )
 
 func GRPCCallOptionsFromContext(ctx context.Context, ot ...GRPCCallOption) ([]grpc.CallOption, error) {
@@ -283,16 +283,23 @@ func GRPCCallOptionsFromContext(ctx context.Context, ot ...GRPCCallOption) ([]gr
 
 	for _, t := range ot {
 		if t == CallOptToken {
-			strTokenValue := ctx.Value(context2.StrAuthorizationToken)
-			if strTokenValue != nil {
-				strToken, ok := strTokenValue.(string)
-				if !ok {
-					return gRPCCallOptions, errors.New(fmt.Sprintf("Unsupported object type for key: %s", context2.StrAuthorizationToken))
-				}
+			token := authpb.TokenFromContext(ctx)
+			strToken, err := authpb.String(token)
+			if err != nil {
+				return nil, err
+			}
+
+			if token != nil {
 				gRPCCallOptions = append(gRPCCallOptions, grpc.PerRPCCredentials(authentication.NewGRPCClientJwt(strToken)))
+			}
+
+		} else if t == CallOptProxyCredentials {
+			cred := authentication2.ProxyCredentialsFromContext(ctx)
+			if cred != nil {
+				gRPCCallOptions = append(gRPCCallOptions, grpc.PerRPCCredentials(authentication.NewGRPCProxy(
+					cred.Key, cred.Secret)))
 			}
 		}
 	}
-
 	return gRPCCallOptions, nil
 }

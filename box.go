@@ -45,7 +45,7 @@ func NewBox(p Params) (*Box, error) {
 	b.dialerCache = map[string]connection.Dialer{}
 	b.gateways = map[string]*server.Gateway{}
 	b.services = map[string]*server.Service{}
-	b.ctx, b.ctxCancelFunc = context.WithCancel(context.WithValue(context.Background(), ctxBox, b))
+	b.ctx, b.ctxCancelFunc = context.WithCancel(context.WithValue(context.Background(), box{}, b))
 	return b, nil
 }
 
@@ -59,7 +59,7 @@ func NewBoxWithContext(ctx context.Context, p Params) (*Box, error) {
 	b.dialerCache = map[string]connection.Dialer{}
 	b.gateways = map[string]*server.Gateway{}
 	b.services = map[string]*server.Service{}
-	b.ctx, b.ctxCancelFunc = context.WithCancel(context.WithValue(ctx, ctxBox, b))
+	b.ctx, b.ctxCancelFunc = context.WithCancel(context.WithValue(ctx, box{}, b))
 	return b, nil
 }
 

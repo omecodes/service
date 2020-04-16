@@ -12,6 +12,10 @@ type Jwt struct {
 }
 
 func (j *Jwt) Intercept(ctx context.Context) (context.Context, error) {
+	if ctx == nil {
+		return nil, nil
+	}
+
 	var err error
 
 	md, ok := metadata.FromIncomingContext(ctx)

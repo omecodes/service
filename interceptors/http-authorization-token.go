@@ -1,9 +1,7 @@
 package interceptors
 
 import (
-	"context"
 	authpb "github.com/zoenion/common/proto/auth"
-	context2 "github.com/zoenion/service/context"
 	"log"
 	"net/http"
 	"strings"
@@ -39,8 +37,7 @@ func (atv *authorizationTokenValidator) Handle(next http.Handler) http.Handler {
 
 			// enrich context with
 			ctx := r.Context()
-			ctx = context.WithValue(ctx, context2.AuthorizationToken, t)
-			ctx = context.WithValue(ctx, context2.StrAuthorizationToken, strJWT)
+			ctx = authpb.ContextWithToken(ctx, t)
 			r = r.WithContext(ctx)
 		}
 		next.ServeHTTP(w, r)

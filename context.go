@@ -7,26 +7,24 @@ import (
 	"crypto/x509"
 	"fmt"
 	"github.com/zoenion/common/errors"
-	context2 "github.com/zoenion/service/context"
 	"github.com/zoenion/service/discovery"
+	"github.com/zoenion/service/interceptors/authentication"
 	pb "github.com/zoenion/service/proto"
 	"google.golang.org/grpc"
+	"strings"
 )
 
-type contextKey string
-
-const (
-	ctxBox = contextKey("box")
-)
+type box struct{}
+type serviceContext struct{}
 
 func serviceBox(ctx context.Context) *Box {
-	val := ctx.Value(ctxBox)
+	val := ctx.Value(box{})
 	if val == nil {
-		srvCtx := ctx.Value(context2.ServiceContext)
+		srvCtx := ctx.Value(serviceContext{})
 		if srvCtx == nil {
 			return nil
 		}
-		val = srvCtx.(context.Context).Value(ctxBox)
+		val = srvCtx.(context.Context).Value(box{})
 		if val == nil {
 			return nil
 		}
@@ -75,6 +73,20 @@ func Namespace(ctx context.Context) string {
 	return box.params.Namespace
 }
 
+func ProxyCredentials(ctx context.Context) *authentication.ProxyCredentials {
+	box := serviceBox(ctx)
+	if box == nil {
+		return nil
+	}
+
+	parts := strings.Split(box.params.CACredentials, ":")
+
+	return &authentication.ProxyCredentials{
+		Key:    parts[0],
+		Secret: parts[1],
+	}
+}
+
 func Name(ctx context.Context) string {
 	box := serviceBox(ctx)
 	if box == nil {
@@ -119,14 +131,6 @@ func ClientTLSConfig(ctx context.Context) *tls.Config {
 	return box.ClientMutualTLS()
 }
 
-func RequestUser(ctx context.Context) (string, bool) {
-	value := ctx.Value(context2.User)
-	if user, ok := value.(string); ok {
-		return user, true
-	}
-	return "", false
-}
-
 func Dial(ctx context.Context, st pb.Type, selectors ...pb.Selector) (*grpc.ClientConn, error) {
 	box := serviceBox(ctx)
 	if box == nil {
@@ -135,10 +139,6 @@ func Dial(ctx context.Context, st pb.Type, selectors ...pb.Selector) (*grpc.Clie
 	return box.dialToService(st, selectors...)
 }
 
-func ContextWithUser(ctx context.Context, user string) context.Context {
-	return context.WithValue(ctx, context2.User, user)
-}
-
 func ContextWithBox(ctx context.Context, b *Box) context.Context {
-	return context.WithValue(ctx, ctxBox, b)
+	return context.WithValue(ctx, box{}, b)
 }
