@@ -3,14 +3,15 @@ package dao
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/zoenion/common/codec"
 	"github.com/zoenion/common/conf"
 	"github.com/zoenion/common/dao"
-	"github.com/zoenion/common/persist"
+	"github.com/zoenion/common/persist/dict"
 	pb2 "github.com/zoenion/service/proto"
 )
 
 type sqlApplicationDAO struct {
-	objects persist.Objects
+	objects dict.Dict
 }
 
 func (s *sqlApplicationDAO) Save(application *pb2.Info) error {
@@ -23,23 +24,16 @@ func (s *sqlApplicationDAO) List() ([]*pb2.Info, error) {
 	if err != nil {
 		return nil, err
 	}
-	// c.
 	defer c.Close()
 
 	var result []*pb2.Info
 	for c.HasNext() {
-		data, err := c.Next()
+		info := new(pb2.Info)
+		_, err := c.Next(info)
 		if err != nil {
 			return nil, err
 		}
-		var app pb2.Info
-		err = s.objects.DecoderFunc()([]byte(data.(string)), &app)
-
-		if err != nil {
-			return nil, err
-		}
-
-		result = append(result, &app)
+		result = append(result, info)
 	}
 	return result, nil
 }
@@ -76,7 +70,7 @@ func (s *sqlApplicationDAO) scanApp(row dao.Row) (interface{}, error) {
 
 func NewSQLDAO(prefix string, cfg conf.Map) (ServicesDAO, error) {
 	db := new(sqlApplicationDAO)
-	objects, err := persist.NewSQLObjectsDB(cfg, prefix)
+	objects, err := dict.NewSQL(cfg, prefix, codec.Default)
 	db.objects = objects
 	return db, err
 }

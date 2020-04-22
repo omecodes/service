@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"github.com/google/uuid"
 	"github.com/zoenion/common/errors"
-	"github.com/zoenion/common/persist"
+	"github.com/zoenion/common/persist/dict"
 	authpb "github.com/zoenion/common/proto/auth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
@@ -18,7 +18,7 @@ import (
 
 type SyncedStore struct {
 	sync.Mutex
-	store                     persist.Dict
+	store                     dict.Dict
 	serverAddress             string
 	tls                       *tls.Config
 	conn                      *grpc.ClientConn
@@ -68,21 +68,16 @@ func (s *SyncedStore) saveJwtInfo(i *authpb.JwtInfo) error {
 	if err != nil {
 		return err
 	}
-	return s.store.Set(i.Jti, string(marshaled))
+	return s.store.Save(i.Jti, string(marshaled))
 }
 
 func (s *SyncedStore) deleteJwtInfo(jti string) error {
-	return s.store.Del(jti)
+	return s.store.Delete(jti)
 }
 
 func (s *SyncedStore) getJwtState(jti string) (authpb.JWTState, error) {
-	infoBytes, err := s.store.Get(jti)
-	if err != nil {
-		return 0, err
-	}
-
 	info := new(authpb.JwtInfo)
-	err = json.Unmarshal([]byte(infoBytes), info)
+	err := s.store.Read(jti, info)
 	if err != nil {
 		return 0, err
 	}
@@ -117,7 +112,7 @@ func (s *SyncedStore) DeleteJwtRevokedEventHandler(id string) {
 	delete(s.jwtRevokedHandlerFuncList, id)
 }
 
-func NewSyncedStore(server string, tls *tls.Config, store persist.Dict) *SyncedStore {
+func NewSyncedStore(server string, tls *tls.Config, store dict.Dict) *SyncedStore {
 	return &SyncedStore{
 		serverAddress:             server,
 		tls:                       tls,
