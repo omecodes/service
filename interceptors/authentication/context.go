@@ -6,6 +6,11 @@ import (
 
 type proxyCredentials struct{}
 type credentials struct{}
+type jwt struct{}
+
+func ContextWithJWT(ctx context.Context, j string) context.Context {
+	return context.WithValue(ctx, jwt{}, j)
+}
 
 func ContextWithCredentials(ctx context.Context, c *Credentials) context.Context {
 	return context.WithValue(ctx, credentials{}, c)
@@ -29,4 +34,12 @@ func ProxyCredentialsFromContext(ctx context.Context) *ProxyCredentials {
 		return c
 	}
 	return nil
+}
+
+func JWTFromContext(ctx context.Context) string {
+	o := ctx.Value(jwt{})
+	if c, ok := o.(string); ok {
+		return c
+	}
+	return ""
 }
