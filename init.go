@@ -8,7 +8,6 @@ import (
 	"github.com/zoenion/common/database"
 	"github.com/zoenion/common/errors"
 	"github.com/zoenion/service/authentication"
-	"github.com/zoenion/service/discovery"
 	"github.com/zoenion/service/discovery/registry"
 	"google.golang.org/grpc/credentials"
 	"path/filepath"
@@ -123,7 +122,6 @@ func (box *Box) initRegistry(dbCfg conf.Map) (err error) {
 		Certificate: box.ServiceCert(),
 		PrivateKey:  box.ServiceKey(),
 		Domain:      box.params.Domain,
-		Generator:   discovery.IDGeneratorFunc(FullName),
 		DB:          dbCfg,
 	}
 
@@ -147,7 +145,7 @@ func (box *Box) initRegistry(dbCfg conf.Map) (err error) {
 	if syncedRegistry == nil || registryHost != "" && registryHost != RegistryDefaultHost && registryHost != box.Host() {
 		var tc *tls.Config
 		tc = box.ClientMutualTLS()
-		box.registry = registry.NewSyncedRegistryClient(box.params.RegistryAddress, tc, discovery.IDGeneratorFunc(FullName))
+		box.registry = registry.NewSyncedRegistryClient(box.params.RegistryAddress, tc)
 	} else {
 		box.registry = syncedRegistry.Client()
 	}

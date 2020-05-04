@@ -1,8 +1,27 @@
 package discovery
 
 import (
+	"fmt"
 	pb2 "github.com/zoenion/service/proto"
 )
+
+var defaultIDGenerator IDGenerator
+
+func init() {
+	defaultIDGenerator = &idGeneratorFunc{f: generateID}
+}
+
+func GenerateID(ns, name string) string {
+	return defaultIDGenerator.GenerateID(ns, name)
+}
+
+func RegisterIDGenerator(g IDGenerator) {
+	defaultIDGenerator = g
+}
+
+func generateID(namespace, name string) string {
+	return fmt.Sprintf("%s.%s", namespace, name)
+}
 
 type IDGenerator interface {
 	GenerateID(namespace, name string) string
@@ -16,10 +35,6 @@ func (ig *idGeneratorFunc) GenerateID(namespace, name string) string {
 	return ig.f(namespace, name)
 }
 
-func IDGeneratorFunc(generateFunc func(string, string) string) IDGenerator {
-	return &idGeneratorFunc{f: generateFunc}
-}
-
 type RegistryEventHandler interface {
 	Handle(*pb2.Event)
 }
@@ -30,6 +45,12 @@ type eventHandlerFunc struct {
 
 func (hf *eventHandlerFunc) Handle(event *pb2.Event) {
 	hf.f(event)
+}
+
+func NewRegistryEventHandlerFunc(f func(event *pb2.Event)) RegistryEventHandler {
+	return &eventHandlerFunc{
+		f: f,
+	}
 }
 
 type Registry interface {

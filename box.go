@@ -75,6 +75,14 @@ func (box *Box) FullName() string {
 	return FullName(box.params.Namespace, box.params.Name)
 }
 
+func (box *Box) Domain() string {
+	return box.params.Domain
+}
+
+func (box *Box) IP() string {
+	return box.params.Ip
+}
+
 func (box *Box) Dir() string {
 	return box.params.Dir
 }

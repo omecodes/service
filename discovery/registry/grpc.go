@@ -17,7 +17,7 @@ func (s *Server) initGRPCHandler() {
 		s.gRPCInterceptRules(),
 		interceptors.NewGateway(gatewaySharedSecret),
 	) */
-	s.gRPCHandler = NewGRPCServerHandler(s.store, s.configs.Generator)
+	s.gRPCHandler = NewGRPCServerHandler(s.store)
 }
 
 func (s *Server) startGRPCServer() error {

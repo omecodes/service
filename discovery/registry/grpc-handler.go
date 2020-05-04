@@ -18,7 +18,6 @@ type gRPCServerHandler struct {
 	listenersMutex sync.Mutex
 	listeners      map[int]chan *pb2.Event
 	eventHandler   func(*pb2.Event)
-	idGenerator    discovery.IDGenerator
 }
 
 func (h *gRPCServerHandler) Register(ctx context.Context, in *pb2.RegisterRequest) (*pb2.RegisterResponse, error) {
@@ -26,7 +25,7 @@ func (h *gRPCServerHandler) Register(ctx context.Context, in *pb2.RegisterReques
 	defer h.Unlock()
 
 	var exists bool
-	id := h.idGenerator.GenerateID(in.Service.Namespace, in.Service.Name)
+	id := discovery.GenerateID(in.Service.Namespace, in.Service.Name)
 	info, err := h.dao.Find(id)
 	if err != nil {
 		if err != errors.NotFound {
@@ -227,7 +226,7 @@ func (h *gRPCServerHandler) Listen(in *pb2.ListenRequest, stream pb2.Registry_Li
 	for _, i := range services {
 		ev := &pb2.Event{
 			Type: pb2.EventType_Registered,
-			Name: h.idGenerator.GenerateID(i.Namespace, i.Name),
+			Name: discovery.GenerateID(i.Namespace, i.Name),
 			Info: i,
 		}
 
@@ -301,10 +300,9 @@ func (h *gRPCServerHandler) Stop() {
 	}
 }
 
-func NewGRPCServerHandler(dao dao.ServicesDAO, generator discovery.IDGenerator) *gRPCServerHandler {
+func NewGRPCServerHandler(dao dao.ServicesDAO) *gRPCServerHandler {
 	return &gRPCServerHandler{
-		listeners:   map[int]chan *pb2.Event{},
-		dao:         dao,
-		idGenerator: generator,
+		listeners: map[int]chan *pb2.Event{},
+		dao:       dao,
 	}
 }

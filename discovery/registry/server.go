@@ -34,8 +34,7 @@ type Configs struct {
 	PrivateKey  crypto.PrivateKey
 	Domain      string
 	//TLS         *tls.Config
-	Generator discovery.IDGenerator
-	DB        conf.Map
+	DB conf.Map
 }
 
 func NewServer(configs *Configs) (*Server, error) {

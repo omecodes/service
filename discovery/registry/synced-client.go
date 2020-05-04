@@ -33,11 +33,8 @@ type SyncedClient struct {
 	conn          *grpc.ClientConn
 	serverAddress string
 	eventHandlers map[string]discovery.RegistryEventHandler
-
-	idGenerator discovery.IDGenerator
-
-	stop    bool
-	syncing bool
+	stop          bool
+	syncing       bool
 }
 
 func (r *SyncedClient) Disconnect() error {
@@ -81,7 +78,20 @@ func (r *SyncedClient) DeregisterService(id string, nodes ...string) error {
 }
 
 func (r *SyncedClient) GetService(id string) (*pb2.Info, error) {
-	return r.get(id), nil
+	info := r.get(id)
+	if info != nil {
+		return info, nil
+	}
+
+	rsp, err := r.client.Get(context.Background(), &pb2.GetRequest{
+		RegistryId: id,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	r.saveService(rsp.Info)
+	return rsp.Info, nil
 }
 
 func (r *SyncedClient) Certificate(id string) ([]byte, error) {
@@ -89,7 +99,7 @@ func (r *SyncedClient) Certificate(id string) ([]byte, error) {
 	defer r.servicesLock.Unlock()
 
 	for _, s := range r.services {
-		if id == r.idGenerator.GenerateID(s.Namespace, s.Name) {
+		if id == discovery.GenerateID(s.Namespace, s.Name) {
 			strCert, found := s.Meta[common.MetaServiceCertificate]
 			if !found {
 				return nil, errors.NotFound
@@ -107,7 +117,7 @@ func (r *SyncedClient) ConnectionInfo(id string, protocol pb2.Protocol) (*pb2.Co
 	ci := new(pb2.ConnectionInfo)
 
 	for _, s := range r.services {
-		if id == r.idGenerator.GenerateID(s.Namespace, s.Name) {
+		if id == discovery.GenerateID(s.Namespace, s.Name) {
 			for _, n := range s.Nodes {
 				if protocol == n.Protocol {
 					ci.Address = n.Address
@@ -171,7 +181,10 @@ func (r *SyncedClient) get(name string) *pb2.Info {
 	r.servicesLock.Lock()
 	defer r.servicesLock.Unlock()
 	info := r.services[name]
-	return clone.New(info).(*pb2.Info)
+	if info != nil {
+		return clone.New(info).(*pb2.Info)
+	}
+	return nil
 }
 
 func (r *SyncedClient) ofNamespace(namespace string) []*pb2.Info {
@@ -189,7 +202,7 @@ func (r *SyncedClient) ofNamespace(namespace string) []*pb2.Info {
 func (r *SyncedClient) saveService(info *pb2.Info) {
 	r.servicesLock.Lock()
 	defer r.servicesLock.Unlock()
-	r.services[r.idGenerator.GenerateID(info.Namespace, info.Name)] = info
+	r.services[discovery.GenerateID(info.Namespace, info.Name)] = info
 }
 
 func (r *SyncedClient) deleteService(name string) {
@@ -316,12 +329,11 @@ func (r *SyncedClient) disconnected() {
 	r.services = nil
 }
 
-func NewSyncedRegistryClient(server string, tlsConfig *tls.Config, generator discovery.IDGenerator) *SyncedClient {
+func NewSyncedRegistryClient(server string, tlsConfig *tls.Config) *SyncedClient {
 	return &SyncedClient{
 		services:      map[string]*pb2.Info{},
 		tlsConfig:     tlsConfig,
 		serverAddress: server,
-		idGenerator:   generator,
 		eventHandlers: map[string]discovery.RegistryEventHandler{},
 	}
 }

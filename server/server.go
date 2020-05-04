@@ -12,13 +12,13 @@ import (
 )
 
 type GatewayServiceMappingParams struct {
-	ForNode     string
-	GRPCNodeID  string
-	Port        int
-	Tls         *tls.Config
-	Binder      gateway.WireEndpointFunc
-	ServiceType pb.Type
-	Node        *pb.Node
+	ServiceName    string
+	TargetNodeName string
+	NodeName       string
+	Port           int
+	Tls            *tls.Config
+	Security       pb.Security
+	Binder         gateway.WireEndpointFunc
 }
 
 type GatewayParams struct {
