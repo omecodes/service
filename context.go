@@ -7,8 +7,8 @@ import (
 	"crypto/x509"
 	"fmt"
 	"github.com/zoenion/common/errors"
+	"github.com/zoenion/common/grpc-authentication"
 	"github.com/zoenion/service/discovery"
-	"github.com/zoenion/service/interceptors/authentication"
 	pb "github.com/zoenion/service/proto"
 	"google.golang.org/grpc"
 	"strings"
@@ -73,7 +73,7 @@ func Namespace(ctx context.Context) string {
 	return box.params.Namespace
 }
 
-func ProxyCredentials(ctx context.Context) *authentication.ProxyCredentials {
+func ProxyCredentials(ctx context.Context) *ga.ProxyCredentials {
 	box := serviceBox(ctx)
 	if box == nil {
 		return nil
@@ -81,7 +81,7 @@ func ProxyCredentials(ctx context.Context) *authentication.ProxyCredentials {
 
 	parts := strings.Split(box.params.CACredentials, ":")
 
-	return &authentication.ProxyCredentials{
+	return &ga.ProxyCredentials{
 		Key:    parts[0],
 		Secret: parts[1],
 	}

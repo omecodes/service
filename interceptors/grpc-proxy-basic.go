@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"github.com/zoenion/common/errors"
-	"github.com/zoenion/service/interceptors/authentication"
+	"github.com/zoenion/common/grpc-authentication"
 	"google.golang.org/grpc/metadata"
 	"strings"
 )
@@ -44,7 +44,7 @@ func (b *ProxyBasic) Intercept(ctx context.Context) (context.Context, error) {
 		user := parts[0]
 		secret := parts[1]
 
-		ctx = authentication.ContextWithProxyCredentials(ctx, &authentication.ProxyCredentials{
+		ctx = ga.ContextWithProxyCredentials(ctx, &ga.ProxyCredentials{
 			Key:    user,
 			Secret: secret,
 		})

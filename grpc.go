@@ -12,10 +12,9 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	crypto2 "github.com/zoenion/common/crypto"
 	"github.com/zoenion/common/errors"
+	"github.com/zoenion/common/grpc-authentication"
 	authpb "github.com/zoenion/common/proto/auth"
-	"github.com/zoenion/service/authentication"
 	"github.com/zoenion/service/interceptors"
-	authentication2 "github.com/zoenion/service/interceptors/authentication"
 	pb "github.com/zoenion/service/proto"
 	"github.com/zoenion/service/server"
 	"go.uber.org/zap"
@@ -217,7 +216,7 @@ func (box *Box) stopServices() error {
 	return nil
 }
 
-func (box *Box) startCA(pc *authentication2.ProxyCredentials) error {
+func (box *Box) startCA(pc *ga.ProxyCredentials) error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
 
@@ -295,13 +294,13 @@ func GRPCCallOptionsFromContext(ctx context.Context, ot ...GRPCCallOption) ([]gr
 			}
 
 			if token != nil {
-				gRPCCallOptions = append(gRPCCallOptions, grpc.PerRPCCredentials(authentication.NewGRPCClientJwt(strToken)))
+				gRPCCallOptions = append(gRPCCallOptions, grpc.PerRPCCredentials(ga.NewGRPCClientJwt(strToken)))
 			}
 
 		} else if t == CallOptProxyCredentials {
-			cred := authentication2.ProxyCredentialsFromContext(ctx)
+			cred := ga.ProxyCredentialsFromContext(ctx)
 			if cred != nil {
-				gRPCCallOptions = append(gRPCCallOptions, grpc.PerRPCCredentials(authentication.NewGRPCProxy(
+				gRPCCallOptions = append(gRPCCallOptions, grpc.PerRPCCredentials(ga.NewGRPCProxy(
 					cred.Key, cred.Secret)))
 			}
 		}

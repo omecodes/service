@@ -7,7 +7,7 @@ import (
 	crypto2 "github.com/zoenion/common/crypto"
 	"github.com/zoenion/common/database"
 	"github.com/zoenion/common/errors"
-	"github.com/zoenion/service/authentication"
+	"github.com/zoenion/common/grpc-authentication"
 	"github.com/zoenion/service/discovery/registry"
 	"google.golang.org/grpc/credentials"
 	"path/filepath"
@@ -97,7 +97,7 @@ func (box *Box) loadCACredentials() (err error) {
 	}
 
 	parts := strings.Split(box.params.CACredentials, ":")
-	box.caClientAuthentication = authentication.NewGRPCProxy(parts[0], parts[1])
+	box.caClientAuthentication = ga.NewGRPCProxy(parts[0], parts[1])
 
 	return
 }

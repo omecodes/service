@@ -8,21 +8,21 @@ import (
 	"crypto/x509"
 	crypto2 "github.com/zoenion/common/crypto"
 	"github.com/zoenion/common/errors"
-	"github.com/zoenion/service/interceptors/authentication"
+	"github.com/zoenion/common/grpc-authentication"
 	pb "github.com/zoenion/service/proto"
 	"net"
 	"time"
 )
 
 type csrServerHandler struct {
-	credentials *authentication.ProxyCredentials
+	credentials *ga.ProxyCredentials
 	PrivateKey  crypto.PrivateKey
 	Certificate *x509.Certificate
 }
 
 func (h *csrServerHandler) SignCertificate(ctx context.Context, in *pb.SignCertificateRequest) (*pb.SignCertificateResponse, error) {
 	if h.credentials != nil {
-		proxyCredentials := authentication.ProxyCredentialsFromContext(ctx)
+		proxyCredentials := ga.ProxyCredentialsFromContext(ctx)
 		if proxyCredentials == nil || proxyCredentials.Key != h.credentials.Key || proxyCredentials.Secret != h.credentials.Secret {
 			return nil, errors.Forbidden
 		}

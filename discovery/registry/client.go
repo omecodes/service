@@ -8,7 +8,6 @@ import (
 	"github.com/zoenion/common/errors"
 	"github.com/zoenion/service/discovery"
 	pb2 "github.com/zoenion/service/proto"
-	"log"
 	"sync"
 )
 
@@ -23,7 +22,6 @@ type client struct {
 func (r *client) RegisterService(i *pb2.Info, action pb2.ActionOnRegisterExistingService) (string, error) {
 	rsp, err := r.handler.Register(withBroadcastEnabled(context.Background(), true), &pb2.RegisterRequest{Service: i, Action: action})
 	if err != nil {
-		log.Printf("[Registry]:\tCould not register %s: %s\n", i.Name, err)
 		return "", err
 	}
 	return rsp.RegistryId, nil
