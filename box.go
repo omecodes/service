@@ -106,3 +106,11 @@ func (box *Box) ServiceCert() *x509.Certificate {
 func (box *Box) ServiceKey() crypto.PrivateKey {
 	return box.privateKey
 }
+
+func (box *Box) CertificateFilename() string {
+	return box.params.CertificatePath
+}
+
+func (box *Box) KeyFilename() string {
+	return box.params.KeyPath
+}

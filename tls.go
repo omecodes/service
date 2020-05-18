@@ -29,17 +29,17 @@ func (box *Box) loadOrGenerateCACertificateKeyPair() (err error) {
 	}
 
 	name := strcase.ToSnake(box.params.Name)
-	certFilename := filepath.Join(box.params.Dir, fmt.Sprintf("%s.crt", name))
-	keyFilename := filepath.Join(box.params.Dir, fmt.Sprintf("%s.key", name))
+	box.params.CertificatePath = filepath.Join(box.params.Dir, fmt.Sprintf("%s.crt", name))
+	box.params.KeyPath = filepath.Join(box.params.Dir, fmt.Sprintf("%s.key", name))
 
-	shouldGenerateNewPair := !futils.FileExists(certFilename) || !futils.FileExists(keyFilename)
+	shouldGenerateNewPair := !futils.FileExists(box.params.CertificatePath) || !futils.FileExists(box.params.KeyPath)
 	if !shouldGenerateNewPair {
-		box.privateKey, err = crypto2.LoadPrivateKey([]byte{}, keyFilename)
+		box.privateKey, err = crypto2.LoadPrivateKey([]byte{}, box.params.KeyPath)
 		if err != nil {
 			return fmt.Errorf("could not load private key: %s", err)
 		}
 
-		box.cert, err = crypto2.LoadCertificate(certFilename)
+		box.cert, err = crypto2.LoadCertificate(box.params.CertificatePath)
 		if err != nil {
 			return fmt.Errorf("could not load certificate: %s", err)
 		}
@@ -73,8 +73,8 @@ func (box *Box) loadOrGenerateCACertificateKeyPair() (err error) {
 			return fmt.Errorf("could not generate CA cert: %s", err)
 		}
 
-		_ = crypto2.StoreCertificate(box.cert, certFilename, os.ModePerm)
-		_ = crypto2.StorePrivateKey(box.privateKey, nil, keyFilename)
+		_ = crypto2.StoreCertificate(box.cert, box.params.CertificatePath, os.ModePerm)
+		_ = crypto2.StorePrivateKey(box.privateKey, nil, box.params.KeyPath)
 	}
 	return
 }
@@ -101,17 +101,17 @@ func (box *Box) loadOrGenerateCertificateKeyPair() (err error) {
 	}
 
 	name := strcase.ToSnake(box.params.Name)
-	certFilename := filepath.Join(box.params.Dir, fmt.Sprintf("%s.crt", name))
-	keyFilename := filepath.Join(box.params.Dir, fmt.Sprintf("%s.key", name))
+	box.params.CertificatePath = filepath.Join(box.params.Dir, fmt.Sprintf("%s.crt", name))
+	box.params.KeyPath = filepath.Join(box.params.Dir, fmt.Sprintf("%s.key", name))
 
-	shouldGenerateNewPair := !futils.FileExists(certFilename) || !futils.FileExists(keyFilename)
+	shouldGenerateNewPair := !futils.FileExists(box.params.CertificatePath) || !futils.FileExists(box.params.KeyPath)
 	if !shouldGenerateNewPair {
-		box.privateKey, err = crypto2.LoadPrivateKey([]byte{}, keyFilename)
+		box.privateKey, err = crypto2.LoadPrivateKey([]byte{}, box.params.KeyPath)
 		if err != nil {
 			return fmt.Errorf("could not load private key: %s", err)
 		}
 
-		box.cert, err = crypto2.LoadCertificate(certFilename)
+		box.cert, err = crypto2.LoadCertificate(box.params.CertificatePath)
 		if err != nil {
 			return fmt.Errorf("could not load certificate: %s", err)
 		}
@@ -166,8 +166,8 @@ func (box *Box) loadOrGenerateCertificateKeyPair() (err error) {
 			return err
 		}
 
-		_ = crypto2.StoreCertificate(box.cert, certFilename, os.ModePerm)
-		_ = crypto2.StorePrivateKey(box.privateKey, nil, keyFilename)
+		_ = crypto2.StoreCertificate(box.cert, box.params.CertificatePath, os.ModePerm)
+		_ = crypto2.StorePrivateKey(box.privateKey, nil, box.params.KeyPath)
 	}
 	return nil
 }
