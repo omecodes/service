@@ -72,5 +72,15 @@ func (s *Server) onStop() {
 }
 
 func (s *Server) Client() discovery.Registry {
-	return &client{handler: s.gRPCHandler}
+	return &client{handler: s.gRPCHandler, stopFunc: func() error {
+		_ = s.store.Stop()
+		if s.gRPCListener != nil {
+			_ = s.gRPCListener.Close()
+		}
+
+		if s.apiListener != nil {
+			_ = s.apiListener.Close()
+		}
+		return nil
+	}}
 }

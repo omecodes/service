@@ -17,6 +17,7 @@ type client struct {
 	handlersLock sync.Mutex
 	syncMutex    sync.Mutex
 	idGenerator  discovery.IDGenerator
+	stopFunc     func() error
 }
 
 func (r *client) RegisterService(i *pb2.Info, action pb2.ActionOnRegisterExistingService) (string, error) {
@@ -107,6 +108,9 @@ func (r *client) GetOfType(t pb2.Type) ([]*pb2.Info, error) {
 }
 
 func (r *client) Stop() error {
+	if r.stopFunc != nil {
+		return r.stopFunc()
+	}
 	return nil
 }
 

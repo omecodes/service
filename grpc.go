@@ -204,7 +204,7 @@ func (box *Box) stopServices() error {
 	if box.registry != nil {
 		for name, rs := range box.services {
 			rs.Stop()
-			if !box.params.Autonomous {
+			if !box.params.Autonomous && rs.RegistryID != "" {
 				err := box.registry.DeregisterService(rs.RegistryID)
 				if err != nil {
 					log.Println("could not deregister service:", name)

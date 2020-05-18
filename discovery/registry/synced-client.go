@@ -165,7 +165,10 @@ func (r *SyncedClient) GetOfType(t pb2.Type) ([]*pb2.Info, error) {
 func (r *SyncedClient) Stop() error {
 	r.stop = true
 	r.services = nil
-	return r.conn.Close()
+	if r.conn != nil {
+		return r.conn.Close()
+	}
+	return nil
 }
 
 func (r *SyncedClient) publishEvent(e pb2.Event) {
