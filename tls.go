@@ -29,8 +29,13 @@ func (box *Box) loadOrGenerateCACertificateKeyPair() (err error) {
 	}
 
 	name := strcase.ToSnake(box.params.Name)
-	box.params.CertificatePath = filepath.Join(box.params.Dir, fmt.Sprintf("%s.crt", name))
-	box.params.KeyPath = filepath.Join(box.params.Dir, fmt.Sprintf("%s.key", name))
+	if box.params.CertificatePath == "" {
+		box.params.CertificatePath = filepath.Join(box.params.Dir, fmt.Sprintf("%s.crt", name))
+	}
+
+	if box.params.KeyPath == "" {
+		box.params.KeyPath = filepath.Join(box.params.Dir, fmt.Sprintf("%s.key", name))
+	}
 
 	shouldGenerateNewPair := !futils.FileExists(box.params.CertificatePath) || !futils.FileExists(box.params.KeyPath)
 	if !shouldGenerateNewPair {
@@ -101,8 +106,13 @@ func (box *Box) loadOrGenerateCertificateKeyPair() (err error) {
 	}
 
 	name := strcase.ToSnake(box.params.Name)
-	box.params.CertificatePath = filepath.Join(box.params.Dir, fmt.Sprintf("%s.crt", name))
-	box.params.KeyPath = filepath.Join(box.params.Dir, fmt.Sprintf("%s.key", name))
+	if box.params.CertificatePath == "" {
+		box.params.CertificatePath = filepath.Join(box.params.Dir, fmt.Sprintf("%s.crt", name))
+	}
+
+	if box.params.KeyPath == "" {
+		box.params.KeyPath = filepath.Join(box.params.Dir, fmt.Sprintf("%s.key", name))
+	}
 
 	shouldGenerateNewPair := !futils.FileExists(box.params.CertificatePath) || !futils.FileExists(box.params.KeyPath)
 	if !shouldGenerateNewPair {
