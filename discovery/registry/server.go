@@ -4,8 +4,8 @@ import (
 	"crypto"
 	"crypto/tls"
 	"crypto/x509"
-	"github.com/zoenion/common/conf"
 	"github.com/zoenion/common/errors"
+	"github.com/zoenion/common/jcon"
 	"github.com/zoenion/service/discovery"
 	"github.com/zoenion/service/discovery/registry/dao"
 	"log"
@@ -34,7 +34,7 @@ type Configs struct {
 	PrivateKey  crypto.PrivateKey
 	Domain      string
 	//TLS         *tls.Config
-	DB conf.Map
+	DB jcon.Map
 }
 
 func NewServer(configs *Configs) (*Server, error) {

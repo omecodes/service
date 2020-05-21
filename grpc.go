@@ -87,17 +87,18 @@ func (box *Box) StartGatewayGRPCMapping(params *server.GatewayServiceMappingPara
 			go srv.Serve(listener)
 
 			if box.registry != nil {
-				info := &pb.Info{}
-				info.Namespace = box.params.Namespace
-				info.Name = box.Name()
+				inf := &pb.Info{}
+				inf.Namespace = box.params.Namespace
+				inf.Name = box.Name()
+				inf.Type = info.Type
 				n := &pb.Node{}
 				n.Name = params.NodeName
 				n.Address = address
 				n.Protocol = pb.Protocol_Http
 				n.Security = params.Security
-				info.Nodes = []*pb.Node{n}
+				inf.Nodes = []*pb.Node{n}
 
-				gt.RegistryID, err = box.registry.RegisterService(info, pb.ActionOnRegisterExistingService_AddNodes|pb.ActionOnRegisterExistingService_UpdateExisting)
+				gt.RegistryID, err = box.registry.RegisterService(inf, pb.ActionOnRegisterExistingService_AddNodes|pb.ActionOnRegisterExistingService_UpdateExisting)
 				if err != nil {
 					log.Println("could not register service")
 				}

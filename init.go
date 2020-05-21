@@ -3,11 +3,11 @@ package service
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/zoenion/common/conf"
 	crypto2 "github.com/zoenion/common/crypto"
 	"github.com/zoenion/common/database"
 	"github.com/zoenion/common/errors"
 	"github.com/zoenion/common/grpc-authentication"
+	"github.com/zoenion/common/jcon"
 	"github.com/zoenion/service/discovery/registry"
 	"google.golang.org/grpc/credentials"
 	"path/filepath"
@@ -102,7 +102,7 @@ func (box *Box) loadCACredentials() (err error) {
 	return
 }
 
-func (box *Box) initRegistry(dbCfg conf.Map) (err error) {
+func (box *Box) initRegistry(dbCfg jcon.Map) (err error) {
 	var registryHost string
 	if box.params.RegistryAddress == "" {
 		registryHost = box.Host()

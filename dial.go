@@ -32,28 +32,32 @@ func (box *Box) dialToService(serviceType pb.Type, selectors ...pb.Selector) (*g
 	for _, info := range selection {
 		// Search for cached connection dialer
 		for _, node := range info.Nodes {
-			conn := box.dialFromCache(node.Address)
-			if conn != nil {
-				return conn, nil
+			if node.Protocol == pb.Protocol_Grpc {
+				conn := box.dialFromCache(node.Address)
+				if conn != nil {
+					return conn, nil
+				}
 			}
 		}
 
 		// if no existing connection dialer found, dial new one
 		for _, node := range info.Nodes {
-			tlsConf := box.ClientMutualTLS()
-			if tlsConf == nil {
-				dialer = connection.NewDialer(node.Address)
-			} else {
-				dialer = connection.NewDialer(node.Address, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)))
-			}
+			if node.Protocol == pb.Protocol_Grpc {
+				tlsConf := box.ClientMutualTLS()
+				if tlsConf == nil {
+					dialer = connection.NewDialer(node.Address)
+				} else {
+					dialer = connection.NewDialer(node.Address, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)))
+				}
 
-			conn, err := dialer.Dial()
-			if err != nil {
-				log.Printf("could not connect to gRPC://%s/%s@%s\n", info.Type, node.Name, node.Address)
-			} else {
-				log.Printf("connected to gRPC://%s/%s@%s\n", info.Type, node.Name, node.Address)
-				box.addDialerToCache(node.Address, dialer)
-				return conn, err
+				conn, err := dialer.Dial()
+				if err != nil {
+					log.Printf("could not connect to gRPC://%s/%s@%s\n", info.Type, node.Name, node.Address)
+				} else {
+					log.Printf("connected to gRPC://%s/%s@%s\n", info.Type, node.Name, node.Address)
+					box.addDialerToCache(node.Address, dialer)
+					return conn, err
+				}
 			}
 		}
 	}

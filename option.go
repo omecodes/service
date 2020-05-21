@@ -1,14 +1,14 @@
 package service
 
 import (
-	"github.com/zoenion/common/conf"
 	"github.com/zoenion/common/grpc-authentication"
+	"github.com/zoenion/common/jcon"
 	"github.com/zoenion/service/discovery"
 )
 
 type initOptions struct {
 	registry             discovery.Registry
-	RegistryServerDBConf conf.Map
+	RegistryServerDBConf jcon.Map
 	caProxyCredentials   *ga.ProxyCredentials
 }
 

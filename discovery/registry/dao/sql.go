@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/zoenion/common/codec"
-	"github.com/zoenion/common/conf"
 	"github.com/zoenion/common/dao"
+	"github.com/zoenion/common/jcon"
 	"github.com/zoenion/common/persist/dict"
 	pb2 "github.com/zoenion/service/proto"
 )
@@ -68,7 +68,7 @@ func (s *sqlApplicationDAO) scanApp(row dao.Row) (interface{}, error) {
 	return app, err
 }
 
-func NewSQLDAO(prefix string, cfg conf.Map) (ServicesDAO, error) {
+func NewSQLDAO(prefix string, cfg jcon.Map) (ServicesDAO, error) {
 	db := new(sqlApplicationDAO)
 	objects, err := dict.NewSQL(cfg, prefix, codec.Default)
 	db.objects = objects
