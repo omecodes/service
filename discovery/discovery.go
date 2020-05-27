@@ -57,6 +57,7 @@ type Registry interface {
 	RegisterService(info *pb2.Info, action pb2.ActionOnRegisterExistingService) (string, error)
 	DeregisterService(id string, nodes ...string) error
 	GetService(id string) (*pb2.Info, error)
+	GetNode(id string, nodeName string) (*pb2.Node, error)
 	Certificate(id string) ([]byte, error)
 	ConnectionInfo(id string, protocol pb2.Protocol) (*pb2.ConnectionInfo, error)
 	RegisterEventHandler(h RegistryEventHandler) string

@@ -41,6 +41,20 @@ func (r *client) GetService(id string) (*pb2.Info, error) {
 	return rsp.Info, nil
 }
 
+func (r *client) GetNode(id string, nodeName string) (*pb2.Node, error) {
+	info, err := r.GetService(id)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, node := range info.Nodes {
+		if node.Name == nodeName {
+			return node, nil
+		}
+	}
+	return nil, errors.NotFound
+}
+
 func (r *client) Certificate(id string) ([]byte, error) {
 	r.servicesLock.Lock()
 	defer r.servicesLock.Unlock()

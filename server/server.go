@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"github.com/gorilla/mux"
+	grpc_gateway "github.com/zoenion/common/grpc-gateway"
 	"github.com/zoenion/service/gateway"
 	"github.com/zoenion/service/interceptors"
 	pb "github.com/zoenion/service/proto"
@@ -19,6 +20,8 @@ type GatewayServiceMappingParams struct {
 	Tls            *tls.Config
 	Security       pb.Security
 	Binder         gateway.WireEndpointFunc
+	MuxWrapper     grpc_gateway.MuxWrapper
+	Meta           map[string]string
 }
 
 type GatewayParams struct {

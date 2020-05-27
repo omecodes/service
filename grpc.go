@@ -70,10 +70,14 @@ func (box *Box) StartGatewayGRPCMapping(params *server.GatewayServiceMappingPara
 			}
 
 			log.Printf("starting %s.HTTP at %s", params.ServiceName, address)
-			srv := &http.Server{
-				Addr:    address,
-				Handler: mux,
+			srv := &http.Server{Addr: address}
+
+			if params.MuxWrapper != nil {
+				srv.Handler = params.MuxWrapper(mux)
+			} else {
+				srv.Handler = mux
 			}
+
 			gt := &server.Gateway{}
 			gt.Server = srv
 			gt.Address = address
@@ -96,6 +100,7 @@ func (box *Box) StartGatewayGRPCMapping(params *server.GatewayServiceMappingPara
 				n.Address = address
 				n.Protocol = pb.Protocol_Http
 				n.Security = params.Security
+				n.Meta = params.Meta
 				inf.Nodes = []*pb.Node{n}
 
 				gt.RegistryID, err = box.registry.RegisterService(inf, pb.ActionOnRegisterExistingService_AddNodes|pb.ActionOnRegisterExistingService_UpdateExisting)
