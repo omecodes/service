@@ -81,10 +81,10 @@ func (box *Box) StartGatewayGRPCMapping(params *server.GatewayServiceMappingPara
 			gt := &server.Gateway{}
 			gt.Server = srv
 			gt.Address = address
-			if params.Tls != nil {
-				gt.Scheme = "https"
-			} else {
+			if node.Security == pb.Security_None {
 				gt.Scheme = "http"
+			} else {
+				gt.Scheme = "https"
 			}
 
 			box.gateways[params.NodeName] = gt
