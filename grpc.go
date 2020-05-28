@@ -87,7 +87,7 @@ func (box *Box) StartGatewayGRPCMapping(params *server.GatewayServiceMappingPara
 				gt.Scheme = "http"
 			}
 
-			box.gateways[params.ServiceName] = gt
+			box.gateways[params.NodeName] = gt
 			go srv.Serve(listener)
 
 			if box.registry != nil {
