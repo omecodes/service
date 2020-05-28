@@ -15,6 +15,7 @@ import (
 )
 
 type box struct{}
+
 type serviceContext struct{}
 
 func serviceBox(ctx context.Context) *Box {
@@ -73,7 +74,7 @@ func Namespace(ctx context.Context) string {
 	return box.params.Namespace
 }
 
-func ProxyCredentials(ctx context.Context) *ga.ProxyCredentials {
+func CACredentials(ctx context.Context) *ga.ProxyCredentials {
 	box := serviceBox(ctx)
 	if box == nil {
 		return nil
@@ -141,4 +142,8 @@ func Dial(ctx context.Context, st pb.Type, selectors ...pb.Selector) (*grpc.Clie
 
 func ContextWithBox(ctx context.Context, b *Box) context.Context {
 	return context.WithValue(ctx, box{}, b)
+}
+
+func BoxFromContext(ctx context.Context) *Box {
+	return serviceBox(ctx)
 }

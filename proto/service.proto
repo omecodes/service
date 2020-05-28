@@ -19,6 +19,8 @@ enum Type {
     Data = 5;
     FileStorage = 6;
     AppStore = 7;
+    Accounts = 8;
+    Files = 9;
 }
 
 enum Security {
