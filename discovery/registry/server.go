@@ -14,6 +14,8 @@ import (
 type Server struct {
 	name string
 	dir  string
+
+	stopRequested bool
 	// gRPCInterceptor interceptors.GRPC
 	gRPCHandler *gRPCServerHandler
 	store       dao.ServicesDAO
@@ -70,6 +72,7 @@ func (s *Server) onStop() {
 
 func (s *Server) Client() discovery.Registry {
 	return &client{handler: s.gRPCHandler, stopFunc: func() error {
+		s.stopRequested = true
 		_ = s.store.Stop()
 		if s.gRPCListener != nil {
 			_ = s.gRPCListener.Close()

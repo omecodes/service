@@ -148,7 +148,7 @@ func (box *Box) loadOrGenerateCertificateKeyPair() (err error) {
 
 		if box.caClientAuthentication == nil {
 			parts := strings.Split(box.params.CACredentials, ":")
-			box.caClientAuthentication = ga.NewGRPCProxy(parts[0], parts[1])
+			box.caClientAuthentication = ga.NewGRPCBasic(parts[0], parts[1])
 		}
 
 		conn, err := grpc.Dial(box.params.CAAddress, grpc.WithTransportCredentials(box.caGRPCTransportCredentials), grpc.WithPerRPCCredentials(box.caClientAuthentication))

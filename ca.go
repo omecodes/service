@@ -15,18 +15,22 @@ import (
 )
 
 type csrServerHandler struct {
-	credentials *ga.ProxyCredentials
-	PrivateKey  crypto.PrivateKey
-	Certificate *x509.Certificate
+	credentialsVerifyFunc ga.CredentialsVerifyFunc
+	PrivateKey            crypto.PrivateKey
+	Certificate           *x509.Certificate
 }
 
 func (h *csrServerHandler) SignCertificate(ctx context.Context, in *pb.SignCertificateRequest) (*pb.SignCertificateResponse, error) {
-	if h.credentials != nil {
-		proxyCredentials := ga.ProxyCredentialsFromContext(ctx)
-		if proxyCredentials == nil || proxyCredentials.Key != h.credentials.Key || proxyCredentials.Secret != h.credentials.Secret {
-			return nil, errors.Forbidden
-		}
+	cred := ga.CredentialsFromContext(ctx)
+	valid, err := h.credentialsVerifyFunc(cred)
+	if err != nil {
+		return nil, err
 	}
+
+	if !valid {
+		return nil, errors.Unauthorized
+	}
+
 
 	var ips []net.IP
 	for _, a := range in.Csr.Addresses {

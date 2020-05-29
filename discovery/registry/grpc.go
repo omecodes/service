@@ -46,12 +46,13 @@ func (s *Server) startGRPCServer() error {
 		return err
 	}
 
+	log.Info("starting grpc server", log.Field("service", "registry"), log.Field("at", addr))
 	srv := grpc.NewServer()
 	pb.RegisterRegistryServer(srv, s.gRPCHandler)
 	go func() {
 		err = srv.Serve(s.gRPCListener)
-		if err != nil {
-			log.Error("could not start registry server:", err)
+		if err != nil && !s.stopRequested {
+			log.Error("http stopped serving", err, log.Field("at", addr))
 		}
 	}()
 	return nil

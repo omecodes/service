@@ -62,9 +62,6 @@ func (box *Box) Init(opts ...InitOption) error {
 		}
 	}
 
-	if box.params.CA {
-		return box.startCA(options.caProxyCredentials)
-	}
 	return nil
 }
 
@@ -97,7 +94,7 @@ func (box *Box) loadCACredentials() (err error) {
 	}
 
 	parts := strings.Split(box.params.CACredentials, ":")
-	box.caClientAuthentication = ga.NewGRPCProxy(parts[0], parts[1])
+	box.caClientAuthentication = ga.NewGRPCBasic(parts[0], parts[1])
 
 	return
 }
@@ -123,10 +120,6 @@ func (box *Box) initRegistry(dbCfg jcon.Map) (err error) {
 		PrivateKey:  box.ServiceKey(),
 		Domain:      box.params.Domain,
 		DB:          dbCfg,
-	}
-
-	if box.params.StartRegistry {
-
 	}
 
 	var syncedRegistry *registry.Server = nil

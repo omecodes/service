@@ -63,7 +63,7 @@ func (s *Server) startAPIServer() error {
 		return err
 	}
 
-	log.Info("starting Registry.HTTP", log.Field("at", addr))
+	log.Info("starting http server", log.Field("service", "registry"), log.Field("at", addr))
 	srv := &http.Server{
 		Addr:    s.apiListener.Addr().String(),
 		Handler: mux,
