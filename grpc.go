@@ -27,6 +27,10 @@ import (
 )
 
 func (box *Box) CAClientAuthentication() credentials.PerRPCCredentials {
+	if box.caClientAuthentication == nil {
+		parts := strings.Split(box.params.CACredentials, ":")
+		box.caClientAuthentication = ga.NewGRPCBasic(parts[0], parts[1])
+	}
 	return box.caClientAuthentication
 }
 
@@ -96,7 +100,7 @@ func (box *Box) StartGatewayGRPCMapping(params *server.GatewayServiceMappingPara
 			box.gateways[params.NodeName] = gt
 			go srv.Serve(listener)
 
-			if !box.params.CA && !box.params.Autonomous {
+			if params.ForceRegister || !box.params.CA && !box.params.Autonomous {
 				if box.registry != nil {
 					inf := &pb.Info{}
 					inf.Namespace = box.params.Namespace
@@ -146,18 +150,15 @@ func (box *Box) StartService(params *server.ServiceParams) error {
 		interceptors.NewJwt(box.JwtVerifyFunc),
 	)
 
-	var chainStreamInterceptor grpc.StreamServerInterceptor
-	var chainUnaryInterceptor grpc.UnaryServerInterceptor
-
 	streamInterceptors := append([]grpc.StreamServerInterceptor{},
-		defaultInterceptor.InterceptStream,
 		grpc_opentracing.StreamServerInterceptor(),
+		defaultInterceptor.InterceptStream,
 		// grpc_zap.StreamServerInterceptor(box.logger)
 	)
 
 	unaryInterceptors := append([]grpc.UnaryServerInterceptor{},
-		defaultInterceptor.InterceptUnary,
 		grpc_opentracing.UnaryServerInterceptor(),
+		defaultInterceptor.InterceptUnary,
 	//	grpc_zap.UnaryServerInterceptor(box.logger)
 	)
 
@@ -166,6 +167,8 @@ func (box *Box) StartService(params *server.ServiceParams) error {
 		unaryInterceptors = append(unaryInterceptors, params.Interceptor.InterceptUnary)
 	}
 
+	chainUnaryInterceptor := grpc_middleware.ChainUnaryServer(unaryInterceptors...)
+	chainStreamInterceptor := grpc_middleware.ChainStreamServer(streamInterceptors...)
 	opts = append(opts, grpc.StreamInterceptor(chainStreamInterceptor), grpc.UnaryInterceptor(chainUnaryInterceptor))
 
 	srv := grpc.NewServer(opts...)
@@ -179,7 +182,7 @@ func (box *Box) StartService(params *server.ServiceParams) error {
 	params.RegisterHandlerFunc(srv)
 	go srv.Serve(listener)
 
-	if !box.params.CA && !box.params.Autonomous && params.Node != nil && box.registry != nil {
+	if params.ForceRegister || !box.params.CA && !box.params.Autonomous && params.Node != nil && box.registry != nil {
 		info := &pb.Info{}
 		info.Namespace = box.params.Namespace
 		info.Name = box.Name()

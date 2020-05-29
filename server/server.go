@@ -13,11 +13,13 @@ import (
 )
 
 type GatewayServiceMappingParams struct {
+	ForceRegister  bool
 	ServiceName    string
 	TargetNodeName string
 	NodeName       string
 	Port           int
 	Tls            *tls.Config
+	ServiceType    pb.Type
 	Security       pb.Security
 	Binder         gateway.WireEndpointFunc
 	MuxWrapper     grpc_gateway.MuxWrapper
@@ -25,6 +27,7 @@ type GatewayServiceMappingParams struct {
 }
 
 type GatewayParams struct {
+	ForceRegister  bool
 	MiddlewareList []mux.MiddlewareFunc
 	Port           int
 	ProvideRouter  func() *mux.Router
@@ -34,6 +37,7 @@ type GatewayParams struct {
 }
 
 type ServiceParams struct {
+	ForceRegister       bool
 	Port                int
 	Tls                 *tls.Config
 	Interceptor         interceptors.GRPC

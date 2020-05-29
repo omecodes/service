@@ -3,6 +3,7 @@ package interceptors
 import (
 	"context"
 	"google.golang.org/grpc/metadata"
+	"strings"
 )
 
 type JwtVerifyFunc func(ctx context.Context, jwt string) (context.Context, error)
@@ -26,7 +27,9 @@ func (j *Jwt) Intercept(ctx context.Context) (context.Context, error) {
 	meta := md.Get("authorization")
 	if len(meta) != 0 {
 		authorization := meta[0]
-		ctx, err = j.verifyFunc(ctx, authorization)
+		if strings.HasPrefix(authorization, "Bearer ") {
+			ctx, err = j.verifyFunc(ctx, authorization)
+		}
 	}
 
 	return ctx, err
