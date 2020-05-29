@@ -6,12 +6,12 @@ import (
 	"encoding/json"
 	"github.com/google/uuid"
 	"github.com/zoenion/common/errors"
+	"github.com/zoenion/common/log"
 	"github.com/zoenion/common/persist/dict"
 	authpb "github.com/zoenion/common/proto/auth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
-	"log"
 	"sync"
 	"time"
 )
@@ -44,14 +44,14 @@ func (s *SyncedStore) connected() {
 	client := authpb.NewTokenStoreServiceClient(s.conn)
 	stream, err := client.Listen(context.Background(), &authpb.ListenRequest{})
 	if err != nil {
-		log.Printf("could not listen to jwt events: %s\n", err)
+		log.Error("could not listen to jwt events", err)
 		return
 	}
-	defer log.Println("stream close:", stream.CloseSend())
+	defer stream.CloseSend()
 	for {
 		event, err := stream.Recv()
 		if err != nil {
-			log.Printf("received error while read jwt events stream: %s\n", err)
+			//log.Printf("received error while read jwt events stream: %s\n", err)
 			return
 		}
 		switch event.Action {

@@ -13,9 +13,9 @@ import (
 	"github.com/zoenion/common/errors"
 	"github.com/zoenion/common/futils"
 	"github.com/zoenion/common/grpc-authentication"
+	"github.com/zoenion/common/log"
 	pb "github.com/zoenion/service/proto"
 	"google.golang.org/grpc"
-	"log"
 	"net"
 	"os"
 	"path/filepath"
@@ -133,7 +133,7 @@ func (box *Box) loadOrGenerateCertificateKeyPair() (err error) {
 		_, err = box.cert.Verify(x509.VerifyOptions{Roots: CAPool})
 		if err != nil || time.Now().After(box.cert.NotAfter) || time.Now().Before(box.cert.NotBefore) {
 			if err != nil {
-				log.Println("service certificate verification failed:", err)
+				log.Error("service certificate verification failed", err)
 			}
 			shouldGenerateNewPair = true
 		}

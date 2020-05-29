@@ -13,6 +13,8 @@ import (
 	crypto2 "github.com/zoenion/common/crypto"
 	"github.com/zoenion/common/errors"
 	"github.com/zoenion/common/grpc-authentication"
+	gs "github.com/zoenion/common/grpc-session"
+	"github.com/zoenion/common/log"
 	authpb "github.com/zoenion/common/proto/auth"
 	"github.com/zoenion/service/interceptors"
 	pb "github.com/zoenion/service/proto"
@@ -20,8 +22,8 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"log"
 	"net/http"
+	"strings"
 )
 
 func (box *Box) CAClientAuthentication() credentials.PerRPCCredentials {
@@ -53,9 +55,13 @@ func (box *Box) StartGatewayGRPCMapping(params *server.GatewayServiceMappingPara
 			}
 
 			address := listener.Addr().String()
+			if box.params.Domain != "" {
+				address = strings.Replace(address, box.params.Ip, box.params.Domain, 1)
+			}
+
 			grpcServerEndpoint := flag.String("grpc-server-endpoint", node.Address, "gRPC server endpoint")
 			ctx := context.Background()
-			mux := runtime.NewServeMux()
+			mux := runtime.NewServeMux(runtime.WithForwardResponseOption(gs.SetCookieFromGRPCMetadata))
 			var opts []grpc.DialOption
 
 			if node.Security == pb.Security_None {
@@ -69,7 +75,7 @@ func (box *Box) StartGatewayGRPCMapping(params *server.GatewayServiceMappingPara
 				return err
 			}
 
-			log.Printf("starting %s.HTTP at %s", params.ServiceName, address)
+			log.Info("starting HTTP server", log.Field("service", params.ServiceName), log.Field("address", address))
 			srv := &http.Server{Addr: address}
 
 			if params.MuxWrapper != nil {
@@ -105,7 +111,7 @@ func (box *Box) StartGatewayGRPCMapping(params *server.GatewayServiceMappingPara
 
 				gt.RegistryID, err = box.registry.RegisterService(inf, pb.ActionOnRegisterExistingService_AddNodes|pb.ActionOnRegisterExistingService_UpdateExisting)
 				if err != nil {
-					log.Println("could not register service")
+					log.Error("could not register service", err)
 				}
 			}
 			return nil
@@ -122,9 +128,13 @@ func (box *Box) StartService(params *server.ServiceParams) error {
 	if err != nil {
 		return err
 	}
-	address := listener.Addr().String()
 
-	log.Printf("starting %s.gRPC at %s", params.Node.Name, address)
+	address := listener.Addr().String()
+	if box.params.Domain != "" {
+		address = strings.Replace(address, box.params.Ip, box.params.Domain, 1)
+	}
+
+	log.Info("starting gRPC server", log.Field("service", params.Node.Name), log.Field("address", address))
 	var opts []grpc.ServerOption
 
 	defaultInterceptor := interceptors.Default(
@@ -136,28 +146,24 @@ func (box *Box) StartService(params *server.ServiceParams) error {
 
 	var chainStreamInterceptor grpc.StreamServerInterceptor
 	var chainUnaryInterceptor grpc.UnaryServerInterceptor
-	logger, _ := zap.NewProduction()
+
+	streamInterceptors := append([]grpc.StreamServerInterceptor{},
+		defaultInterceptor.InterceptStream,
+		grpc_opentracing.StreamServerInterceptor(),
+		// grpc_zap.StreamServerInterceptor(box.logger)
+	)
+
+	unaryInterceptors := append([]grpc.UnaryServerInterceptor{},
+		defaultInterceptor.InterceptUnary,
+		grpc_opentracing.UnaryServerInterceptor(),
+	//	grpc_zap.UnaryServerInterceptor(box.logger)
+	)
 
 	if params.Interceptor != nil {
-		chainStreamInterceptor = grpc_middleware.ChainStreamServer(
-			defaultInterceptor.InterceptStream,
-			grpc_opentracing.StreamServerInterceptor(),
-			grpc_zap.StreamServerInterceptor(logger),
-			params.Interceptor.InterceptStream,
-		)
-		chainUnaryInterceptor = grpc_middleware.ChainUnaryServer(
-			defaultInterceptor.InterceptUnary,
-			grpc_opentracing.UnaryServerInterceptor(),
-			grpc_zap.UnaryServerInterceptor(logger),
-			params.Interceptor.InterceptUnary,
-		)
-	} else {
-		chainStreamInterceptor = grpc_middleware.ChainStreamServer(defaultInterceptor.InterceptStream)
-		chainUnaryInterceptor = grpc_middleware.ChainUnaryServer(defaultInterceptor.InterceptUnary)
+		streamInterceptors = append(streamInterceptors, params.Interceptor.InterceptStream)
+		unaryInterceptors = append(unaryInterceptors, params.Interceptor.InterceptUnary)
 	}
 
-	if params.Interceptor != nil {
-	}
 	opts = append(opts, grpc.StreamInterceptor(chainStreamInterceptor), grpc.UnaryInterceptor(chainUnaryInterceptor))
 
 	srv := grpc.NewServer(opts...)
@@ -184,7 +190,7 @@ func (box *Box) StartService(params *server.ServiceParams) error {
 
 		rs.RegistryID, err = box.registry.RegisterService(info, pb.ActionOnRegisterExistingService_AddNodes|pb.ActionOnRegisterExistingService_UpdateExisting)
 		if err != nil {
-			log.Println("could not register service")
+			log.Error("could not register service", err, log.Field("name", params.Node.Name))
 		}
 	}
 	return nil
@@ -198,7 +204,7 @@ func (box *Box) StopService(name string) {
 	if !box.params.Autonomous && rs != nil && box.registry != nil {
 		err := box.registry.DeregisterService(rs.RegistryID)
 		if err != nil {
-			log.Println("could not deregister service:", name)
+			log.Error("could not deregister service", err, log.Field("name", name))
 		}
 		rs.Stop()
 	}
@@ -213,7 +219,7 @@ func (box *Box) stopServices() error {
 			if !box.params.Autonomous && rs.RegistryID != "" {
 				err := box.registry.DeregisterService(rs.RegistryID)
 				if err != nil {
-					log.Println("could not deregister service:", name)
+					log.Error("could not de register service", err, log.Field("name", name))
 				}
 			}
 		}
@@ -239,7 +245,7 @@ func (box *Box) startCA(pc *ga.ProxyCredentials) error {
 			ClientAuth:   tls.VerifyClientCertIfGiven,
 		}
 	} else {
-		log.Println("could not load TLS configs")
+		log.Error("could not load TLS configs", err)
 		return err
 	}
 
@@ -249,7 +255,7 @@ func (box *Box) startCA(pc *ga.ProxyCredentials) error {
 		return err
 	}
 
-	log.Printf("starting CA.gRPC at %s", address)
+	log.Info("starting CA.gRPC server", log.Field("at", address))
 	var opts []grpc.ServerOption
 
 	defaultInterceptor := interceptors.Default(
@@ -264,8 +270,8 @@ func (box *Box) startCA(pc *ga.ProxyCredentials) error {
 	)
 
 	opts = append(opts, grpc.UnaryInterceptor(chainUnaryInterceptor))
-	gs := grpc.NewServer(opts...)
-	pb.RegisterCSRServer(gs, &csrServerHandler{
+	srv := grpc.NewServer(opts...)
+	pb.RegisterCSRServer(srv, &csrServerHandler{
 		credentials: pc,
 		PrivateKey:  box.privateKey,
 		Certificate: box.cert,
@@ -273,11 +279,11 @@ func (box *Box) startCA(pc *ga.ProxyCredentials) error {
 
 	rs := new(server.Service)
 	rs.Address = address
-	rs.Server = gs
+	rs.Server = srv
 	rs.Secure = true
 	box.services["ca"] = rs
 
-	go gs.Serve(listener)
+	go srv.Serve(listener)
 	return nil
 }
 

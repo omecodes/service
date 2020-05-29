@@ -7,7 +7,6 @@ import (
 	"github.com/zoenion/service/discovery"
 	"github.com/zoenion/service/discovery/registry/dao"
 	pb2 "github.com/zoenion/service/proto"
-	"log"
 	"sync"
 )
 
@@ -232,7 +231,6 @@ func (h *gRPCServerHandler) Listen(in *pb2.ListenRequest, stream pb2.Registry_Li
 
 		err = stream.Send(ev)
 		if err != nil {
-			log.Println("failed to stream event:", ev, err)
 			return err
 		}
 	}
@@ -247,8 +245,6 @@ func (h *gRPCServerHandler) Listen(in *pb2.ListenRequest, stream pb2.Registry_Li
 		if e == nil {
 			return errors.New("event channel closed")
 		}
-
-		log.Println(e.Type, e.Name)
 
 		err := stream.Send(e)
 		if err != nil {

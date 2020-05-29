@@ -3,7 +3,6 @@ package service
 import (
 	"errors"
 	"fmt"
-	"log"
 	"path/filepath"
 )
 
@@ -44,7 +43,7 @@ func (box *Box) validateParams() error {
 	var err error
 	box.params.Dir, err = filepath.Abs(box.params.Dir)
 	if err != nil {
-		log.Printf("command line: could not find %s\n", box.Dir())
+		// log.Printf("command line: could not find %s\n", box.Dir())
 		return err
 	}
 

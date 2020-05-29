@@ -1,8 +1,8 @@
 package interceptors
 
 import (
+	"github.com/zoenion/common/log"
 	authpb "github.com/zoenion/common/proto/auth"
-	"log"
 	"net/http"
 	"strings"
 )
@@ -24,13 +24,13 @@ func (atv *authorizationTokenValidator) Handle(next http.Handler) http.Handler {
 
 			state, err := atv.verifier.Verify(r.Context(), t)
 			if err != nil {
-				log.Println("could not verify JWT:", err)
+				log.Error("could not verify JWT", err, log.Field("jwt", strJWT))
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
 
 			if state != authpb.JWTState_VALID {
-				log.Println("Invalid JWT:", strJWT)
+				log.Info("invalid JWT", log.Field("jwt", strJWT))
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}

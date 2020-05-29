@@ -7,12 +7,12 @@ import (
 	"github.com/zoenion/common"
 	"github.com/zoenion/common/clone"
 	"github.com/zoenion/common/errors"
+	"github.com/zoenion/common/log"
 	"github.com/zoenion/service/discovery"
 	pb2 "github.com/zoenion/service/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
-	"log"
 	"sync"
 	"time"
 )
@@ -56,10 +56,10 @@ func (r *SyncedClient) RegisterService(i *pb2.Info, action pb2.ActionOnRegisterE
 
 	rsp, err := r.client.Register(context.Background(), &pb2.RegisterRequest{Service: i, Action: action})
 	if err != nil {
-		log.Printf("[Registry]:\tCould not register %s: %s\n", i.Name, err)
+		log.Error("[Registry]: Could not register", err, log.Field("service", i.Name))
 		return "", err
 	}
-	log.Println("[Registry]:\tRegistered")
+	log.Info("[Registry]:\tRegistered")
 	return rsp.RegistryId, nil
 }
 
@@ -72,7 +72,7 @@ func (r *SyncedClient) DeregisterService(id string, nodes ...string) error {
 
 	_, err = r.client.Deregister(context.Background(), &pb2.DeregisterRequest{RegistryId: id, Nodes: nodes})
 	if err == nil {
-		log.Println("[Registry]:\tDeregistered")
+		log.Info("[Registry]:\tDeregistered")
 	}
 	return err
 }
@@ -261,7 +261,6 @@ func (r *SyncedClient) connect() error {
 	var err error
 	r.conn, err = grpc.Dial(r.serverAddress, opts...)
 	if err != nil {
-		log.Printf("connection to registry server failed: %s\n", err)
 		return err
 	}
 	r.client = pb2.NewRegistryClient(r.conn)
@@ -277,7 +276,6 @@ func (r *SyncedClient) sync() {
 	for !r.stop {
 		err := r.connect()
 		if err != nil {
-			log.Printf("[Registry]:\tcould not initialize connection to server at %s: %s\n", r.serverAddress, err)
 			time.After(time.Second * 2)
 			continue
 		}
@@ -289,26 +287,26 @@ func (r *SyncedClient) listen() {
 	stream, err := r.client.Listen(context.Background(), &pb2.ListenRequest{})
 	if err != nil {
 		r.conn = nil
-		log.Printf("[Registry]:\tcould not sync with registry server: %s\n", err)
+		log.Error("[Registry]: could not sync with registry server", err)
 		return
 	}
 	defer stream.CloseSend()
 
-	log.Printf("[Registry]:\tconnected to %s\n", r.serverAddress)
+	log.Info("[Registry]: connected", log.Field("to", r.serverAddress))
 	for _, info := range r.services {
 		_, err := r.client.Register(context.Background(), &pb2.RegisterRequest{Service: info})
 		if err != nil {
-			log.Printf("[Registry]:\tCould not register %s: %s\n", info.Name, err)
+			log.Error("[Registry]: could not register", err, log.Field("service", info.Name))
 			return
 		} else {
-			log.Printf("[Registry]:\tregistered %s\n", info.Name)
+			log.Info("[Registry]:\tregistered", log.Field("service", info.Name))
 		}
 	}
 
 	for !r.stop {
 		event, err := stream.Recv()
 		if err != nil {
-			log.Printf("[Registry]:\tcould not get event: %s\n", err)
+			log.Error("[Registry]: could not get event", err)
 			return
 		}
 
@@ -316,7 +314,7 @@ func (r *SyncedClient) listen() {
 			go h.Handle(event)
 		}
 
-		log.Printf("[Registry]:\tevent -> %s: %s\n", event.Type.String(), event.Name)
+		log.Info("[Registry]: event", log.Field("type", event.Type), log.Field("service", event.Name))
 
 		switch event.Type {
 		case pb2.EventType_Updated, pb2.EventType_Registered:

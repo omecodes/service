@@ -1,9 +1,10 @@
 package service
 
 import (
+	"fmt"
+	"github.com/zoenion/common/log"
 	pb "github.com/zoenion/service/proto"
 	"github.com/zoenion/service/server"
-	"log"
 	"net/http"
 	"strings"
 )
@@ -35,7 +36,7 @@ func (box *Box) StartGateway(params *server.GatewayParams) error {
 		handler = router
 	}
 
-	log.Printf("starting %s.HTTP at %s", params.Node.Name, address)
+	log.Info("starting HTTP server", log.Field("node", params.Node.Name), log.Field("address", address))
 	srv := &http.Server{
 		Addr:    address,
 		Handler: handler,
@@ -63,7 +64,7 @@ func (box *Box) StartGateway(params *server.GatewayParams) error {
 
 		gt.RegistryID, err = box.registry.RegisterService(info, pb.ActionOnRegisterExistingService_AddNodes|pb.ActionOnRegisterExistingService_UpdateExisting)
 		if err != nil {
-			log.Println("could not register gateway")
+			log.Error("could not register gateway", err, log.Field("name", params.Node.Name))
 		}
 	}
 	return nil
@@ -75,7 +76,7 @@ func (box *Box) stopGateways() error {
 	for name, srv := range box.gateways {
 		err := srv.Stop()
 		if err != nil {
-			log.Printf("name: %s\t state:stopped\t error:%s\n", name, err)
+			log.Error(fmt.Sprintf("gateway stopped"), err, log.Field("node", name))
 		}
 	}
 	return nil

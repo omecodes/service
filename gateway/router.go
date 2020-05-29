@@ -6,10 +6,10 @@ import (
 	"flag"
 	"github.com/gorilla/mux"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/zoenion/common/log"
 	"github.com/zoenion/common/xhttp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"log"
 	"net/http"
 )
 
@@ -92,7 +92,7 @@ func (g *gRPCBinding) Router() (*mux.Router, error) {
 	}
 
 	if err := g.binderFunc(ctx, serverMux, *endpoint, opts); err != nil {
-		log.Println("failed to start HTTP gateway, cause: ", err)
+		log.Error("failed to start HTTP gateway", err)
 		return nil, err
 	}
 

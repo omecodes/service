@@ -1,12 +1,13 @@
 package service
 
 import (
+	"fmt"
 	"github.com/zoenion/common/errors"
+	"github.com/zoenion/common/log"
 	"github.com/zoenion/service/connection"
 	pb "github.com/zoenion/service/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"log"
 )
 
 func (box *Box) dialToService(serviceType pb.Type, selectors ...pb.Selector) (*grpc.ClientConn, error) {
@@ -52,9 +53,9 @@ func (box *Box) dialToService(serviceType pb.Type, selectors ...pb.Selector) (*g
 
 				conn, err := dialer.Dial()
 				if err != nil {
-					log.Printf("could not connect to gRPC://%s/%s@%s\n", info.Type, node.Name, node.Address)
+					log.Error("could not connect to gRPC server", err, log.Field("at", fmt.Sprintf("grpc://%s/%s@%s", info.Type, node.Name, node.Address)))
 				} else {
-					log.Printf("connected to gRPC://%s/%s@%s\n", info.Type, node.Name, node.Address)
+					log.Info("connected to gRPC server", log.Field("at", fmt.Sprintf("grpc://%s/%s@%s", info.Type, node.Name, node.Address)))
 					box.addDialerToCache(node.Address, dialer)
 					return conn, err
 				}

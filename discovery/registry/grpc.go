@@ -4,19 +4,13 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"github.com/zoenion/common/log"
 	pb "github.com/zoenion/service/proto"
 	"google.golang.org/grpc"
-	"log"
 	"net"
 )
 
 func (s *Server) initGRPCHandler() {
-	// starting gateways
-	// gatewaySharedSecret := uuid.New().String()
-	/* s.gRPCInterceptor = interceptors.NewChainedInterceptor(
-		s.gRPCInterceptRules(),
-		interceptors.NewGateway(gatewaySharedSecret),
-	) */
 	s.gRPCHandler = NewGRPCServerHandler(s.store)
 }
 
@@ -54,14 +48,11 @@ func (s *Server) startGRPCServer() error {
 
 	srv := grpc.NewServer()
 	pb.RegisterRegistryServer(srv, s.gRPCHandler)
-
-	log.Println("starting Registry.gRPC at", addr)
 	go func() {
 		err = srv.Serve(s.gRPCListener)
 		if err != nil {
-			log.Println("could not start registry server:", err)
+			log.Error("could not start registry server:", err)
 		}
 	}()
-
 	return nil
 }

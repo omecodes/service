@@ -8,7 +8,6 @@ import (
 	"github.com/zoenion/common/jcon"
 	"github.com/zoenion/service/discovery"
 	"github.com/zoenion/service/discovery/registry/dao"
-	"log"
 	"net"
 )
 
@@ -53,13 +52,11 @@ func NewServer(configs *Configs) (*Server, error) {
 func (s *Server) Start() error {
 	err := s.startGRPCServer()
 	if err != nil {
-		log.Println(err)
 		return errors.Errorf("could not start gRPC server")
 	}
 
 	err = s.startAPIServer()
 	if err != nil {
-		log.Println(err)
 		return errors.Errorf("could not start API server")
 	}
 

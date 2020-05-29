@@ -7,10 +7,10 @@ import (
 	"flag"
 	"fmt"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/zoenion/common/log"
 	pb "github.com/zoenion/service/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"log"
 	"net"
 	"net/http"
 )
@@ -63,7 +63,7 @@ func (s *Server) startAPIServer() error {
 		return err
 	}
 
-	log.Printf("starting Registry.HTTP at %s", addr)
+	log.Info("starting Registry.HTTP", log.Field("at", addr))
 	srv := &http.Server{
 		Addr:    s.apiListener.Addr().String(),
 		Handler: mux,

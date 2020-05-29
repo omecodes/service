@@ -1,7 +1,7 @@
 package interceptors
 
 import (
-	"log"
+	"github.com/zoenion/common/log"
 	"net/http"
 	"time"
 )
@@ -14,12 +14,12 @@ func (l *httpLogger) Handle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		next.ServeHTTP(w, r)
-		log.Printf(
-			"%s %s %s %s",
-			r.Method,
-			r.RequestURI,
-			l.name,
-			time.Since(start),
+		duration := time.Since(start)
+		log.Info(
+			r.Method + " " + r.RequestURI,
+			log.Field("params", r.URL.RawQuery),
+			log.Field("handler", l.name),
+			log.Field("duration", duration.String()),
 		)
 	})
 }
