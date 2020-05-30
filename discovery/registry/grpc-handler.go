@@ -2,16 +2,21 @@ package registry
 
 import (
 	"context"
-	"fmt"
+	crypto2 "github.com/zoenion/common/crypto"
 	"github.com/zoenion/common/errors"
+	"github.com/zoenion/common/log"
 	"github.com/zoenion/service/discovery"
 	"github.com/zoenion/service/discovery/registry/dao"
 	pb2 "github.com/zoenion/service/proto"
+	"google.golang.org/grpc/peer"
+	"io"
 	"sync"
+	"time"
 )
 
 type gRPCServerHandler struct {
 	sync.Mutex
+	stopRequested  bool
 	dao            dao.ServicesDAO
 	keyCounter     int
 	listenersMutex sync.Mutex
@@ -94,12 +99,12 @@ func (h *gRPCServerHandler) Register(ctx context.Context, in *pb2.RegisterReques
 	if !broadcastDisabled(ctx) {
 		event := &pb2.Event{
 			Info: in.Service,
-			Type: pb2.EventType_Registered,
+			Type: pb2.EventType_Register,
 			Name: id,
 		}
 
 		if exists {
-			event.Type = pb2.EventType_Updated
+			event.Type = pb2.EventType_Update
 		}
 		h.broadcastEvent(event)
 	}
@@ -123,7 +128,7 @@ func (h *gRPCServerHandler) Deregister(ctx context.Context, in *pb2.DeregisterRe
 
 		if !broadcastDisabled(ctx) {
 			event = &pb2.Event{
-				Type: pb2.EventType_DeRegistered,
+				Type: pb2.EventType_DeRegister,
 				Name: in.RegistryId,
 			}
 			h.broadcastEvent(event)
@@ -151,7 +156,7 @@ func (h *gRPCServerHandler) Deregister(ctx context.Context, in *pb2.DeregisterRe
 			} else {
 				if !broadcastDisabled(ctx) {
 					event = &pb2.Event{
-						Type: pb2.EventType_DeRegisteredNode,
+						Type: pb2.EventType_DeRegisterNode,
 						Name: in.RegistryId,
 						Info: &pb2.Info{
 							Nodes: []*pb2.Node{node},
@@ -216,41 +221,175 @@ func (h *gRPCServerHandler) Search(ctx context.Context, in *pb2.SearchRequest) (
 	return rsp, err
 }
 
-func (h *gRPCServerHandler) Listen(in *pb2.ListenRequest, stream pb2.Registry_ListenServer) error {
-	services, err := h.dao.List()
+func (h *gRPCServerHandler) Listen(stream pb2.Registry_ListenServer) error {
+	sessionClosed := false
+
+	sessionID, err := crypto2.RandomCode(8)
 	if err != nil {
+		log.Error("could not generate session ID", err)
 		return err
 	}
+	clientSource := "unknown source"
 
-	for _, i := range services {
-		ev := &pb2.Event{
-			Type: pb2.EventType_Registered,
-			Name: discovery.GenerateID(i.Namespace, i.Name),
-			Info: i,
-		}
-
-		err = stream.Send(ev)
-		if err != nil {
-			return err
-		}
+	p, ok := peer.FromContext(stream.Context())
+	if ok {
+		clientSource = p.Addr.String()
 	}
+	log.Info("[Registry] new session", log.Field("id", sessionID), log.Field("client", clientSource))
 
-	channel := make(chan *pb2.Event, 1)
-	registrationKey := h.registerEventChannel(channel)
-	defer h.deRegisterEventChannel(registrationKey)
-	//defer close(channel)
+	wg := &sync.WaitGroup{}
+	wg.Add(2)
 
-	for {
-		e, _ := <-channel
-		if e == nil {
-			return errors.New("event channel closed")
+
+	// recv routine
+	go func(serverStream pb2.Registry_ListenServer, s *sync.WaitGroup) {
+		defer s.Done()
+		var registeredServicesNames []string
+		for !h.stopRequested && !sessionClosed {
+			event, err := serverStream.Recv()
+			if err != nil {
+				if err != io.EOF {
+					log.Error("[Registry] receive event", err)
+					sessionClosed = true
+				}
+				break
+			}
+
+			log.Info("[Registry] received event", log.Field("type", event.Type), log.Field("service", event.Name))
+
+			switch event.Type {
+			case pb2.EventType_Update, pb2.EventType_Register:
+
+				update := event.Type == pb2.EventType_Update
+				rsp, err := h.Register(stream.Context(), &pb2.RegisterRequest{
+					Service: event.Info,
+					Action:  event.OnRegisterExisting,
+				})
+				if err != nil {
+					if update {
+						log.Error("[Registry] update service", err)
+					} else {
+						log.Error("[Registry] register service", err)
+					}
+				} else {
+					exists := false
+					for _, name := range registeredServicesNames {
+						if name == rsp.RegistryId {
+							exists = true
+							break
+						}
+					}
+					if !exists {
+						registeredServicesNames = append(registeredServicesNames, rsp.RegistryId)
+					}
+				}
+
+			case pb2.EventType_DeRegister, pb2.EventType_DeRegisterNode:
+				req := &pb2.DeregisterRequest{
+					RegistryId: event.Name,
+				}
+
+				hasNodes := event.Info != nil && len(event.Info.Nodes) > 0
+				if hasNodes {
+					for _, node := range event.Info.Nodes {
+						req.Nodes = append(req.Nodes, node.Name)
+					}
+				}
+
+				_, err := h.Deregister(stream.Context(), req)
+				if err != nil {
+					if hasNodes {
+						log.Error("[Registry] de-register nodes", err, log.Field("service", event.Name))
+					} else {
+						log.Error("[Registry] de-register service", err)
+					}
+				} else {
+					if registeredServicesNames != nil {
+						ind := -1
+						for i, name := range registeredServicesNames {
+							if name == event.Name {
+								ind = i
+								break
+							}
+						}
+
+						if ind != -1 {
+							if ind == 0 {
+								registeredServicesNames = registeredServicesNames[1:]
+
+							} else if ind == len(registeredServicesNames) - 1 {
+								registeredServicesNames = registeredServicesNames[:ind]
+							} else {
+								registeredServicesNames = append(registeredServicesNames[:ind -1], registeredServicesNames[ind + 1:]...)
+							}
+						}
+					}
+				}
+			}
 		}
+		if !h.stopRequested {
+			for _, name := range registeredServicesNames {
+				req := &pb2.DeregisterRequest{
+					RegistryId: name,
+				}
+				_, err := h.Deregister(stream.Context(), req)
+				if err != nil {
+					log.Error("[Registry] de-register", err, log.Field("service", name))
+				} else {
+					log.Info("[Registry] de-register", log.Field("service", name))
+				}
+			}
+		}
+	}(stream, wg)
 
-		err := stream.Send(e)
+	// send routine
+	go func(serverStream pb2.Registry_ListenServer, s *sync.WaitGroup) {
+		defer s.Done()
+		// let new connected client tell what he's got first - after that the server can send consistent state
+		<-time.After(time.Second)
+
+		services, err := h.dao.List()
 		if err != nil {
-			return fmt.Errorf("could not send event: %s", err)
+			log.Error("[Registry] list service", err)
+			return
 		}
-	}
+
+		for _, i := range services {
+			ev := &pb2.Event{
+				Type: pb2.EventType_Register,
+				Name: discovery.GenerateID(i.Namespace, i.Name),
+				Info: i,
+			}
+			err = stream.Send(ev)
+			if err != nil {
+				log.Error("[Registry] send event", err)
+				sessionClosed = true
+				return
+			}
+		}
+
+
+		channel := make(chan *pb2.Event, 1)
+		registrationKey := h.registerEventChannel(channel)
+		defer h.deRegisterEventChannel(registrationKey)
+
+		for !h.stopRequested && !sessionClosed {
+			e, open := <-channel
+			if !open {
+				return
+			}
+
+			err := stream.Send(e)
+			if err != nil {
+				log.Error("[Registry] send event", err)
+			}
+		}
+
+	}(stream, wg)
+
+	wg.Wait()
+	log.Info("[Registry] closing session", log.Field("id", sessionID), log.Field("client", clientSource))
+	return nil
 }
 
 func (h *gRPCServerHandler) RegisterEventHandler(eh func(event *pb2.Event)) {
@@ -291,6 +430,7 @@ func (h *gRPCServerHandler) deRegisterEventChannel(key int) {
 func (h *gRPCServerHandler) Stop() {
 	h.listenersMutex.Lock()
 	defer h.listenersMutex.Unlock()
+	h.stopRequested = true
 	for _, l := range h.listeners {
 		close(l)
 	}

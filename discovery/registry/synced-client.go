@@ -13,11 +13,13 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/status"
+	"io"
 	"sync"
 	"time"
 )
 
-type RegistryEventHandler interface {
+type EventHandler interface {
 	Handle(*pb2.Event)
 }
 
@@ -33,48 +35,81 @@ type SyncedClient struct {
 	conn          *grpc.ClientConn
 	serverAddress string
 	eventHandlers map[string]discovery.RegistryEventHandler
-	stop          bool
+	stopRequested bool
 	syncing       bool
-}
 
-func (r *SyncedClient) Disconnect() error {
-	r.stop = true
-	r.disconnected()
-	if r.conn != nil {
-		return r.conn.Close()
-	}
-	return nil
+	sendCloseSignal chan bool
+	outboundStream  chan *pb2.Event
 }
 
 func (r *SyncedClient) RegisterService(i *pb2.Info, action pb2.ActionOnRegisterExistingService) (string, error) {
-	err := r.connect()
-	if err != nil {
-		return "", err
+	done := false
+
+	result := make(chan string, 2)
+	var regID string
+	regID = r.RegisterEventHandler(discovery.NewRegistryEventHandlerFunc(func(event *pb2.Event) {
+		if done {
+			return
+		}
+
+		if event.Name == discovery.GenerateID(i.Namespace, i.Name) && (event.Type == pb2.EventType_Update || event.Type == pb2.EventType_Register) {
+			r.DeregisterEventHandler(regID)
+			result <- event.Namespace + event.Name
+		}
+	}))
+
+	r.outboundStream <- &pb2.Event{
+		Type:               pb2.EventType_Register,
+		Namespace:          i.Namespace,
+		Name:               discovery.GenerateID(i.Namespace, i.Name),
+		Info:               i,
+		OnRegisterExisting: action,
 	}
 
-	defer func() { go r.sync() }()
+	timeout := time.Second * 3
 
-	rsp, err := r.client.Register(context.Background(), &pb2.RegisterRequest{Service: i, Action: action})
-	if err != nil {
-		log.Error("[Registry]: Could not register", err, log.Field("service", i.Name))
-		return "", err
+	select {
+	case id := <-result:
+		return id, nil
+
+	case <-time.After(timeout):
+		done = true
+		log.Info("registration timed out", log.Field("duration", timeout))
+		return "", errors.New("time out")
 	}
-	log.Info("[Registry]:\tRegistered")
-	return rsp.RegistryId, nil
 }
 
 func (r *SyncedClient) DeregisterService(id string, nodes ...string) error {
-	err := r.connect()
-	if err != nil {
-		return err
-	}
-	defer func() { go r.sync() }()
+	done := false
+	result := make(chan bool, 1)
 
-	_, err = r.client.Deregister(context.Background(), &pb2.DeregisterRequest{RegistryId: id, Nodes: nodes})
-	if err == nil {
-		log.Info("[Registry]:\tDeregistered")
+	var regID string
+	regID = r.RegisterEventHandler(discovery.NewRegistryEventHandlerFunc(func(event *pb2.Event) {
+		if done {
+			return
+		}
+		if event.Name == id && (event.Type == pb2.EventType_DeRegister || event.Type == pb2.EventType_DeRegisterNode) {
+			r.DeregisterEventHandler(regID)
+			result <- true
+		}
+	}))
+	ev := &pb2.Event{
+		Type: pb2.EventType_DeRegister,
+		Name: id,
 	}
-	return err
+	if len(nodes) > 0 {
+		ev.Type = pb2.EventType_DeRegisterNode
+	}
+	r.outboundStream <- ev
+
+	select {
+	case _ = <-result:
+		return nil
+
+	case <-time.After(time.Second * 3):
+		done = true
+		return errors.New("time out")
+	}
 }
 
 func (r *SyncedClient) GetService(id string) (*pb2.Info, error) {
@@ -178,7 +213,7 @@ func (r *SyncedClient) GetOfType(t pb2.Type) ([]*pb2.Info, error) {
 }
 
 func (r *SyncedClient) Stop() error {
-	r.stop = true
+	r.stopRequested = true
 	r.services = nil
 	if r.conn != nil {
 		return r.conn.Close()
@@ -273,40 +308,71 @@ func (r *SyncedClient) sync() {
 	}
 	r.setSyncing()
 
-	for !r.stop {
+	for !r.stopRequested {
 		err := r.connect()
 		if err != nil {
 			time.After(time.Second * 2)
 			continue
 		}
-		r.listen()
+		r.work()
 	}
 }
 
-func (r *SyncedClient) listen() {
-	stream, err := r.client.Listen(context.Background(), &pb2.ListenRequest{})
+func (r *SyncedClient) work() {
+	r.sendCloseSignal = make(chan bool)
+	r.outboundStream = make(chan *pb2.Event, 30)
+	defer close(r.outboundStream)
+
+	stream, err := r.client.Listen(context.Background())
 	if err != nil {
 		r.conn = nil
-		log.Error("[Registry]: could not sync with registry server", err)
+		log.Error("[Registry]: server stream", errors.Errorf("server unavailable. code %d", status.Code(err)))
 		return
 	}
 	defer stream.CloseSend()
 
-	log.Info("[Registry]: connected", log.Field("to", r.serverAddress))
-	for _, info := range r.services {
-		_, err := r.client.Register(context.Background(), &pb2.RegisterRequest{Service: info})
-		if err != nil {
-			log.Error("[Registry]: could not register", err, log.Field("service", info.Name))
+	wg := &sync.WaitGroup{}
+	wg.Add(2)
+	go r.recv(stream, wg)
+	go r.send(stream, wg)
+	wg.Wait()
+}
+
+func (r *SyncedClient) send(stream pb2.Registry_ListenClient, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	for !r.stopRequested {
+		select {
+		case <- r.sendCloseSignal:
+			log.Info("[Registry] stop send")
 			return
-		} else {
-			log.Info("[Registry]:\tregistered", log.Field("service", info.Name))
+
+		case event, open := <-r.outboundStream:
+			if !open {
+				return
+			}
+
+			err := stream.Send(event)
+			if err != nil {
+				if err != io.EOF {
+					log.Error("[Registry] send event", err)
+				}
+				return
+			}
 		}
 	}
+}
 
-	for !r.stop {
+func (r *SyncedClient) recv(stream pb2.Registry_ListenClient, wg *sync.WaitGroup) {
+	defer wg.Done()
+	for !r.stopRequested {
 		event, err := stream.Recv()
 		if err != nil {
-			log.Error("[Registry]: could not get event", err)
+			r.sendCloseSignal <- true
+			close(r.sendCloseSignal)
+			if err != io.EOF {
+				log.Error("[Registry] recv event", err)
+			}
 			return
 		}
 
@@ -314,16 +380,16 @@ func (r *SyncedClient) listen() {
 			go h.Handle(event)
 		}
 
-		log.Info("[Registry]: event", log.Field("type", event.Type), log.Field("service", event.Name))
+		log.Info("[Registry]", log.Field("type", event.Type), log.Field("service", event.Name))
 
 		switch event.Type {
-		case pb2.EventType_Updated, pb2.EventType_Registered:
+		case pb2.EventType_Update, pb2.EventType_Register:
 			r.saveService(event.Info)
 
-		case pb2.EventType_DeRegistered:
+		case pb2.EventType_DeRegister:
 			r.deleteService(event.Name)
 
-		case pb2.EventType_DeRegisteredNode:
+		case pb2.EventType_DeRegisterNode:
 			r.deleteServiceNode(event.Name, event.Info)
 		}
 	}
@@ -346,10 +412,12 @@ func (r *SyncedClient) disconnected() {
 }
 
 func NewSyncedRegistryClient(server string, tlsConfig *tls.Config) *SyncedClient {
-	return &SyncedClient{
-		services:      map[string]*pb2.Info{},
-		tlsConfig:     tlsConfig,
-		serverAddress: server,
-		eventHandlers: map[string]discovery.RegistryEventHandler{},
+	sc := &SyncedClient{
+		services:        map[string]*pb2.Info{},
+		tlsConfig:       tlsConfig,
+		serverAddress:   server,
+		eventHandlers:   map[string]discovery.RegistryEventHandler{},
 	}
+	go sc.sync()
+	return sc
 }

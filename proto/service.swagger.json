@@ -183,11 +183,17 @@
         "type": {
           "$ref": "#/definitions/pbEventType"
         },
+        "namespace": {
+          "type": "string"
+        },
         "name": {
           "type": "string"
         },
         "info": {
           "$ref": "#/definitions/pbInfo"
+        },
+        "on_register_existing": {
+          "$ref": "#/definitions/pbActionOnRegisterExistingService"
         }
       }
     },
@@ -195,10 +201,10 @@
       "type": "string",
       "enum": [
         "UnknownEvent",
-        "Registered",
-        "DeRegistered",
-        "DeRegisteredNode",
-        "Updated"
+        "Register",
+        "DeRegister",
+        "DeRegisterNode",
+        "Update"
       ],
       "default": "UnknownEvent"
     },

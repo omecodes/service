@@ -37,10 +37,10 @@ enum Status {
 
 enum EventType {
     UnknownEvent = 0;
-    Registered = 1;
-    DeRegistered = 2;
-    DeRegisteredNode = 3;
-    Updated = 4;
+    Register = 1;
+    DeRegister = 2;
+    DeRegisterNode = 3;
+    Update = 4;
 }
 
 enum ActionOnRegisterExistingService {
@@ -81,8 +81,10 @@ message Info {
 
 message Event {
     EventType type = 1;
-    string name = 2;
-    Info info = 3;
+    string namespace = 2;
+    string name = 3;
+    Info info = 4;
+    ActionOnRegisterExistingService on_register_existing = 5;
 }
 
 message RegisterRequest {
@@ -121,12 +123,8 @@ message SearchResponse {
     repeated Info services = 1;
 }
 
-message ListenRequest {
-    string namespace = 1;
-}
-
 service Registry {
-    rpc Register(RegisterRequest) returns (RegisterResponse){
+    rpc Register(RegisterRequest) returns (RegisterResponse) {
         option(google.api.http) = {
             post: "/service/register";
             body: "*";
@@ -135,7 +133,6 @@ service Registry {
     rpc Deregister(DeregisterRequest)returns(DeregisterResponse){
             option(google.api.http).get = "/service/deregister/{registry_id}";
     };
-
     rpc List(ListRequest)returns(ListResponse){
             option(google.api.http).get = "/service/list";
     };
@@ -145,5 +142,5 @@ service Registry {
     rpc Search(SearchRequest) returns (SearchResponse) {
         option(google.api.http).get = "/service/search";
     };
-    rpc Listen(ListenRequest) returns (stream Event);
+    rpc Listen(stream Event) returns (stream Event);
 }
