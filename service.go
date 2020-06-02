@@ -38,12 +38,14 @@ func GRPCConnectionDialer(ctx context.Context, serviceType pb.Type, opts ...grpc
 
 	for _, info := range infos {
 		for _, node := range info.Nodes {
-			tlsConf := ClientTLSConfig(ctx)
-			if tlsConf == nil {
-				return connection.NewDialer(node.Address, opts...), nil
-			} else {
-				opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)))
-				return connection.NewDialer(node.Address, opts...), nil
+			if node.Protocol == pb.Protocol_Grpc {
+				tlsConf := ClientTLSConfig(ctx)
+				if tlsConf == nil {
+					return connection.NewDialer(node.Address, opts...), nil
+				} else {
+					opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)))
+					return connection.NewDialer(node.Address, opts...), nil
+				}
 			}
 		}
 	}
@@ -141,12 +143,14 @@ func (box *Box) GRPCConnectionDialer(serviceType pb.Type, opts ...grpc.DialOptio
 
 	for _, info := range infos {
 		for _, node := range info.Nodes {
-			tlsConf := box.ClientMutualTLS()
-			if tlsConf == nil {
-				return connection.NewDialer(node.Address, opts...), nil
-			} else {
-				opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)))
-				return connection.NewDialer(node.Address, opts...), nil
+			if node.Protocol == pb.Protocol_Grpc {
+				tlsConf := box.ClientMutualTLS()
+				if tlsConf == nil {
+					return connection.NewDialer(node.Address, opts...), nil
+				} else {
+					opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)))
+					return connection.NewDialer(node.Address, opts...), nil
+				}
 			}
 		}
 	}
