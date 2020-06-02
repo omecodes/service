@@ -63,7 +63,8 @@ func (box *Box) StartGatewayGRPCMapping(params *server.GatewayServiceMappingPara
 				address = strings.Replace(address, box.params.Ip, box.params.Domain, 1)
 			}
 
-			grpcServerEndpoint := flag.String("grpc-server-endpoint", node.Address, "gRPC server endpoint")
+			endpoint := fmt.Sprintf("%s-gateway-endpoint", params.TargetNodeName)
+			grpcServerEndpoint := flag.String(endpoint, node.Address, "gRPC server endpoint")
 			ctx := context.Background()
 			mux := runtime.NewServeMux(runtime.WithForwardResponseOption(gs.SetCookieFromGRPCMetadata))
 			var opts []grpc.DialOption
@@ -79,7 +80,7 @@ func (box *Box) StartGatewayGRPCMapping(params *server.GatewayServiceMappingPara
 				return err
 			}
 
-			log.Info("starting HTTP server", log.Field("service", params.ServiceName), log.Field("address", address))
+			log.Info("starting http server", log.Field("service", params.NodeName), log.Field("address", address))
 			srv := &http.Server{Addr: address}
 
 			if params.MuxWrapper != nil {
