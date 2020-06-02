@@ -3,7 +3,6 @@ package registry
 import (
 	"context"
 	"fmt"
-	"github.com/google/uuid"
 	"github.com/zoenion/common/clone"
 	"github.com/zoenion/common/errors"
 	"github.com/zoenion/service/discovery"
@@ -12,6 +11,7 @@ import (
 )
 
 type client struct {
+	eventHandlers map[string]discovery.RegistryEventHandler
 	handler      *gRPCServerHandler
 	servicesLock sync.Mutex
 	handlersLock sync.Mutex
@@ -21,7 +21,7 @@ type client struct {
 }
 
 func (r *client) RegisterService(i *pb2.Info, action pb2.ActionOnRegisterExistingService) (string, error) {
-	rsp, err := r.handler.Register(withBroadcastEnabled(context.Background(), true), &pb2.RegisterRequest{Service: i, Action: action})
+	rsp, err := r.handler.Register(withBroadcastEnabled(context.Background(), false), &pb2.RegisterRequest{Service: i, Action: action})
 	if err != nil {
 		return "", err
 	}
@@ -96,16 +96,14 @@ func (r *client) ConnectionInfo(id string, protocol pb2.Protocol) (*pb2.Connecti
 }
 
 func (r *client) RegisterEventHandler(h discovery.RegistryEventHandler) string {
-	r.handlersLock.Lock()
-	defer r.handlersLock.Unlock()
-	hid := uuid.New().String()
-	r.handler.RegisterEventHandler(func(event *pb2.Event) {
-		h.Handle(event)
-	})
-	return hid
+	return r.handler.RegisterEventHandler(h)
 }
 
-func (r *client) DeregisterEventHandler(hid string) {}
+func (r *client) DeregisterEventHandler(hid string) {
+	r.handlersLock.Lock()
+	defer r.handlersLock.Unlock()
+	r.handler.DeRegisterEventHandler(hid)
+}
 
 func (r *client) GetOfType(t pb2.Type) ([]*pb2.Info, error) {
 	r.servicesLock.Lock()

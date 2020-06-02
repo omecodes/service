@@ -38,6 +38,9 @@ type SyncedClient struct {
 	stopRequested bool
 	syncing       bool
 
+	connectionAttempts int
+	unconnectedTime time.Time
+
 	sendCloseSignal chan bool
 	outboundStream  chan *pb2.Event
 }
@@ -308,6 +311,7 @@ func (r *SyncedClient) sync() {
 	}
 	r.setSyncing()
 
+
 	for !r.stopRequested {
 		err := r.connect()
 		if err != nil {
@@ -323,13 +327,26 @@ func (r *SyncedClient) work() {
 	r.outboundStream = make(chan *pb2.Event, 30)
 	defer close(r.outboundStream)
 
+	r.connectionAttempts ++
+
 	stream, err := r.client.Listen(context.Background())
 	if err != nil {
 		r.conn = nil
-		log.Error("[Registry]: server stream", errors.Errorf("server unavailable. code %d", status.Code(err)))
+		if r.connectionAttempts == 1 {
+			r.unconnectedTime = time.Now()
+			log.Error("[Registry] unconnected", errors.Errorf("%d", status.Code(err)))
+			log.Info("[Registry] trying again...")
+		}
 		return
 	}
 	defer stream.CloseSend()
+
+	if r.connectionAttempts > 1 {
+		log.Info("[Registry] connected", log.Field("after", time.Since(r.unconnectedTime).String()), log.Field("attempts", r.connectionAttempts))
+	} else {
+		log.Info("[Registry] connected")
+	}
+	r.connectionAttempts = 0
 
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
@@ -380,7 +397,7 @@ func (r *SyncedClient) recv(stream pb2.Registry_ListenClient, wg *sync.WaitGroup
 			go h.Handle(event)
 		}
 
-		log.Info("[Registry]", log.Field("type", event.Type), log.Field("service", event.Name))
+		log.Info("[Registry] new event", log.Field("type", event.Type), log.Field("service", event.Name))
 
 		switch event.Type {
 		case pb2.EventType_Update, pb2.EventType_Register:

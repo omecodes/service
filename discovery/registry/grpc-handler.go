@@ -2,6 +2,7 @@ package registry
 
 import (
 	"context"
+	"github.com/google/uuid"
 	crypto2 "github.com/zoenion/common/crypto"
 	"github.com/zoenion/common/errors"
 	"github.com/zoenion/common/log"
@@ -21,7 +22,8 @@ type gRPCServerHandler struct {
 	keyCounter     int
 	listenersMutex sync.Mutex
 	listeners      map[int]chan *pb2.Event
-	eventHandler   func(*pb2.Event)
+	// eventHandler   func(*pb2.Event)
+	eventHandlers map[string]discovery.RegistryEventHandler
 }
 
 func (h *gRPCServerHandler) Register(ctx context.Context, in *pb2.RegisterRequest) (*pb2.RegisterResponse, error) {
@@ -392,8 +394,18 @@ func (h *gRPCServerHandler) Listen(stream pb2.Registry_ListenServer) error {
 	return nil
 }
 
-func (h *gRPCServerHandler) RegisterEventHandler(eh func(event *pb2.Event)) {
-	h.eventHandler = eh
+func (h *gRPCServerHandler) RegisterEventHandler(eh discovery.RegistryEventHandler) string {
+	h.listenersMutex.Lock()
+	defer h.listenersMutex.Unlock()
+	hid := uuid.New().String()
+	h.eventHandlers[hid] = eh
+	return hid
+}
+
+func (h *gRPCServerHandler) DeRegisterEventHandler (id string) {
+	h.listenersMutex.Lock()
+	defer h.listenersMutex.Unlock()
+	delete(h.eventHandlers, id)
 }
 
 func (h *gRPCServerHandler) broadcastEvent(e *pb2.Event) {
@@ -404,8 +416,8 @@ func (h *gRPCServerHandler) broadcastEvent(e *pb2.Event) {
 		c <- e
 	}
 
-	if h.eventHandler != nil {
-		go h.eventHandler(e)
+	for _, eh := range h.eventHandlers {
+		go eh.Handle(e)
 	}
 }
 
@@ -440,5 +452,6 @@ func NewGRPCServerHandler(dao dao.ServicesDAO) *gRPCServerHandler {
 	return &gRPCServerHandler{
 		listeners: map[int]chan *pb2.Event{},
 		dao:       dao,
+		eventHandlers: make(map[string] discovery.RegistryEventHandler),
 	}
 }
