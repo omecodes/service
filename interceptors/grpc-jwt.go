@@ -2,21 +2,19 @@ package interceptors
 
 import (
 	"context"
+	"github.com/zoenion/common/errors"
+	"github.com/zoenion/common/log"
 	"google.golang.org/grpc/metadata"
 	"strings"
 )
 
 type JwtVerifyFunc func(ctx context.Context, jwt string) (context.Context, error)
 
-type Jwt struct {
+type idToken struct {
 	verifyFunc JwtVerifyFunc
 }
 
-func (j *Jwt) Intercept(ctx context.Context) (context.Context, error) {
-	if ctx == nil {
-		return nil, nil
-	}
-
+func (j *idToken) Intercept(ctx context.Context) (context.Context, error) {
 	var err error
 
 	md, ok := metadata.FromIncomingContext(ctx)
@@ -27,16 +25,21 @@ func (j *Jwt) Intercept(ctx context.Context) (context.Context, error) {
 	meta := md.Get("authorization")
 	if len(meta) != 0 {
 		authorization := meta[0]
-		if strings.HasPrefix(authorization, "Bearer ") {
-			ctx, err = j.verifyFunc(ctx, authorization)
+		head := authorization[:7]
+		if strings.HasPrefix(strings.ToLower(head), "bearer ")  {
+			ctx, err = j.verifyFunc(ctx, authorization[7:])
+			if err != nil {
+				log.Error("failed to verify token", err)
+				err = errors.Unauthorized
+			}
 		}
 	}
 
 	return ctx, err
 }
 
-func NewJwt(verifyFunc JwtVerifyFunc) *Jwt {
-	return &Jwt{
+func Jwt(verifyFunc JwtVerifyFunc) *idToken {
+	return &idToken{
 		verifyFunc: verifyFunc,
 	}
 }

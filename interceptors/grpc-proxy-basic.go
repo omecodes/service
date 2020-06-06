@@ -9,14 +9,9 @@ import (
 	"strings"
 )
 
-type ProxyBasic struct {
-}
+type proxyBasic struct {}
 
-func (b *ProxyBasic) Intercept(ctx context.Context) (context.Context, error) {
-	if ctx == nil {
-		return ctx, nil
-	}
-
+func (b *proxyBasic) Intercept(ctx context.Context) (context.Context, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return nil, errors.Forbidden
@@ -52,6 +47,6 @@ func (b *ProxyBasic) Intercept(ctx context.Context) (context.Context, error) {
 	return ctx, nil
 }
 
-func NewProxyBasic() *ProxyBasic {
-	return &ProxyBasic{}
+func ProxyBasic() *proxyBasic {
+	return &proxyBasic{}
 }

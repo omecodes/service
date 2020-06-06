@@ -15,7 +15,6 @@ import (
 	"github.com/zoenion/common/grpc-authentication"
 	gs "github.com/zoenion/common/grpc-session"
 	"github.com/zoenion/common/log"
-	authpb "github.com/zoenion/common/proto/auth"
 	"github.com/zoenion/service/interceptors"
 	pb "github.com/zoenion/service/proto"
 	"github.com/zoenion/service/server"
@@ -145,22 +144,19 @@ func (box *Box) StartService(params *server.ServiceParams) error {
 	var opts []grpc.ServerOption
 
 	defaultInterceptor := interceptors.Default(
-		interceptors.NewGateway(""),
-		interceptors.NewProxyBasic(),
-		interceptors.NewBasic(),
-		interceptors.NewJwt(box.JwtVerifyFunc),
+		interceptors.ProxyBasic(),
+		interceptors.Basic(),
+		interceptors.Jwt(box.BearerTokenVerifyFunc),
 	)
 
 	streamInterceptors := append([]grpc.StreamServerInterceptor{},
 		grpc_opentracing.StreamServerInterceptor(),
 		defaultInterceptor.InterceptStream,
-		// grpc_zap.StreamServerInterceptor(box.logger)
 	)
 
 	unaryInterceptors := append([]grpc.UnaryServerInterceptor{},
 		grpc_opentracing.UnaryServerInterceptor(),
 		defaultInterceptor.InterceptUnary,
-	//	grpc_zap.UnaryServerInterceptor(box.logger)
 	)
 
 	if params.Interceptor != nil {
@@ -266,7 +262,7 @@ func (box *Box) StartCAService(credentialsVerifier ga.CredentialsVerifyFunc) err
 	var opts []grpc.ServerOption
 
 	defaultInterceptor := interceptors.Default(
-		interceptors.NewBasic(),
+		interceptors.Basic(),
 	)
 
 	logger, _ := zap.NewProduction()
@@ -292,37 +288,4 @@ func (box *Box) StartCAService(credentialsVerifier ga.CredentialsVerifyFunc) err
 
 	go srv.Serve(listener)
 	return nil
-}
-
-type GRPCCallOption int
-
-const (
-	CallOptToken GRPCCallOption = iota + 1
-	CallOptProxyCredentials
-)
-
-func GRPCCallOptionsFromContext(ctx context.Context, ot ...GRPCCallOption) ([]grpc.CallOption, error) {
-	var gRPCCallOptions []grpc.CallOption
-
-	for _, t := range ot {
-		if t == CallOptToken {
-			token := authpb.TokenFromContext(ctx)
-			strToken, err := authpb.String(token)
-			if err != nil {
-				return nil, err
-			}
-
-			if token != nil {
-				gRPCCallOptions = append(gRPCCallOptions, grpc.PerRPCCredentials(ga.NewGRPCClientJwt(strToken)))
-			}
-
-		} else if t == CallOptProxyCredentials {
-			cred := ga.ProxyCredentialsFromContext(ctx)
-			if cred != nil {
-				gRPCCallOptions = append(gRPCCallOptions, grpc.PerRPCCredentials(ga.NewGRPCProxy(
-					cred.Key, cred.Secret)))
-			}
-		}
-	}
-	return gRPCCallOptions, nil
 }

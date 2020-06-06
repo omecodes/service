@@ -9,10 +9,10 @@ import (
 	"strings"
 )
 
-type Basic struct {
+type basic struct {
 }
 
-func (b *Basic) Intercept(ctx context.Context) (context.Context, error) {
+func (b *basic) Intercept(ctx context.Context) (context.Context, error) {
 	if ctx == nil {
 		return ctx, nil
 	}
@@ -28,17 +28,18 @@ func (b *Basic) Intercept(ctx context.Context) (context.Context, error) {
 	}
 
 	authorization := meta[0]
-	if strings.HasPrefix(authorization, "Basic ") {
-		authorization = strings.TrimPrefix(authorization, "Basic ")
+	head := authorization[:6]
+	if strings.HasPrefix(strings.ToLower(head), "basic ") {
+		authorization = authorization[6:]
 
 		bytes, err := base64.StdEncoding.DecodeString(authorization)
 		if err != nil {
-			return nil, errors.Forbidden
+			return ctx, errors.Forbidden
 		}
 
 		parts := strings.Split(string(bytes), ":")
 		if len(parts) != 2 {
-			return nil, errors.Forbidden
+			return ctx, errors.Forbidden
 		}
 
 		user := parts[0]
@@ -52,6 +53,6 @@ func (b *Basic) Intercept(ctx context.Context) (context.Context, error) {
 	return ctx, nil
 }
 
-func NewBasic() *Basic {
-	return &Basic{}
+func Basic() *basic {
+	return &basic{}
 }

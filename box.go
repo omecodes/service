@@ -13,7 +13,6 @@ import (
 
 type Box struct {
 	params Params
-	boxDir string
 
 	serverMutex sync.Mutex
 

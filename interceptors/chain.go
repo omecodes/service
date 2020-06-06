@@ -14,6 +14,9 @@ func (interceptor *defaultInterceptor) InterceptUnary(ctx context.Context, req i
 
 	for _, i := range interceptor.interceptors {
 		ctx, err = i.Intercept(ctx)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	rsp, err := handler(ctx, req)

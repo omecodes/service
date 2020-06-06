@@ -15,6 +15,7 @@ type Params struct {
 	CertificatePath string
 	KeyPath         string
 	Autonomous      bool
+	Keys            [][]byte
 
 	RegistryAddress string
 	RegistrySecure  bool
