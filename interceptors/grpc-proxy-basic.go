@@ -3,13 +3,13 @@ package interceptors
 import (
 	"context"
 	"encoding/base64"
-	"github.com/zoenion/common/errors"
-	"github.com/zoenion/common/grpc-authentication"
+	"github.com/omecodes/common/errors"
+	"github.com/omecodes/common/grpc-authentication"
 	"google.golang.org/grpc/metadata"
 	"strings"
 )
 
-type proxyBasic struct {}
+type proxyBasic struct{}
 
 func (b *proxyBasic) Intercept(ctx context.Context) (context.Context, error) {
 	md, ok := metadata.FromIncomingContext(ctx)

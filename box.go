@@ -4,9 +4,9 @@ import (
 	"context"
 	"crypto"
 	"crypto/x509"
-	"github.com/zoenion/service/connection"
-	"github.com/zoenion/service/discovery"
-	"github.com/zoenion/service/server"
+	"github.com/omecodes/service/connection"
+	"github.com/omecodes/service/discovery"
+	"github.com/omecodes/service/server"
 	"google.golang.org/grpc/credentials"
 	"sync"
 )

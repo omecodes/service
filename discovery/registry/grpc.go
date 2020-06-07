@@ -4,8 +4,8 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"github.com/zoenion/common/log"
-	pb "github.com/zoenion/service/proto"
+	"github.com/omecodes/common/log"
+	pb "github.com/omecodes/service/proto"
 	"google.golang.org/grpc"
 	"net"
 )

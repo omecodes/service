@@ -7,16 +7,16 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"github.com/zoenion/common"
-	"github.com/zoenion/common/codec"
-	crypto2 "github.com/zoenion/common/crypto"
-	"github.com/zoenion/common/database"
-	"github.com/zoenion/common/errors"
-	"github.com/zoenion/common/log"
-	"github.com/zoenion/common/persist/dict"
-	authpb "github.com/zoenion/common/proto/auth"
-	"github.com/zoenion/service/discovery"
-	pb2 "github.com/zoenion/service/proto"
+	"github.com/omecodes/common"
+	"github.com/omecodes/common/codec"
+	crypto2 "github.com/omecodes/common/crypto"
+	"github.com/omecodes/common/database"
+	"github.com/omecodes/common/errors"
+	"github.com/omecodes/common/log"
+	"github.com/omecodes/common/persist/dict"
+	authpb "github.com/omecodes/common/proto/auth"
+	"github.com/omecodes/service/discovery"
+	pb2 "github.com/omecodes/service/proto"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -194,7 +194,7 @@ func (j *jwtVerifier) initStores() {
 		}
 	}
 
-	<- time.After(time.Second)
+	<-time.After(time.Second)
 }
 
 func NewVerifier(caCert, cert *x509.Certificate, privateKey crypto.PrivateKey, registry discovery.Registry, cacheDir string) authpb.TokenVerifier {

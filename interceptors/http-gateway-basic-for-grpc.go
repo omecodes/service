@@ -2,7 +2,7 @@ package interceptors
 
 import (
 	"fmt"
-	"github.com/zoenion/common/xhttp"
+	"github.com/omecodes/common/xhttp"
 	"net/http"
 )
 

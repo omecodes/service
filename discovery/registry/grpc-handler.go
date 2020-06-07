@@ -3,12 +3,12 @@ package registry
 import (
 	"context"
 	"github.com/google/uuid"
-	crypto2 "github.com/zoenion/common/crypto"
-	"github.com/zoenion/common/errors"
-	"github.com/zoenion/common/log"
-	"github.com/zoenion/service/discovery"
-	"github.com/zoenion/service/discovery/registry/dao"
-	pb2 "github.com/zoenion/service/proto"
+	crypto2 "github.com/omecodes/common/crypto"
+	"github.com/omecodes/common/errors"
+	"github.com/omecodes/common/log"
+	"github.com/omecodes/service/discovery"
+	"github.com/omecodes/service/discovery/registry/dao"
+	pb2 "github.com/omecodes/service/proto"
 	"google.golang.org/grpc/peer"
 	"io"
 	"sync"
@@ -242,7 +242,6 @@ func (h *gRPCServerHandler) Listen(stream pb2.Registry_ListenServer) error {
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
 
-
 	// recv routine
 	go func(serverStream pb2.Registry_ListenServer, s *sync.WaitGroup) {
 		defer s.Done()
@@ -319,10 +318,10 @@ func (h *gRPCServerHandler) Listen(stream pb2.Registry_ListenServer) error {
 							if ind == 0 {
 								registeredServicesNames = registeredServicesNames[1:]
 
-							} else if ind == len(registeredServicesNames) - 1 {
+							} else if ind == len(registeredServicesNames)-1 {
 								registeredServicesNames = registeredServicesNames[:ind]
 							} else {
-								registeredServicesNames = append(registeredServicesNames[:ind -1], registeredServicesNames[ind + 1:]...)
+								registeredServicesNames = append(registeredServicesNames[:ind-1], registeredServicesNames[ind+1:]...)
 							}
 						}
 					}
@@ -370,7 +369,6 @@ func (h *gRPCServerHandler) Listen(stream pb2.Registry_ListenServer) error {
 			}
 		}
 
-
 		channel := make(chan *pb2.Event, 1)
 		registrationKey := h.registerEventChannel(channel)
 		defer h.deRegisterEventChannel(registrationKey)
@@ -402,7 +400,7 @@ func (h *gRPCServerHandler) RegisterEventHandler(eh discovery.RegistryEventHandl
 	return hid
 }
 
-func (h *gRPCServerHandler) DeRegisterEventHandler (id string) {
+func (h *gRPCServerHandler) DeRegisterEventHandler(id string) {
 	h.listenersMutex.Lock()
 	defer h.listenersMutex.Unlock()
 	delete(h.eventHandlers, id)
@@ -450,8 +448,8 @@ func (h *gRPCServerHandler) Stop() {
 
 func NewGRPCServerHandler(dao dao.ServicesDAO) *gRPCServerHandler {
 	return &gRPCServerHandler{
-		listeners: map[int]chan *pb2.Event{},
-		dao:       dao,
-		eventHandlers: make(map[string] discovery.RegistryEventHandler),
+		listeners:     map[int]chan *pb2.Event{},
+		dao:           dao,
+		eventHandlers: make(map[string]discovery.RegistryEventHandler),
 	}
 }

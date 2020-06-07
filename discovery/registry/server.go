@@ -4,10 +4,10 @@ import (
 	"crypto"
 	"crypto/tls"
 	"crypto/x509"
-	"github.com/zoenion/common/errors"
-	"github.com/zoenion/common/jcon"
-	"github.com/zoenion/service/discovery"
-	"github.com/zoenion/service/discovery/registry/dao"
+	"github.com/omecodes/common/errors"
+	"github.com/omecodes/common/jcon"
+	"github.com/omecodes/service/discovery"
+	"github.com/omecodes/service/discovery/registry/dao"
 	"net"
 )
 

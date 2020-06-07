@@ -3,7 +3,7 @@ package jwt
 import (
 	"context"
 	"crypto/tls"
-	authpb "github.com/zoenion/common/proto/auth"
+	authpb "github.com/omecodes/common/proto/auth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"

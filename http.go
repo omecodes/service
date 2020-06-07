@@ -2,9 +2,9 @@ package service
 
 import (
 	"fmt"
-	"github.com/zoenion/common/log"
-	pb "github.com/zoenion/service/proto"
-	"github.com/zoenion/service/server"
+	"github.com/omecodes/common/log"
+	pb "github.com/omecodes/service/proto"
+	"github.com/omecodes/service/server"
 	"net/http"
 	"strings"
 )

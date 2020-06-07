@@ -2,8 +2,8 @@ package interceptors
 
 import (
 	"context"
-	"github.com/zoenion/common/errors"
-	"github.com/zoenion/common/log"
+	"github.com/omecodes/common/errors"
+	"github.com/omecodes/common/log"
 	"google.golang.org/grpc/metadata"
 	"strings"
 )
@@ -26,7 +26,7 @@ func (j *idToken) Intercept(ctx context.Context) (context.Context, error) {
 	if len(meta) != 0 {
 		authorization := meta[0]
 		head := authorization[:7]
-		if strings.HasPrefix(strings.ToLower(head), "bearer ")  {
+		if strings.HasPrefix(strings.ToLower(head), "bearer ") {
 			ctx, err = j.verifyFunc(ctx, authorization[7:])
 			if err != nil {
 				log.Error("failed to verify token", err)

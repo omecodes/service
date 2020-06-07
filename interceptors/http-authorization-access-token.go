@@ -2,15 +2,15 @@ package interceptors
 
 import (
 	"github.com/gorilla/securecookie"
-	"github.com/zoenion/common/log"
-	"github.com/zoenion/common/oauth2"
-	authpb "github.com/zoenion/common/proto/auth"
+	"github.com/omecodes/common/log"
+	"github.com/omecodes/common/oauth2"
+	authpb "github.com/omecodes/common/proto/auth"
 	"net/http"
 	"strings"
 )
 
 type authorizationAccessTokenValidator struct {
-	codecs []securecookie.Codec
+	codecs   []securecookie.Codec
 	verifier authpb.TokenVerifier
 }
 
@@ -57,7 +57,7 @@ func (atv *authorizationAccessTokenValidator) Handle(next http.Handler) http.Han
 
 func NewAuthorizationAccessTokenValidator(verifier authpb.TokenVerifier, codecs ...securecookie.Codec) *authorizationAccessTokenValidator {
 	return &authorizationAccessTokenValidator{
-		codecs: codecs,
+		codecs:   codecs,
 		verifier: verifier,
 	}
 }

@@ -3,21 +3,21 @@ package registry
 import (
 	"context"
 	"fmt"
-	"github.com/zoenion/common/clone"
-	"github.com/zoenion/common/errors"
-	"github.com/zoenion/service/discovery"
-	pb2 "github.com/zoenion/service/proto"
+	"github.com/omecodes/common/clone"
+	"github.com/omecodes/common/errors"
+	"github.com/omecodes/service/discovery"
+	pb2 "github.com/omecodes/service/proto"
 	"sync"
 )
 
 type client struct {
 	eventHandlers map[string]discovery.RegistryEventHandler
-	handler      *gRPCServerHandler
-	servicesLock sync.Mutex
-	handlersLock sync.Mutex
-	syncMutex    sync.Mutex
-	idGenerator  discovery.IDGenerator
-	stopFunc     func() error
+	handler       *gRPCServerHandler
+	servicesLock  sync.Mutex
+	handlersLock  sync.Mutex
+	syncMutex     sync.Mutex
+	idGenerator   discovery.IDGenerator
+	stopFunc      func() error
 }
 
 func (r *client) RegisterService(i *pb2.Info, action pb2.ActionOnRegisterExistingService) (string, error) {

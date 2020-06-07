@@ -1,8 +1,8 @@
 package interceptors
 
 import (
-	"github.com/zoenion/common/log"
-	authpb "github.com/zoenion/common/proto/auth"
+	"github.com/omecodes/common/log"
+	authpb "github.com/omecodes/common/proto/auth"
 	"net/http"
 	"strings"
 )

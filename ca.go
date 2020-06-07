@@ -6,10 +6,10 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/x509"
-	crypto2 "github.com/zoenion/common/crypto"
-	"github.com/zoenion/common/errors"
-	"github.com/zoenion/common/grpc-authentication"
-	pb "github.com/zoenion/service/proto"
+	crypto2 "github.com/omecodes/common/crypto"
+	"github.com/omecodes/common/errors"
+	"github.com/omecodes/common/grpc-authentication"
+	pb "github.com/omecodes/service/proto"
 	"net"
 	"time"
 )
@@ -30,7 +30,6 @@ func (h *csrServerHandler) SignCertificate(ctx context.Context, in *pb.SignCerti
 	if !valid {
 		return nil, errors.Unauthorized
 	}
-
 
 	var ips []net.IP
 	for _, a := range in.Csr.Addresses {

@@ -4,12 +4,12 @@ import (
 	"context"
 	"crypto/tls"
 	"github.com/google/uuid"
-	"github.com/zoenion/common"
-	"github.com/zoenion/common/clone"
-	"github.com/zoenion/common/errors"
-	"github.com/zoenion/common/log"
-	"github.com/zoenion/service/discovery"
-	pb2 "github.com/zoenion/service/proto"
+	"github.com/omecodes/common"
+	"github.com/omecodes/common/clone"
+	"github.com/omecodes/common/errors"
+	"github.com/omecodes/common/log"
+	"github.com/omecodes/service/discovery"
+	pb2 "github.com/omecodes/service/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
@@ -39,7 +39,7 @@ type SyncedClient struct {
 	syncing       bool
 
 	connectionAttempts int
-	unconnectedTime time.Time
+	unconnectedTime    time.Time
 
 	sendCloseSignal chan bool
 	outboundStream  chan *pb2.Event
@@ -311,7 +311,6 @@ func (r *SyncedClient) sync() {
 	}
 	r.setSyncing()
 
-
 	for !r.stopRequested {
 		err := r.connect()
 		if err != nil {
@@ -327,7 +326,7 @@ func (r *SyncedClient) work() {
 	r.outboundStream = make(chan *pb2.Event, 30)
 	defer close(r.outboundStream)
 
-	r.connectionAttempts ++
+	r.connectionAttempts++
 
 	stream, err := r.client.Listen(context.Background())
 	if err != nil {
@@ -360,7 +359,7 @@ func (r *SyncedClient) send(stream pb2.Registry_ListenClient, wg *sync.WaitGroup
 
 	for !r.stopRequested {
 		select {
-		case <- r.sendCloseSignal:
+		case <-r.sendCloseSignal:
 			log.Info("[Registry] stop send")
 			return
 
@@ -430,10 +429,10 @@ func (r *SyncedClient) disconnected() {
 
 func NewSyncedRegistryClient(server string, tlsConfig *tls.Config) *SyncedClient {
 	sc := &SyncedClient{
-		services:        map[string]*pb2.Info{},
-		tlsConfig:       tlsConfig,
-		serverAddress:   server,
-		eventHandlers:   map[string]discovery.RegistryEventHandler{},
+		services:      map[string]*pb2.Info{},
+		tlsConfig:     tlsConfig,
+		serverAddress: server,
+		eventHandlers: map[string]discovery.RegistryEventHandler{},
 	}
 	go sc.sync()
 	return sc

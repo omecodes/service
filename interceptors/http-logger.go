@@ -1,7 +1,7 @@
 package interceptors
 
 import (
-	"github.com/zoenion/common/log"
+	"github.com/omecodes/common/log"
 	"net/http"
 	"time"
 )
@@ -16,7 +16,7 @@ func (l *httpLogger) Handle(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 		duration := time.Since(start)
 		log.Info(
-			r.Method + " " + r.RequestURI,
+			r.Method+" "+r.RequestURI,
 			log.Field("params", r.URL.RawQuery),
 			log.Field("handler", l.name),
 			log.Field("duration", duration.String()),

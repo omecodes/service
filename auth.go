@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
-	authpb "github.com/zoenion/common/proto/auth"
-	"github.com/zoenion/service/jwt"
+	authpb "github.com/omecodes/common/proto/auth"
+	"github.com/omecodes/service/jwt"
 )
 
 func (box *Box) TokenVerifier() authpb.TokenVerifier {

@@ -2,10 +2,10 @@ package service
 
 import (
 	"fmt"
-	"github.com/zoenion/common/errors"
-	"github.com/zoenion/common/log"
-	"github.com/zoenion/service/connection"
-	pb "github.com/zoenion/service/proto"
+	"github.com/omecodes/common/errors"
+	"github.com/omecodes/common/log"
+	"github.com/omecodes/service/connection"
+	pb "github.com/omecodes/service/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )

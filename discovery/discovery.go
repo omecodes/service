@@ -2,7 +2,7 @@ package discovery
 
 import (
 	"fmt"
-	pb2 "github.com/zoenion/service/proto"
+	pb2 "github.com/omecodes/service/proto"
 )
 
 var defaultIDGenerator IDGenerator

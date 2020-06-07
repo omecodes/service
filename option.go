@@ -2,10 +2,10 @@ package service
 
 import (
 	"context"
-	"github.com/zoenion/common/grpc-authentication"
-	"github.com/zoenion/common/jcon"
-	authpb "github.com/zoenion/common/proto/auth"
-	"github.com/zoenion/service/discovery"
+	"github.com/omecodes/common/grpc-authentication"
+	"github.com/omecodes/common/jcon"
+	authpb "github.com/omecodes/common/proto/auth"
+	"github.com/omecodes/service/discovery"
 	"google.golang.org/grpc"
 )
 
@@ -22,7 +22,6 @@ func WithCACredentials(pc *ga.ProxyCredentials) InitOption {
 		opts.caProxyCredentials = pc
 	}
 }
-
 
 type GRPCCallOption int
 

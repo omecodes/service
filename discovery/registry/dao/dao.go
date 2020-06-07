@@ -1,7 +1,7 @@
 package dao
 
 import (
-	pb2 "github.com/zoenion/service/proto"
+	pb2 "github.com/omecodes/service/proto"
 )
 
 type ServicesDAO interface {

@@ -4,10 +4,10 @@ import (
 	"context"
 	"crypto/tls"
 	"github.com/google/uuid"
-	"github.com/zoenion/common/errors"
-	"github.com/zoenion/common/log"
-	"github.com/zoenion/common/persist/dict"
-	authpb "github.com/zoenion/common/proto/auth"
+	"github.com/omecodes/common/errors"
+	"github.com/omecodes/common/log"
+	"github.com/omecodes/common/persist/dict"
+	authpb "github.com/omecodes/common/proto/auth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
@@ -216,7 +216,7 @@ func (s *SyncedStore) Close() error {
 }
 
 func NewSyncedStore(server string, tls *tls.Config, store dict.Dict) *SyncedStore {
-	syncedStore := &SyncedStore {
+	syncedStore := &SyncedStore{
 		serverAddress:             server,
 		tls:                       tls,
 		store:                     store,

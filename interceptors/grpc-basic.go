@@ -3,8 +3,8 @@ package interceptors
 import (
 	"context"
 	"encoding/base64"
-	"github.com/zoenion/common/errors"
-	"github.com/zoenion/common/grpc-authentication"
+	"github.com/omecodes/common/errors"
+	"github.com/omecodes/common/grpc-authentication"
 	"google.golang.org/grpc/metadata"
 	"strings"
 )

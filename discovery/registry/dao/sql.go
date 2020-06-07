@@ -3,11 +3,11 @@ package dao
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
-	"github.com/zoenion/common/codec"
-	"github.com/zoenion/common/dao"
-	"github.com/zoenion/common/jcon"
-	"github.com/zoenion/common/persist/dict"
-	pb2 "github.com/zoenion/service/proto"
+	"github.com/omecodes/common/codec"
+	"github.com/omecodes/common/dao"
+	"github.com/omecodes/common/jcon"
+	"github.com/omecodes/common/persist/dict"
+	pb2 "github.com/omecodes/service/proto"
 )
 
 type sqlApplicationDAO struct {

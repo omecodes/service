@@ -2,9 +2,9 @@ package registry
 
 import (
 	"github.com/iancoleman/strcase"
-	"github.com/zoenion/common/database"
-	"github.com/zoenion/common/errors"
-	"github.com/zoenion/service/discovery/registry/dao"
+	"github.com/omecodes/common/database"
+	"github.com/omecodes/common/errors"
+	"github.com/omecodes/service/discovery/registry/dao"
 	"path/filepath"
 )
 

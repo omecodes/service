@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/zoenion/service/connection"
-	pb "github.com/zoenion/service/proto"
+	"github.com/omecodes/service/connection"
+	pb "github.com/omecodes/service/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
