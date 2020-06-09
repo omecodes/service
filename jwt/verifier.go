@@ -118,7 +118,7 @@ func (j *jwtVerifier) Verify(ctx context.Context, t *authpb.JWT) (authpb.JWTStat
 func (j *jwtVerifier) VerifyJWT(ctx context.Context, jwt string) (authpb.JWTState, error) {
 	j.initStores()
 
-	t, err := authpb.TokenFromJWT(jwt)
+	t, err := authpb.ParseJWT(jwt)
 	if err != nil {
 		return authpb.JWTState_NOT_VALID, err
 	}
