@@ -11,7 +11,7 @@ func (box *Box) TokenVerifier() authpb.TokenVerifier {
 }
 
 func (box *Box) BearerTokenVerifyFunc(ctx context.Context, jwt string) (context.Context, error) {
-	t, err := authpb.TokenFromJWT(jwt)
+	t, err := authpb.ParseJWT(jwt)
 	if err != nil {
 		return ctx, err
 	}

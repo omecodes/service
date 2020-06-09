@@ -16,7 +16,7 @@ func (atv *authorizationTokenValidator) Handle(next http.Handler) http.Handler {
 		authorizationHeader := r.Header.Get("Authorization")
 		if strings.HasPrefix(authorizationHeader, "Bearer ") {
 			strJWT := strings.TrimLeft(authorizationHeader, "Bearer ")
-			t, err := authpb.TokenFromJWT(strJWT)
+			t, err := authpb.ParseJWT(strJWT)
 			if err != nil {
 				w.WriteHeader(http.StatusUnauthorized)
 				return

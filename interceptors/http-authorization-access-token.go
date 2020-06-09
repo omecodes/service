@@ -27,7 +27,7 @@ func (atv *authorizationAccessTokenValidator) Handle(next http.Handler) http.Han
 				return
 			}
 
-			jwt, err := authpb.TokenFromJWT(strJWT)
+			jwt, err := authpb.ParseJWT(strJWT)
 			if err != nil {
 				w.WriteHeader(http.StatusUnauthorized)
 				return
