@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"github.com/omecodes/common/futils"
 	"path/filepath"
 )
 
@@ -41,6 +42,7 @@ func (box *Box) validateParams() error {
 	if box.params.Domain == "" && box.params.Ip == "" {
 		return errors.New("command line: one or both --domain and --ip flags must be passed")
 	}
+
 	var err error
 	box.params.Dir, err = filepath.Abs(box.params.Dir)
 	if err != nil {
@@ -48,10 +50,21 @@ func (box *Box) validateParams() error {
 		return err
 	}
 
-	if box.params.CAAddress != "" || box.params.CACertPath != "" || box.params.CACredentials != "" {
-		if box.params.CAAddress == "" || box.params.CACertPath == "" || box.params.CACredentials == "" {
-			return fmt.Errorf("command line: --ca-addr must always be provided with --ca-cert and --ca-cred")
+	if box.params.CAAddress == "" {
+		box.params.CAAddress = fmt.Sprintf("%s:9090", box.params.Domain)
+	}
+
+	if box.params.CACertPath == "" {
+		var err error
+		caCertPath, err := filepath.Abs("./ca.crt")
+		if caCertPath == "" || err != nil || !futils.FileExists(caCertPath) {
+			caCertPath = filepath.Join(box.params.Dir, "certs", "ca.crt")
 		}
+		box.params.CACertPath = caCertPath
+	}
+
+	if box.params.CACredentials == "" {
+		return fmt.Errorf("command line: ca-cred flag required")
 	}
 
 	if box.params.RegistryAddress != "" || box.params.Namespace != "" {
