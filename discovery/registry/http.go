@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/omecodes/common/log"
-	pb "github.com/omecodes/service/proto"
+	pb "github.com/omecodes/common/proto/service"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"net"

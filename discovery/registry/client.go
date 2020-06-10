@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/omecodes/common/clone"
 	"github.com/omecodes/common/errors"
+	pb2 "github.com/omecodes/common/proto/service"
 	"github.com/omecodes/service/discovery"
-	pb2 "github.com/omecodes/service/proto"
 	"sync"
 )
 

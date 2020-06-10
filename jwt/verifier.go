@@ -15,15 +15,13 @@ import (
 	"github.com/omecodes/common/log"
 	"github.com/omecodes/common/persist/dict"
 	authpb "github.com/omecodes/common/proto/auth"
+	pb2 "github.com/omecodes/common/proto/service"
 	"github.com/omecodes/service/discovery"
-	pb2 "github.com/omecodes/service/proto"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 )
-
-type RevokedHandlerFunc func()
 
 type jwtVerifier struct {
 	sync.Mutex

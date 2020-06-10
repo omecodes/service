@@ -5,7 +5,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"github.com/omecodes/common/log"
-	pb "github.com/omecodes/service/proto"
+	pb "github.com/omecodes/common/proto/service"
 	"google.golang.org/grpc"
 	"net"
 )

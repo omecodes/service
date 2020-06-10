@@ -3,7 +3,6 @@ package jwt
 import (
 	"context"
 	"crypto/tls"
-	"github.com/google/uuid"
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/log"
 	"github.com/omecodes/common/persist/dict"
@@ -19,20 +18,19 @@ import (
 
 type SyncedStore struct {
 	sync.Mutex
-	store                     dict.Dict
-	serverAddress             string
-	tls                       *tls.Config
-	conn                      *grpc.ClientConn
-	jwtRevokedHandlerFuncList map[string]RevokedHandlerFunc
-	client                    authpb.TokenStoreServiceClient
-	stopRequested             bool
-	connectionAttempts        int
-	unconnectedTime           time.Time
-	syncing                   bool
-	syncMutex                 sync.Mutex
-	outboundStream            chan *authpb.SyncMessage
-	inboundStream             chan *authpb.SyncMessage
-	sendCloseSignal           chan bool
+	store              dict.Dict
+	serverAddress      string
+	tls                *tls.Config
+	conn               *grpc.ClientConn
+	client             authpb.TokenStoreServiceClient
+	stopRequested      bool
+	connectionAttempts int
+	unconnectedTime    time.Time
+	syncing            bool
+	syncMutex          sync.Mutex
+	outboundStream     chan *authpb.SyncMessage
+	inboundStream      chan *authpb.SyncMessage
+	sendCloseSignal    chan bool
 }
 
 func (s *SyncedStore) connect() error {
@@ -196,20 +194,6 @@ func (s *SyncedStore) State(jti string) (authpb.JWTState, error) {
 	return s.getJwtState(jti)
 }
 
-func (s *SyncedStore) AddJwtRevokedEventHandler(f RevokedHandlerFunc) string {
-	s.Lock()
-	defer s.Unlock()
-	id := uuid.New().String()
-	s.jwtRevokedHandlerFuncList[id] = f
-	return id
-}
-
-func (s *SyncedStore) DeleteJwtRevokedEventHandler(id string) {
-	s.Lock()
-	defer s.Unlock()
-	delete(s.jwtRevokedHandlerFuncList, id)
-}
-
 func (s *SyncedStore) Close() error {
 	s.stopRequested = true
 	return s.store.Close()
@@ -217,10 +201,9 @@ func (s *SyncedStore) Close() error {
 
 func NewSyncedStore(server string, tls *tls.Config, store dict.Dict) *SyncedStore {
 	syncedStore := &SyncedStore{
-		serverAddress:             server,
-		tls:                       tls,
-		store:                     store,
-		jwtRevokedHandlerFuncList: map[string]RevokedHandlerFunc{},
+		serverAddress: server,
+		tls:           tls,
+		store:         store,
 	}
 
 	_ = store.Clear()

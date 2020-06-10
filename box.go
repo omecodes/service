@@ -4,9 +4,7 @@ import (
 	"context"
 	"crypto"
 	"crypto/x509"
-	"github.com/omecodes/service/connection"
 	"github.com/omecodes/service/discovery"
-	"github.com/omecodes/service/server"
 	"google.golang.org/grpc/credentials"
 	"sync"
 )
@@ -16,8 +14,8 @@ type Box struct {
 
 	serverMutex sync.Mutex
 
-	services map[string]*server.Service
-	gateways map[string]*server.Gateway
+	services map[string]*node
+	gateways map[string]*Gateway
 
 	registry                   discovery.Registry
 	caCert                     *x509.Certificate
@@ -31,7 +29,7 @@ type Box struct {
 	ctxCancelFunc context.CancelFunc
 
 	dialerMutex sync.Mutex
-	dialerCache map[string]connection.Dialer
+	dialerCache map[string]Dialer
 }
 
 func NewBox(p Params) (*Box, error) {
@@ -41,9 +39,9 @@ func NewBox(p Params) (*Box, error) {
 		return nil, err
 	}
 
-	b.dialerCache = map[string]connection.Dialer{}
-	b.gateways = map[string]*server.Gateway{}
-	b.services = map[string]*server.Service{}
+	b.dialerCache = map[string]Dialer{}
+	b.gateways = map[string]*Gateway{}
+	b.services = map[string]*node{}
 	b.ctx, b.ctxCancelFunc = context.WithCancel(context.WithValue(context.Background(), box{}, b))
 	return b, nil
 }
@@ -55,9 +53,9 @@ func NewBoxWithContext(ctx context.Context, p Params) (*Box, error) {
 		return nil, err
 	}
 
-	b.dialerCache = map[string]connection.Dialer{}
-	b.gateways = map[string]*server.Gateway{}
-	b.services = map[string]*server.Service{}
+	b.dialerCache = map[string]Dialer{}
+	b.gateways = map[string]*Gateway{}
+	b.services = map[string]*node{}
 	b.ctx, b.ctxCancelFunc = context.WithCancel(context.WithValue(ctx, box{}, b))
 	return b, nil
 }

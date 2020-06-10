@@ -3,13 +3,12 @@ package service
 import (
 	"fmt"
 	"github.com/omecodes/common/log"
-	pb "github.com/omecodes/service/proto"
-	"github.com/omecodes/service/server"
+	pb "github.com/omecodes/common/proto/service"
 	"net/http"
 	"strings"
 )
 
-func (box *Box) StartGateway(params *server.GatewayParams) error {
+func (box *Box) StartGateway(params *GatewayParams) error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
 
@@ -41,7 +40,7 @@ func (box *Box) StartGateway(params *server.GatewayParams) error {
 		Addr:    address,
 		Handler: handler,
 	}
-	gt := &server.Gateway{}
+	gt := &Gateway{}
 	gt.Server = srv
 	gt.Address = address
 	if params.Tls != nil {

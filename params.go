@@ -35,6 +35,10 @@ func (box *Box) validateParams() error {
 		return errors.New("command line: --name flags is required")
 	}
 
+	if box.params.Namespace == "" {
+		box.params.Namespace = "ome"
+	}
+
 	if box.params.Autonomous {
 		return nil
 	}
@@ -63,7 +67,7 @@ func (box *Box) validateParams() error {
 		box.params.CACertPath = caCertPath
 	}
 
-	if box.params.CACredentials == "" {
+	if !box.params.CA && box.params.CACredentials == "" {
 		return fmt.Errorf("command line: ca-cred flag required")
 	}
 

@@ -4,32 +4,21 @@ import (
 	"fmt"
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/log"
-	"github.com/omecodes/service/connection"
-	pb "github.com/omecodes/service/proto"
+	pb "github.com/omecodes/common/proto/service"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
 )
 
-func (box *Box) dialToService(serviceType pb.Type, selectors ...pb.Selector) (*grpc.ClientConn, error) {
+func (box *Box) dialToService(serviceType pb.Type) (*grpc.ClientConn, error) {
 	infoList, err := box.Registry().GetOfType(serviceType)
 	if err != nil {
 		return nil, err
 	}
 
-	var selection []*pb.Info
-	if selectors != nil {
-		for _, selector := range selectors {
-			for _, item := range infoList {
-				if selector(item) {
-					selection = append(selection, item)
-				}
-			}
-		}
-	} else {
-		selection = infoList
-	}
+	var selection = infoList
 
-	var dialer connection.Dialer
+	var dialer Dialer
 	for _, info := range selection {
 		// Search for cached connection dialer
 		for _, node := range info.Nodes {
@@ -46,9 +35,9 @@ func (box *Box) dialToService(serviceType pb.Type, selectors ...pb.Selector) (*g
 			if node.Protocol == pb.Protocol_Grpc {
 				tlsConf := box.ClientMutualTLS()
 				if tlsConf == nil {
-					dialer = connection.NewDialer(node.Address)
+					dialer = NewDialer(node.Address)
 				} else {
-					dialer = connection.NewDialer(node.Address, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)))
+					dialer = NewDialer(node.Address, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)))
 				}
 
 				conn, err := dialer.Dial()
@@ -78,9 +67,40 @@ func (box *Box) dialFromCache(addr string) *grpc.ClientConn {
 	return nil
 }
 
-func (box *Box) addDialerToCache(addr string, dialer connection.Dialer) {
+func (box *Box) addDialerToCache(addr string, dialer Dialer) {
 	box.dialerMutex.Lock()
 	defer box.dialerMutex.Unlock()
 
 	box.dialerCache[addr] = dialer
+}
+
+type Dialer interface {
+	Dial() (*grpc.ClientConn, error)
+}
+
+type dialer struct {
+	address string
+	wrapped *grpc.ClientConn
+	options []grpc.DialOption
+}
+
+func (g *dialer) Dial() (*grpc.ClientConn, error) {
+	if g.wrapped == nil || g.wrapped.GetState() != connectivity.Ready {
+		if g.wrapped != nil {
+			_ = g.wrapped.Close()
+		}
+		var err error
+		g.wrapped, err = grpc.Dial(g.address, g.options...)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return g.wrapped, nil
+}
+
+func NewDialer(addr string, opts ...grpc.DialOption) *dialer {
+	return &dialer{
+		address: addr,
+		options: opts,
+	}
 }

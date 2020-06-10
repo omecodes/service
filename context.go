@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/grpc-authentication"
+	pb "github.com/omecodes/common/proto/service"
 	"github.com/omecodes/service/discovery"
-	pb "github.com/omecodes/service/proto"
 	"google.golang.org/grpc"
 	"strings"
 )
@@ -132,12 +132,12 @@ func ClientTLSConfig(ctx context.Context) *tls.Config {
 	return box.ClientMutualTLS()
 }
 
-func Dial(ctx context.Context, st pb.Type, selectors ...pb.Selector) (*grpc.ClientConn, error) {
+func Dial(ctx context.Context, st pb.Type) (*grpc.ClientConn, error) {
 	box := serviceBox(ctx)
 	if box == nil {
 		return nil, errors.New("no service box associated to context")
 	}
-	return box.dialToService(st, selectors...)
+	return box.dialToService(st)
 }
 
 func ContextWithBox(ctx context.Context, b *Box) context.Context {

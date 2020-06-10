@@ -15,9 +15,8 @@ import (
 	"github.com/omecodes/common/grpc-authentication"
 	gs "github.com/omecodes/common/grpc-session"
 	"github.com/omecodes/common/log"
+	pb "github.com/omecodes/common/proto/service"
 	"github.com/omecodes/service/interceptors"
-	pb "github.com/omecodes/service/proto"
-	"github.com/omecodes/service/server"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -37,7 +36,7 @@ func (box *Box) CAClientTransportCredentials() credentials.TransportCredentials 
 	return box.caGRPCTransportCredentials
 }
 
-func (box *Box) StartGatewayGRPCMapping(params *server.GatewayServiceMappingParams) error {
+func (box *Box) StartGatewayGRPCMapping(params *GatewayServiceMappingParams) error {
 	if box.registry != nil && !box.params.Autonomous {
 		box.serverMutex.Lock()
 		defer box.serverMutex.Unlock()
@@ -88,7 +87,7 @@ func (box *Box) StartGatewayGRPCMapping(params *server.GatewayServiceMappingPara
 				srv.Handler = mux
 			}
 
-			gt := &server.Gateway{}
+			gt := &Gateway{}
 			gt.Server = srv
 			gt.Address = address
 			if node.Security == pb.Security_None {
@@ -126,7 +125,7 @@ func (box *Box) StartGatewayGRPCMapping(params *server.GatewayServiceMappingPara
 	return errors.New("matching gRPC service not found")
 }
 
-func (box *Box) StartService(params *server.ServiceParams) error {
+func (box *Box) StartService(params *ServiceParams) error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
 
@@ -169,7 +168,7 @@ func (box *Box) StartService(params *server.ServiceParams) error {
 	opts = append(opts, grpc.StreamInterceptor(chainStreamInterceptor), grpc.UnaryInterceptor(chainUnaryInterceptor))
 
 	srv := grpc.NewServer(opts...)
-	rs := new(server.Service)
+	rs := new(node)
 	rs.Address = address
 	rs.Server = srv
 	rs.Secure = params.Tls != nil
@@ -226,7 +225,7 @@ func (box *Box) stopServices() error {
 			}
 		}
 	}
-	box.services = map[string]*server.Service{}
+	box.services = map[string]*node{}
 	return nil
 }
 
@@ -280,7 +279,7 @@ func (box *Box) StartCAService(credentialsVerifier ga.CredentialsVerifyFunc) err
 		Certificate:           box.cert,
 	})
 
-	rs := new(server.Service)
+	rs := new(node)
 	rs.Address = address
 	rs.Server = srv
 	rs.Secure = true

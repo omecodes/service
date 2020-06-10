@@ -1,13 +1,13 @@
 package dao
 
 import (
-	pb2 "github.com/omecodes/service/proto"
+	pb "github.com/omecodes/common/proto/service"
 )
 
 type ServicesDAO interface {
-	Save(application *pb2.Info) error
-	List() ([]*pb2.Info, error)
-	Find(serviceName string) (*pb2.Info, error)
+	Save(application *pb.Info) error
+	List() ([]*pb.Info, error)
+	Find(serviceName string) (*pb.Info, error)
 	Delete(serviceName string) error
 	Stop() error
 }

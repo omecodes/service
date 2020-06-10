@@ -14,7 +14,7 @@ import (
 	"github.com/omecodes/common/futils"
 	"github.com/omecodes/common/grpc-authentication"
 	"github.com/omecodes/common/log"
-	pb "github.com/omecodes/service/proto"
+	pb "github.com/omecodes/common/proto/service"
 	"google.golang.org/grpc"
 	"net"
 	"os"

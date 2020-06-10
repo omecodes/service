@@ -7,7 +7,7 @@ import (
 	"github.com/omecodes/common/dao"
 	"github.com/omecodes/common/jcon"
 	"github.com/omecodes/common/persist/dict"
-	pb2 "github.com/omecodes/service/proto"
+	pb2 "github.com/omecodes/common/proto/service"
 )
 
 type sqlApplicationDAO struct {

@@ -1,16 +1,19 @@
-package server
+package service
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	grpc_gateway "github.com/omecodes/common/grpc-gateway"
-	"github.com/omecodes/service/gateway"
+	pb "github.com/omecodes/common/proto/service"
 	"github.com/omecodes/service/interceptors"
-	pb "github.com/omecodes/service/proto"
 	"google.golang.org/grpc"
 	"net/http"
 )
+
+type WireEndpointFunc func(ctx context.Context, serveMux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) error
 
 type GatewayServiceMappingParams struct {
 	ForceRegister  bool
@@ -21,7 +24,7 @@ type GatewayServiceMappingParams struct {
 	Tls            *tls.Config
 	ServiceType    pb.Type
 	Security       pb.Security
-	Binder         gateway.WireEndpointFunc
+	Binder         WireEndpointFunc
 	MuxWrapper     grpc_gateway.MuxWrapper
 	Meta           map[string]string
 }
@@ -47,14 +50,14 @@ type ServiceParams struct {
 	Node                *pb.Node
 }
 
-type Service struct {
+type node struct {
 	Secure     bool
 	Address    string
 	RegistryID string
 	Server     *grpc.Server
 }
 
-func (s *Service) Stop() {
+func (s *node) Stop() {
 	s.Server.Stop()
 }
 

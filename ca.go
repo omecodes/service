@@ -9,7 +9,7 @@ import (
 	crypto2 "github.com/omecodes/common/crypto"
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/grpc-authentication"
-	pb "github.com/omecodes/service/proto"
+	pb "github.com/omecodes/common/proto/service"
 	"net"
 	"time"
 )

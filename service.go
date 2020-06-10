@@ -4,8 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/omecodes/service/connection"
-	pb "github.com/omecodes/service/proto"
+	pb "github.com/omecodes/common/proto/service"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -21,7 +20,7 @@ func (box *Box) ServiceAddress(name string) (string, error) {
 	return s.Address, nil
 }
 
-func GRPCConnectionDialer(ctx context.Context, serviceType pb.Type, opts ...grpc.DialOption) (connection.Dialer, error) {
+func GRPCConnectionDialer(ctx context.Context, serviceType pb.Type, opts ...grpc.DialOption) (Dialer, error) {
 	reg := Registry(ctx)
 	if reg == nil {
 		return nil, errors.New("no registry configured")
@@ -41,10 +40,10 @@ func GRPCConnectionDialer(ctx context.Context, serviceType pb.Type, opts ...grpc
 			if node.Protocol == pb.Protocol_Grpc {
 				tlsConf := ClientTLSConfig(ctx)
 				if tlsConf == nil {
-					return connection.NewDialer(node.Address, opts...), nil
+					return NewDialer(node.Address, opts...), nil
 				} else {
 					opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)))
-					return connection.NewDialer(node.Address, opts...), nil
+					return NewDialer(node.Address, opts...), nil
 				}
 			}
 		}
@@ -52,7 +51,7 @@ func GRPCConnectionDialer(ctx context.Context, serviceType pb.Type, opts ...grpc
 	return nil, fmt.Errorf("no service of type %s that supports gRPC has been found", serviceType)
 }
 
-func SpecificServiceConnectionDialer(ctx context.Context, serviceID string, opts ...grpc.DialOption) (connection.Dialer, error) {
+func SpecificServiceConnectionDialer(ctx context.Context, serviceID string, opts ...grpc.DialOption) (Dialer, error) {
 	reg := Registry(ctx)
 	if reg == nil {
 		return nil, errors.New("no registry configured")
@@ -66,17 +65,17 @@ func SpecificServiceConnectionDialer(ctx context.Context, serviceID string, opts
 	for _, node := range info.Nodes {
 		tlsConf := ClientTLSConfig(ctx)
 		if tlsConf == nil {
-			return connection.NewDialer(node.Address, opts...), nil
+			return NewDialer(node.Address, opts...), nil
 		} else {
 			opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)))
-			return connection.NewDialer(node.Address, opts...), nil
+			return NewDialer(node.Address, opts...), nil
 		}
 	}
 
 	return nil, fmt.Errorf("no service of name %s that supports gRPC has been found", serviceID)
 }
 
-func SpecificServiceNodeConnectionDialer(ctx context.Context, serviceID string, nodeName string, opts ...grpc.DialOption) (connection.Dialer, error) {
+func SpecificServiceNodeConnectionDialer(ctx context.Context, serviceID string, nodeName string, opts ...grpc.DialOption) (Dialer, error) {
 	reg := Registry(ctx)
 	if reg == nil {
 		return nil, errors.New("no registry configured")
@@ -91,10 +90,10 @@ func SpecificServiceNodeConnectionDialer(ctx context.Context, serviceID string, 
 		if nodeName == node.Name {
 			tlsConf := ClientTLSConfig(ctx)
 			if tlsConf == nil {
-				return connection.NewDialer(node.Address, opts...), nil
+				return NewDialer(node.Address, opts...), nil
 			} else {
 				opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)))
-				return connection.NewDialer(node.Address, opts...), nil
+				return NewDialer(node.Address, opts...), nil
 			}
 		}
 	}
@@ -126,7 +125,7 @@ func ConnectToSpecificServiceNode(ctx context.Context, serviceID, nodeName strin
 	return dialer.Dial()
 }
 
-func (box *Box) GRPCConnectionDialer(serviceType pb.Type, opts ...grpc.DialOption) (connection.Dialer, error) {
+func (box *Box) GRPCConnectionDialer(serviceType pb.Type, opts ...grpc.DialOption) (Dialer, error) {
 	reg := box.Registry()
 	if reg == nil {
 		return nil, errors.New("no registry configured")
@@ -146,10 +145,10 @@ func (box *Box) GRPCConnectionDialer(serviceType pb.Type, opts ...grpc.DialOptio
 			if node.Protocol == pb.Protocol_Grpc {
 				tlsConf := box.ClientMutualTLS()
 				if tlsConf == nil {
-					return connection.NewDialer(node.Address, opts...), nil
+					return NewDialer(node.Address, opts...), nil
 				} else {
 					opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)))
-					return connection.NewDialer(node.Address, opts...), nil
+					return NewDialer(node.Address, opts...), nil
 				}
 			}
 		}
@@ -157,7 +156,7 @@ func (box *Box) GRPCConnectionDialer(serviceType pb.Type, opts ...grpc.DialOptio
 	return nil, fmt.Errorf("no service of type %s that supports gRPC has been found", serviceType)
 }
 
-func (box *Box) SpecificServiceConnectionDialer(serviceID string, opts ...grpc.DialOption) (connection.Dialer, error) {
+func (box *Box) SpecificServiceConnectionDialer(serviceID string, opts ...grpc.DialOption) (Dialer, error) {
 	reg := box.Registry()
 	if reg == nil {
 		return nil, errors.New("no registry configured")
@@ -171,17 +170,17 @@ func (box *Box) SpecificServiceConnectionDialer(serviceID string, opts ...grpc.D
 	for _, node := range info.Nodes {
 		tlsConf := box.ClientMutualTLS()
 		if tlsConf == nil {
-			return connection.NewDialer(node.Address, opts...), nil
+			return NewDialer(node.Address, opts...), nil
 		} else {
 			opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)))
-			return connection.NewDialer(node.Address, opts...), nil
+			return NewDialer(node.Address, opts...), nil
 		}
 	}
 
 	return nil, fmt.Errorf("no service of name %s that supports gRPC has been found", serviceID)
 }
 
-func (box *Box) SpecificServiceNodeConnectionDialer(serviceID string, nodeName string, opts ...grpc.DialOption) (connection.Dialer, error) {
+func (box *Box) SpecificServiceNodeConnectionDialer(serviceID string, nodeName string, opts ...grpc.DialOption) (Dialer, error) {
 	reg := box.Registry()
 	if reg == nil {
 		return nil, errors.New("no registry configured")
@@ -196,10 +195,10 @@ func (box *Box) SpecificServiceNodeConnectionDialer(serviceID string, nodeName s
 		if nodeName == node.Name {
 			tlsConf := box.ClientMutualTLS()
 			if tlsConf == nil {
-				return connection.NewDialer(node.Address, opts...), nil
+				return NewDialer(node.Address, opts...), nil
 			} else {
 				opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)))
-				return connection.NewDialer(node.Address, opts...), nil
+				return NewDialer(node.Address, opts...), nil
 			}
 		}
 	}
