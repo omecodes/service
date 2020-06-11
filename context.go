@@ -5,11 +5,9 @@ import (
 	"crypto"
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/grpc-authentication"
 	pb "github.com/omecodes/common/proto/service"
-	"github.com/omecodes/service/discovery"
 	"google.golang.org/grpc"
 	"strings"
 )
@@ -58,20 +56,12 @@ func PrivateKey(ctx context.Context) crypto.PrivateKey {
 	return box.privateKey
 }
 
-func Registry(ctx context.Context) discovery.Registry {
+func Registry(ctx context.Context) pb.Registry {
 	box := serviceBox(ctx)
 	if box == nil {
 		return nil
 	}
 	return box.registry
-}
-
-func Namespace(ctx context.Context) string {
-	box := serviceBox(ctx)
-	if box == nil {
-		return ""
-	}
-	return box.params.Namespace
 }
 
 func CACredentials(ctx context.Context) *ga.ProxyCredentials {
@@ -109,7 +99,7 @@ func ID(ctx context.Context) string {
 	if box == nil {
 		return ""
 	}
-	return fmt.Sprintf("%s:%s", box.params.Namespace, box.params.Name)
+	return box.params.Name
 }
 
 func GatewayAddress(ctx context.Context, name string) string {
@@ -117,7 +107,7 @@ func GatewayAddress(ctx context.Context, name string) string {
 	if box == nil {
 		return ""
 	}
-	gt, ok := box.gateways[name]
+	gt, ok := box.httpNodes[name]
 	if !ok {
 		return ""
 	}

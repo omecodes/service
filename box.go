@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto"
 	"crypto/x509"
-	"github.com/omecodes/service/discovery"
+	pb "github.com/omecodes/common/proto/service"
 	"google.golang.org/grpc/credentials"
 	"sync"
 )
@@ -14,10 +14,10 @@ type Box struct {
 
 	serverMutex sync.Mutex
 
-	services map[string]*node
-	gateways map[string]*Gateway
+	gRPCNodes map[string]*gPRCNode
+	httpNodes map[string]*httpNode
 
-	registry                   discovery.Registry
+	registry                   pb.Registry
 	caCert                     *x509.Certificate
 	caClientAuthentication     credentials.PerRPCCredentials
 	caGRPCTransportCredentials credentials.TransportCredentials
@@ -27,6 +27,8 @@ type Box struct {
 
 	ctx           context.Context
 	ctxCancelFunc context.CancelFunc
+
+	info *pb.Info
 
 	dialerMutex sync.Mutex
 	dialerCache map[string]Dialer
@@ -40,8 +42,8 @@ func NewBox(p Params) (*Box, error) {
 	}
 
 	b.dialerCache = map[string]Dialer{}
-	b.gateways = map[string]*Gateway{}
-	b.services = map[string]*node{}
+	b.httpNodes = map[string]*httpNode{}
+	b.gRPCNodes = map[string]*gPRCNode{}
 	b.ctx, b.ctxCancelFunc = context.WithCancel(context.WithValue(context.Background(), box{}, b))
 	return b, nil
 }
@@ -54,8 +56,8 @@ func NewBoxWithContext(ctx context.Context, p Params) (*Box, error) {
 	}
 
 	b.dialerCache = map[string]Dialer{}
-	b.gateways = map[string]*Gateway{}
-	b.services = map[string]*node{}
+	b.httpNodes = map[string]*httpNode{}
+	b.gRPCNodes = map[string]*gPRCNode{}
 	b.ctx, b.ctxCancelFunc = context.WithCancel(context.WithValue(ctx, box{}, b))
 	return b, nil
 }
@@ -66,10 +68,6 @@ func (box *Box) Context() context.Context {
 
 func (box *Box) Name() string {
 	return box.params.Name
-}
-
-func (box *Box) FullName() string {
-	return FullName(box.params.Namespace, box.params.Name)
 }
 
 func (box *Box) Domain() string {
@@ -88,7 +86,7 @@ func (box *Box) RegistryCert() *x509.Certificate {
 	return box.registryCert
 }
 
-func (box *Box) Registry() discovery.Registry {
+func (box *Box) Registry() pb.Registry {
 	return box.registry
 }
 

@@ -3,16 +3,14 @@ package service
 import (
 	"context"
 	"github.com/omecodes/common/grpc-authentication"
-	"github.com/omecodes/common/jcon"
 	authpb "github.com/omecodes/common/proto/auth"
-	"github.com/omecodes/service/discovery"
+	"github.com/omecodes/common/proto/service"
 	"google.golang.org/grpc"
 )
 
 type initOptions struct {
-	registry             discovery.Registry
-	RegistryServerDBConf jcon.Map
-	caProxyCredentials   *ga.ProxyCredentials
+	registry           pb.Registry
+	caProxyCredentials *ga.ProxyCredentials
 }
 
 type InitOption func(*initOptions)

@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func (box *Box) StartGateway(params *GatewayParams) error {
+func (box *Box) StartGateway(params *GatewayNodeParams) error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
 
@@ -35,12 +35,12 @@ func (box *Box) StartGateway(params *GatewayParams) error {
 		handler = router
 	}
 
-	log.Info("starting HTTP server", log.Field("node", params.Node.Name), log.Field("address", address))
+	log.Info("starting HTTP server", log.Field("gPRCNode", params.Node.Id), log.Field("address", address))
 	srv := &http.Server{
 		Addr:    address,
 		Handler: handler,
 	}
-	gt := &Gateway{}
+	gt := &httpNode{}
 	gt.Server = srv
 	gt.Address = address
 	if params.Tls != nil {
@@ -49,21 +49,46 @@ func (box *Box) StartGateway(params *GatewayParams) error {
 		gt.Scheme = "http"
 	}
 
-	box.gateways[params.Node.Name] = gt
-	go srv.Serve(listener)
+	gt.Name = params.Node.Id
+	box.httpNodes[params.Node.Id] = gt
+	go func() {
+		err = srv.Serve(listener)
+		if err != nil {
+			if err != http.ErrServerClosed {
+				log.Error("http server stopped", err)
+			}
+
+			if box.info != nil {
+				var newNodeList []*pb.Node
+				for _, node := range box.info.Nodes {
+					if node.Id != params.Node.Id {
+						newNodeList = append(newNodeList, node)
+					}
+				}
+				box.info.Nodes = newNodeList
+				_ = box.registry.RegisterService(box.info)
+			}
+		}
+
+	}()
 
 	if !box.params.Autonomous && box.registry != nil {
-		info := &pb.Info{}
-		info.Namespace = box.params.Namespace
-		info.Name = box.Name()
-
 		n := params.Node
 		n.Address = address
-		info.Nodes = []*pb.Node{n}
+		if box.info == nil {
+			box.info = new(pb.Info)
+			box.info.Id = box.Name()
+			box.info.Type = params.ServiceType
+			if box.info.Meta == nil {
+				box.info.Meta = map[string]string{}
+			}
+		}
+		box.info.Nodes = append(box.info.Nodes, n)
 
-		gt.RegistryID, err = box.registry.RegisterService(info, pb.ActionOnRegisterExistingService_AddNodes|pb.ActionOnRegisterExistingService_UpdateExisting)
+		// gt.RegistryID, err = box.registry.RegisterService(info, pb.ActionOnRegisterExistingService_AddNodes|pb.ActionOnRegisterExistingService_UpdateExisting)
+		err = box.registry.RegisterService(box.info)
 		if err != nil {
-			log.Error("could not register gateway", err, log.Field("name", params.Node.Name))
+			log.Error("could not register gateway", err, log.Field("name", params.Node.Id))
 		}
 	}
 	return nil
@@ -72,10 +97,10 @@ func (box *Box) StartGateway(params *GatewayParams) error {
 func (box *Box) stopGateways() error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
-	for name, srv := range box.gateways {
+	for name, srv := range box.httpNodes {
 		err := srv.Stop()
 		if err != nil {
-			log.Error(fmt.Sprintf("gateway stopped"), err, log.Field("node", name))
+			log.Error(fmt.Sprintf("gateway stopped"), err, log.Field("gPRCNode", name))
 		}
 	}
 	return nil

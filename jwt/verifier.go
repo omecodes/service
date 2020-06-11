@@ -16,7 +16,6 @@ import (
 	"github.com/omecodes/common/persist/dict"
 	authpb "github.com/omecodes/common/proto/auth"
 	pb2 "github.com/omecodes/common/proto/service"
-	"github.com/omecodes/service/discovery"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -25,7 +24,7 @@ import (
 
 type jwtVerifier struct {
 	sync.Mutex
-	registry          discovery.Registry
+	registry          pb2.Registry
 	storesMutex       sync.Mutex
 	tokenVerifiers    map[string]authpb.TokenVerifier
 	syncedStores      map[string]*SyncedStore
@@ -165,14 +164,13 @@ func (j *jwtVerifier) initStores() {
 	}
 
 	for _, info := range infos {
-		serviceID := discovery.GenerateID(info.Namespace, info.Name)
 		for _, node := range info.Nodes {
 			if node.Protocol == pb2.Protocol_Grpc {
-				storeName := fmt.Sprintf("%s@%s", node.Name, serviceID)
+				storeName := fmt.Sprintf("%s@%s", node.Id, info.Id)
 
-				dictStore, err := dict.NewSQL(database.SQLiteConfig(filepath.Join(j.cacheDir, fmt.Sprintf("%s-jwt-store.db", node.Name))), "jwt", codec.Default)
+				dictStore, err := dict.NewSQL(database.SQLiteConfig(filepath.Join(j.cacheDir, fmt.Sprintf("%s-jwt-store.db", node.Id))), "jwt", codec.Default)
 				if err != nil {
-					log.Error("[jwt verifier] failed to initialize store database", err, log.Field("service", serviceID), log.Field("node", node.Name))
+					log.Error("[jwt verifier] failed to initialize store database", err, log.Field("service", info.Id), log.Field("node", node.Id))
 					return
 				}
 
@@ -195,7 +193,7 @@ func (j *jwtVerifier) initStores() {
 	<-time.After(time.Second)
 }
 
-func NewVerifier(caCert, cert *x509.Certificate, privateKey crypto.PrivateKey, registry discovery.Registry, cacheDir string) authpb.TokenVerifier {
+func NewVerifier(caCert, cert *x509.Certificate, privateKey crypto.PrivateKey, registry pb2.Registry, cacheDir string) authpb.TokenVerifier {
 	verifier := &jwtVerifier{
 		tokenVerifiers: map[string]authpb.TokenVerifier{},
 		syncedStores:   map[string]*SyncedStore{},

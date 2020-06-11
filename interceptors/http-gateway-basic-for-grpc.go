@@ -2,7 +2,7 @@ package interceptors
 
 import (
 	"fmt"
-	"github.com/omecodes/common/xhttp"
+	"github.com/omecodes/common/httpx"
 	"net/http"
 )
 
@@ -11,7 +11,7 @@ type basicAuthForGRPC struct {
 }
 
 func (sb *basicAuthForGRPC) Handle(next http.HandlerFunc) http.HandlerFunc {
-	reqAuth := &xhttp.RequireAuth{
+	reqAuth := &httpx.RequireAuth{
 		Realm: sb.realm,
 		Type:  "Basic",
 	}
@@ -19,12 +19,12 @@ func (sb *basicAuthForGRPC) Handle(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		username, password, ok := r.BasicAuth()
 		if !ok {
-			xhttp.WriteResponse(w, http.StatusUnauthorized, reqAuth)
+			httpx.WriteResponse(w, http.StatusUnauthorized, reqAuth)
 			return
 		}
 
 		if username != sb.username || password != sb.password {
-			xhttp.WriteResponse(w, http.StatusUnauthorized, reqAuth)
+			httpx.WriteResponse(w, http.StatusUnauthorized, reqAuth)
 			return
 		}
 
@@ -52,7 +52,7 @@ type basicAuthForGRPCWithAuthenticationFunc struct {
 }
 
 func (sb *basicAuthForGRPCWithAuthenticationFunc) Handle(next http.HandlerFunc) http.HandlerFunc {
-	reqAuth := &xhttp.RequireAuth{
+	reqAuth := &httpx.RequireAuth{
 		Realm: sb.realm,
 		Type:  "Basic",
 	}
@@ -60,12 +60,12 @@ func (sb *basicAuthForGRPCWithAuthenticationFunc) Handle(next http.HandlerFunc) 
 	return func(w http.ResponseWriter, r *http.Request) {
 		username, password, ok := r.BasicAuth()
 		if !ok {
-			xhttp.WriteResponse(w, http.StatusUnauthorized, reqAuth)
+			httpx.WriteResponse(w, http.StatusUnauthorized, reqAuth)
 			return
 		}
 
 		if password != sb.credentialsProvider(username) {
-			xhttp.WriteResponse(w, http.StatusUnauthorized, reqAuth)
+			httpx.WriteResponse(w, http.StatusUnauthorized, reqAuth)
 			return
 		}
 

@@ -20,7 +20,6 @@ type Params struct {
 
 	RegistryAddress string
 	RegistrySecure  bool
-	Namespace       string
 	RegistryID      string
 	StartRegistry   bool
 
@@ -33,10 +32,6 @@ type Params struct {
 func (box *Box) validateParams() error {
 	if box.params.Name == "" {
 		return errors.New("command line: --name flags is required")
-	}
-
-	if box.params.Namespace == "" {
-		box.params.Namespace = "ome"
 	}
 
 	if box.params.Autonomous {
@@ -71,11 +66,11 @@ func (box *Box) validateParams() error {
 		return fmt.Errorf("command line: ca-cred flag required")
 	}
 
-	if box.params.RegistryAddress != "" || box.params.Namespace != "" {
-		if box.params.RegistryAddress != "" && box.params.Namespace == "" {
+	/* if box.params.RegistryAddress != "" {
+		if box.params.RegistryAddress != "" {
 			return errors.New("command line: --namespace must always be provided with --registryAddress")
 		}
-	}
+	}*/
 
 	if box.params.CertificatePath != "" || box.params.KeyPath != "" {
 		if box.params.CertificatePath == "" || box.params.KeyPath == "" {

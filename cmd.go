@@ -42,7 +42,7 @@ func CMD(use string, params *Params) *cobra.Command {
 	flags.StringVar(&params.RegistryAddress, CmdFlagRegistry, "", "Start registry server - address location")
 	flags.BoolVar(&params.StartRegistry, CmdFlagStartRegistry, false, "Registry Server - address location")
 	flags.BoolVar(&params.RegistrySecure, CmdFlagRegistrySecure, false, "Registry Secure Mode - enable secure connection to registry")
-	flags.StringVar(&params.Namespace, CmdFlagNamespace, "", "Namespace - Group identifier for registryAddress")
+	// flags.StringVar(&params.Namespace, CmdFlagNamespace, "", "Namespace - Group identifier for registryAddress")
 
 	flags.StringVar(&params.Ip, CmdFlagIP, "", "Bind ip address. Must match the domain if provided and no eip is provided")
 	flags.StringVar(&params.Ip, CmdFlagExternalIP, "", "External ip. Must matching domain if provided")
@@ -70,7 +70,7 @@ func SetCMDFlags(cmd *cobra.Command, params *Params, ignoreFlagName bool) {
 	flags.StringVar(&params.RegistryAddress, CmdFlagRegistry, "", "Start registry server - address location")
 	flags.BoolVar(&params.StartRegistry, CmdFlagStartRegistry, false, "Registry Server - address location")
 	flags.BoolVar(&params.RegistrySecure, CmdFlagRegistrySecure, false, "Registry Secure Mode - enable secure connection to registry")
-	flags.StringVar(&params.Namespace, CmdFlagNamespace, "", "Namespace - Group identifier for registryAddress")
+	// flags.StringVar(&params.Namespace, CmdFlagNamespace, "", "Namespace - Group identifier for registryAddress")
 
 	flags.StringVar(&params.Ip, CmdFlagIP, "", "Bind ip address. Must match the domain if provided and no eip is provided")
 	flags.StringVar(&params.Ip, CmdFlagExternalIP, "", "External ip. Must matching domain if provided")

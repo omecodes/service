@@ -1,16 +1,12 @@
 package service
 
 import (
-	"crypto/tls"
 	"fmt"
 	crypto2 "github.com/omecodes/common/crypto"
-	"github.com/omecodes/common/database"
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/grpc-authentication"
-	"github.com/omecodes/common/jcon"
-	"github.com/omecodes/service/discovery/registry"
+	"github.com/omecodes/discover"
 	"google.golang.org/grpc/credentials"
-	"path/filepath"
 	"strings"
 )
 
@@ -52,11 +48,7 @@ func (box *Box) Init(opts ...InitOption) error {
 
 	box.registry = options.registry
 	if options.registry == nil {
-		if options.RegistryServerDBConf == nil {
-			options.RegistryServerDBConf = database.SQLiteConfig(filepath.Join(box.params.Dir, "registry.db"))
-		}
-
-		err = box.initRegistry(options.RegistryServerDBConf)
+		err = box.initRegistry()
 		if err != nil {
 			return errors.Errorf("could not initialize registry: %s", err)
 		}
@@ -99,48 +91,31 @@ func (box *Box) loadCACredentials() (err error) {
 	return
 }
 
-func (box *Box) initRegistry(dbCfg jcon.Map) (err error) {
-	var registryHost string
+func (box *Box) initRegistry() (err error) {
+	// var registryHost string
 	if box.params.RegistryAddress == "" {
-		registryHost = box.Host()
 		box.params.RegistryAddress = fmt.Sprintf("%s%s", box.Host(), RegistryDefaultHost)
 
 	} else {
 		parts := strings.Split(box.params.RegistryAddress, ":")
 		if len(parts) != 2 {
+			if len(parts) == 1 {
+				box.params.RegistryAddress = box.params.RegistryAddress + RegistryDefaultHost
+			}
 			return errors.New("malformed registry address. Should be like HOST:PORT")
 		}
-		registryHost = parts[0]
+		// registryHost = parts[0]
 	}
 
-	cfg := &registry.Configs{
-		Name:        "registry",
-		BindAddress: box.Host(),
-		Certificate: box.ServiceCert(),
-		PrivateKey:  box.ServiceKey(),
-		Domain:      box.params.Domain,
-		DB:          dbCfg,
+	dc := &discover.ServerConfig{
+		BindAddress:  box.params.RegistryAddress,
+		CertFilename: box.CertificateFilename(),
+		KeyFilename:  box.KeyFilename(),
 	}
-
-	var syncedRegistry *registry.Server = nil
-	if box.params.StartRegistry {
-		syncedRegistry, err = registry.NewServer(cfg)
-		if err == nil {
-			err = syncedRegistry.Start()
-		}
-
-		if err != nil {
-			syncedRegistry = nil
-			err = nil
-		}
-	}
-
-	if syncedRegistry == nil || registryHost != "" && registryHost != RegistryDefaultHost && registryHost != box.Host() {
-		var tc *tls.Config
-		tc = box.ClientMutualTLS()
-		box.registry = registry.NewSyncedRegistryClient(box.params.RegistryAddress, tc)
-	} else {
-		box.registry = syncedRegistry.Client()
+	box.registry, err = discover.Serve(dc)
+	if err != nil {
+		err = nil
+		box.registry = discover.NewMSGClient(box.params.RegistryAddress, box.ClientTLS())
 	}
 	return
 }

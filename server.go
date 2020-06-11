@@ -15,7 +15,7 @@ import (
 
 type WireEndpointFunc func(ctx context.Context, serveMux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) error
 
-type GatewayServiceMappingParams struct {
+type GatewayGrpcMappingParams struct {
 	ForceRegister  bool
 	ServiceName    string
 	TargetNodeName string
@@ -29,7 +29,7 @@ type GatewayServiceMappingParams struct {
 	Meta           map[string]string
 }
 
-type GatewayParams struct {
+type GatewayNodeParams struct {
 	ForceRegister  bool
 	MiddlewareList []mux.MiddlewareFunc
 	Port           int
@@ -39,7 +39,7 @@ type GatewayParams struct {
 	Node           *pb.Node
 }
 
-type ServiceParams struct {
+type GrpcNodeParams struct {
 	ForceRegister       bool
 	Port                int
 	Tls                 *tls.Config
@@ -50,28 +50,28 @@ type ServiceParams struct {
 	Node                *pb.Node
 }
 
-type node struct {
-	Secure     bool
-	Address    string
-	RegistryID string
-	Server     *grpc.Server
+type gPRCNode struct {
+	Name    string
+	Secure  bool
+	Address string
+	Server  *grpc.Server
 }
 
-func (s *node) Stop() {
+func (s *gPRCNode) Stop() {
 	s.Server.Stop()
 }
 
-type Gateway struct {
-	RegistryID string
-	Scheme     string
-	Address    string
-	Server     *http.Server
+type httpNode struct {
+	Name    string
+	Scheme  string
+	Address string
+	Server  *http.Server
 }
 
-func (g *Gateway) URL() string {
+func (g *httpNode) URL() string {
 	return fmt.Sprintf("%s://%s", g.Scheme, g.Address)
 }
 
-func (g *Gateway) Stop() error {
+func (g *httpNode) Stop() error {
 	return g.Server.Shutdown(nil)
 }

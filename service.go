@@ -13,7 +13,7 @@ func (box *Box) ServiceAddress(name string) (string, error) {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
 
-	s, exists := box.services[name]
+	s, exists := box.gRPCNodes[name]
 	if !exists {
 		return "", errors.New("not found")
 	}
@@ -87,7 +87,7 @@ func SpecificServiceNodeConnectionDialer(ctx context.Context, serviceID string, 
 	}
 
 	for _, node := range info.Nodes {
-		if nodeName == node.Name {
+		if nodeName == node.Id {
 			tlsConf := ClientTLSConfig(ctx)
 			if tlsConf == nil {
 				return NewDialer(node.Address, opts...), nil
@@ -98,7 +98,7 @@ func SpecificServiceNodeConnectionDialer(ctx context.Context, serviceID string, 
 		}
 	}
 
-	return nil, fmt.Errorf("no node named %s of service named %s that supports gRPC has been found", nodeName, serviceID)
+	return nil, fmt.Errorf("no gPRCNode named %s of service named %s that supports gRPC has been found", nodeName, serviceID)
 }
 
 func Connect(ctx context.Context, ofType pb.Type, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
@@ -192,7 +192,7 @@ func (box *Box) SpecificServiceNodeConnectionDialer(serviceID string, nodeName s
 	}
 
 	for _, node := range info.Nodes {
-		if nodeName == node.Name {
+		if nodeName == node.Id {
 			tlsConf := box.ClientMutualTLS()
 			if tlsConf == nil {
 				return NewDialer(node.Address, opts...), nil
@@ -203,7 +203,7 @@ func (box *Box) SpecificServiceNodeConnectionDialer(serviceID string, nodeName s
 		}
 	}
 
-	return nil, fmt.Errorf("no node named %s of service named %s that supports gRPC has been found", nodeName, serviceID)
+	return nil, fmt.Errorf("no gPRCNode named %s of service named %s that supports gRPC has been found", nodeName, serviceID)
 }
 
 func (box *Box) Connect(ofType pb.Type, opts ...grpc.DialOption) (*grpc.ClientConn, error) {

@@ -36,12 +36,12 @@ func (box *Box) CAClientTransportCredentials() credentials.TransportCredentials 
 	return box.caGRPCTransportCredentials
 }
 
-func (box *Box) StartGatewayGRPCMapping(params *GatewayServiceMappingParams) error {
+func (box *Box) StartGatewayGrpcMappingNode(params *GatewayGrpcMappingParams) error {
 	if box.registry != nil && !box.params.Autonomous {
 		box.serverMutex.Lock()
 		defer box.serverMutex.Unlock()
 
-		info, err := box.registry.GetService(box.params.Namespace + "." + params.ServiceName)
+		info, err := box.registry.GetService(params.ServiceName)
 		if err != nil {
 			return err
 		}
@@ -52,7 +52,7 @@ func (box *Box) StartGatewayGRPCMapping(params *GatewayServiceMappingParams) err
 		}
 
 		for _, node := range info.Nodes {
-			if node.Name != params.TargetNodeName {
+			if node.Id != params.TargetNodeName {
 				continue
 			}
 
@@ -87,7 +87,7 @@ func (box *Box) StartGatewayGRPCMapping(params *GatewayServiceMappingParams) err
 				srv.Handler = mux
 			}
 
-			gt := &Gateway{}
+			gt := &httpNode{}
 			gt.Server = srv
 			gt.Address = address
 			if node.Security == pb.Security_None {
@@ -96,24 +96,43 @@ func (box *Box) StartGatewayGRPCMapping(params *GatewayServiceMappingParams) err
 				gt.Scheme = "https"
 			}
 
-			box.gateways[params.NodeName] = gt
-			go srv.Serve(listener)
+			gt.Name = params.NodeName
+			box.httpNodes[params.NodeName] = gt
+			go func() {
+				err := srv.Serve(listener)
+				if err != http.ErrServerClosed {
+					log.Error("http server stopped", err)
+				}
+
+				if box.info != nil {
+					var newNodeList []*pb.Node
+					for _, node := range box.info.Nodes {
+						if node.Id != params.NodeName {
+							newNodeList = append(newNodeList, node)
+						}
+					}
+					box.info.Nodes = newNodeList
+					_ = box.registry.RegisterService(box.info)
+				}
+			}()
 
 			if params.ForceRegister || !box.params.CA && !box.params.Autonomous {
 				if box.registry != nil {
-					inf := &pb.Info{}
-					inf.Namespace = box.params.Namespace
-					inf.Name = box.Name()
-					inf.Type = info.Type
+					if box.info == nil {
+						box.info = &pb.Info{}
+						box.info.Id = box.Name()
+						box.info.Type = info.Type
+					}
+
 					n := &pb.Node{}
-					n.Name = params.NodeName
+					n.Id = params.NodeName
 					n.Address = address
 					n.Protocol = pb.Protocol_Http
 					n.Security = params.Security
 					n.Meta = params.Meta
-					inf.Nodes = []*pb.Node{n}
+					box.info.Nodes = append(box.info.Nodes, n)
 
-					gt.RegistryID, err = box.registry.RegisterService(inf, pb.ActionOnRegisterExistingService_AddNodes|pb.ActionOnRegisterExistingService_UpdateExisting)
+					err = box.registry.RegisterService(box.info)
 					if err != nil {
 						log.Error("could not register service", err)
 					}
@@ -125,7 +144,7 @@ func (box *Box) StartGatewayGRPCMapping(params *GatewayServiceMappingParams) err
 	return errors.New("matching gRPC service not found")
 }
 
-func (box *Box) StartService(params *ServiceParams) error {
+func (box *Box) StartGrpcNode(params *GrpcNodeParams) error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
 
@@ -139,7 +158,7 @@ func (box *Box) StartService(params *ServiceParams) error {
 		address = strings.Replace(address, box.params.Ip, box.params.Domain, 1)
 	}
 
-	log.Info("starting gRPC server", log.Field("service", params.Node.Name), log.Field("address", address))
+	log.Info("starting gRPC server node", log.Field("node", params.Node.Id), log.Field("address", address))
 	var opts []grpc.ServerOption
 
 	defaultInterceptor := interceptors.Default(
@@ -168,30 +187,52 @@ func (box *Box) StartService(params *ServiceParams) error {
 	opts = append(opts, grpc.StreamInterceptor(chainStreamInterceptor), grpc.UnaryInterceptor(chainUnaryInterceptor))
 
 	srv := grpc.NewServer(opts...)
-	rs := new(node)
+	rs := new(gPRCNode)
 	rs.Address = address
 	rs.Server = srv
 	rs.Secure = params.Tls != nil
 
-	box.services[params.Node.Name] = rs
+	rs.Name = params.Node.Id
+	box.gRPCNodes[params.Node.Id] = rs
 
 	params.RegisterHandlerFunc(srv)
-	go srv.Serve(listener)
+	go func() {
+		err := srv.Serve(listener)
+		if err != grpc.ErrServerStopped {
+			log.Error("grpc server stopped", err)
+		}
+
+		if box.info != nil {
+			var newNodeList []*pb.Node
+			for _, node := range box.info.Nodes {
+				if node.Id != params.Node.Id {
+					newNodeList = append(newNodeList, node)
+				}
+			}
+			box.info.Nodes = newNodeList
+			_ = box.registry.RegisterService(box.info)
+		}
+	}()
 
 	if params.ForceRegister || !box.params.CA && !box.params.Autonomous && params.Node != nil && box.registry != nil {
-		info := &pb.Info{}
-		info.Namespace = box.params.Namespace
-		info.Name = box.Name()
-		info.Label = box.Name()
-		info.Type = params.ServiceType
-		info.Meta = params.Meta
+		if box.info == nil {
+			box.info = &pb.Info{}
+			box.info.Id = box.Name()
+			box.info.Type = params.ServiceType
+			if box.info.Meta == nil {
+				box.info.Meta = map[string]string{}
+			}
+			for name, meta := range params.Meta {
+				box.info.Meta[name] = meta
+			}
+		}
 
 		params.Node.Address = address
-		info.Nodes = []*pb.Node{params.Node}
+		box.info.Nodes = append(box.info.Nodes, params.Node)
 
-		rs.RegistryID, err = box.registry.RegisterService(info, pb.ActionOnRegisterExistingService_AddNodes|pb.ActionOnRegisterExistingService_UpdateExisting)
+		err = box.registry.RegisterService(box.info)
 		if err != nil {
-			log.Error("could not register service", err, log.Field("name", params.Node.Name))
+			log.Error("could not register service", err, log.Field("name", params.Node.Id))
 		}
 	}
 	return nil
@@ -200,10 +241,10 @@ func (box *Box) StartService(params *ServiceParams) error {
 func (box *Box) StopService(name string) {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
-	rs := box.services[name]
-	delete(box.services, name)
+	rs := box.gRPCNodes[name]
+	delete(box.gRPCNodes, name)
 	if !box.params.Autonomous && rs != nil && box.registry != nil {
-		err := box.registry.DeregisterService(rs.RegistryID)
+		err := box.registry.DeregisterService(name)
 		if err != nil {
 			log.Error("could not deregister service", err, log.Field("name", name))
 		}
@@ -214,18 +255,20 @@ func (box *Box) StopService(name string) {
 func (box *Box) stopServices() error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
+
 	if box.registry != nil {
-		for name, rs := range box.services {
+		for _, rs := range box.gRPCNodes {
 			rs.Stop()
-			if !box.params.Autonomous && rs.RegistryID != "" {
-				err := box.registry.DeregisterService(rs.RegistryID)
-				if err != nil {
-					log.Error("could not de register service", err, log.Field("name", name))
-				}
+		}
+
+		if !box.params.Autonomous {
+			err := box.registry.DeregisterService(box.Name(), box.Name())
+			if err != nil {
+				log.Error("could not de register service", err, log.Field("name", box.Name()))
 			}
 		}
 	}
-	box.services = map[string]*node{}
+	box.gRPCNodes = map[string]*gPRCNode{}
 	return nil
 }
 
@@ -279,11 +322,11 @@ func (box *Box) StartCAService(credentialsVerifier ga.CredentialsVerifyFunc) err
 		Certificate:           box.cert,
 	})
 
-	rs := new(node)
+	rs := new(gPRCNode)
 	rs.Address = address
 	rs.Server = srv
 	rs.Secure = true
-	box.services["ca"] = rs
+	box.gRPCNodes["ca"] = rs
 
 	go srv.Serve(listener)
 	return nil

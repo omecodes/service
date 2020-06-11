@@ -238,7 +238,7 @@ func (box *Box) ClientMutualTLS() *tls.Config {
 	}
 }
 
-func (box *Box) GatewayToGRPCClientTls() *tls.Config {
+func (box *Box) ClientTLS() *tls.Config {
 	if box.caCert != nil {
 		CAPool := x509.NewCertPool()
 		CAPool.AddCert(box.caCert)
