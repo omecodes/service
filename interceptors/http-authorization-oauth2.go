@@ -9,12 +9,12 @@ import (
 	"strings"
 )
 
-type authorizationAccessTokenValidator struct {
+type authorizationBearer struct {
 	codecs   []securecookie.Codec
 	verifier authpb.TokenVerifier
 }
 
-func (atv *authorizationAccessTokenValidator) Handle(next http.Handler) http.Handler {
+func (atv *authorizationBearer) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authorizationHeader := r.Header.Get("Authorization")
 		if strings.HasPrefix(authorizationHeader, "Bearer ") {
@@ -55,8 +55,8 @@ func (atv *authorizationAccessTokenValidator) Handle(next http.Handler) http.Han
 	})
 }
 
-func NewAuthorizationAccessTokenValidator(verifier authpb.TokenVerifier, codecs ...securecookie.Codec) *authorizationAccessTokenValidator {
-	return &authorizationAccessTokenValidator{
+func Oauth2(verifier authpb.TokenVerifier, codecs ...securecookie.Codec) *authorizationBearer {
+	return &authorizationBearer{
 		codecs:   codecs,
 		verifier: verifier,
 	}

@@ -7,11 +7,11 @@ import (
 	"strings"
 )
 
-type authorizationTokenValidator struct {
+type authorizationJWT struct {
 	verifier authpb.TokenVerifier
 }
 
-func (atv *authorizationTokenValidator) Handle(next http.Handler) http.Handler {
+func (atv *authorizationJWT) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authorizationHeader := r.Header.Get("Authorization")
 		if strings.HasPrefix(authorizationHeader, "Bearer ") {
@@ -44,8 +44,8 @@ func (atv *authorizationTokenValidator) Handle(next http.Handler) http.Handler {
 	})
 }
 
-func NewAuthorizationTokenValidator(verifier authpb.TokenVerifier) *authorizationTokenValidator {
-	return &authorizationTokenValidator{
+func JWT(verifier authpb.TokenVerifier) *authorizationJWT {
+	return &authorizationJWT{
 		verifier: verifier,
 	}
 }
