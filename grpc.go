@@ -163,8 +163,7 @@ func (box *Box) StartGrpcNode(params *GrpcNodeParams) error {
 
 	defaultInterceptor := interceptors.Default(
 		interceptors.ProxyBasic(),
-		interceptors.Basic(),
-		interceptors.Jwt(box.BearerTokenVerifyFunc),
+		interceptors.Jwt(box.JwtVerifyFunc),
 	)
 
 	streamInterceptors := append([]grpc.StreamServerInterceptor{},
@@ -272,7 +271,7 @@ func (box *Box) stopServices() error {
 	return nil
 }
 
-func (box *Box) StartCAService(credentialsVerifier ga.CredentialsVerifyFunc) error {
+func (box *Box) StartCAService(credentialsVerifier ga.ProxyCredentialsVerifyFunc) error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
 
@@ -304,7 +303,7 @@ func (box *Box) StartCAService(credentialsVerifier ga.CredentialsVerifyFunc) err
 	var opts []grpc.ServerOption
 
 	defaultInterceptor := interceptors.Default(
-		interceptors.Basic(),
+		interceptors.ProxyBasic(),
 	)
 
 	logger, _ := zap.NewProduction()
