@@ -86,7 +86,7 @@ func (box *Box) loadCACredentials() (err error) {
 	}
 
 	parts := strings.Split(box.params.CACredentials, ":")
-	box.caClientAuthentication = ga.NewGRPCBasic(parts[0], parts[1])
+	box.caClientAuthentication = ga.NewGRPCProxy(parts[0], parts[1])
 
 	return
 }
