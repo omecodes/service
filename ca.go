@@ -15,13 +15,13 @@ import (
 )
 
 type csrServerHandler struct {
-	credentialsVerifyFunc ga.CredentialsVerifyFunc
+	credentialsVerifyFunc ga.ProxyCredentialsVerifyFunc
 	PrivateKey            crypto.PrivateKey
 	Certificate           *x509.Certificate
 }
 
 func (h *csrServerHandler) SignCertificate(ctx context.Context, in *pb.SignCertificateRequest) (*pb.SignCertificateResponse, error) {
-	cred := ga.CredentialsFromContext(ctx)
+	cred := ga.ProxyCredentialsFromContext(ctx)
 	valid, err := h.credentialsVerifyFunc(cred)
 	if err != nil {
 		return nil, err
