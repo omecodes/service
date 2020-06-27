@@ -10,7 +10,7 @@ func (box *Box) TokenVerifier() authpb.TokenVerifier {
 	return jwt.NewVerifier(box.CACertificate(), box.ServiceCert(), box.ServiceKey(), box.Registry(), box.params.Dir)
 }
 
-func (box *Box) BearerTokenVerifyFunc(ctx context.Context, jwt string) (context.Context, error) {
+func (box *Box) JwtVerifyFunc(ctx context.Context, jwt string) (context.Context, error) {
 	t, err := authpb.ParseJWT(jwt)
 	if err != nil {
 		return ctx, err
