@@ -1,5 +1,5 @@
 package service
 
 const (
-	RegistryDefaultHost = ":9777"
+	RegistryDefaultHost = ":9092"
 )

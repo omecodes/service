@@ -5,6 +5,7 @@ import (
 	crypto2 "github.com/omecodes/common/crypto"
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/grpc-authentication"
+	"github.com/omecodes/common/log"
 	"github.com/omecodes/discover"
 	"google.golang.org/grpc/credentials"
 	"strings"
@@ -92,7 +93,6 @@ func (box *Box) loadCACredentials() (err error) {
 }
 
 func (box *Box) initRegistry() (err error) {
-	// var registryHost string
 	if box.params.RegistryAddress == "" {
 		box.params.RegistryAddress = fmt.Sprintf("%s%s", box.Host(), RegistryDefaultHost)
 
@@ -104,7 +104,6 @@ func (box *Box) initRegistry() (err error) {
 			}
 			return errors.New("malformed registry address. Should be like HOST:PORT")
 		}
-		// registryHost = parts[0]
 	}
 
 	dc := &discover.ServerConfig{
@@ -112,9 +111,12 @@ func (box *Box) initRegistry() (err error) {
 		CertFilename: box.CertificateFilename(),
 		KeyFilename:  box.KeyFilename(),
 	}
-	box.registry, err = discover.Serve(dc)
-	if err != nil {
-		err = nil
+	if box.params.WithRegistryServer {
+		box.registry, err = discover.Serve(dc)
+		if err != nil {
+			log.Error("impossible to run discovery server", err)
+		}
+	} else {
 		box.registry = discover.NewMSGClient(box.params.RegistryAddress, box.ClientTLS())
 	}
 	return

@@ -18,10 +18,11 @@ type Params struct {
 	Autonomous      bool
 	Keys            [][]byte
 
-	RegistryAddress string
-	RegistrySecure  bool
-	RegistryID      string
-	StartRegistry   bool
+	WithRegistryServer bool
+	RegistryAddress    string
+	RegistrySecure     bool
+	RegistryID         string
+	StartRegistry      bool
 
 	CA            bool
 	CAAddress     string

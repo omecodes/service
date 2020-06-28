@@ -15,6 +15,7 @@ import (
 	"github.com/omecodes/common/grpc-authentication"
 	gs "github.com/omecodes/common/grpc-session"
 	"github.com/omecodes/common/log"
+	"github.com/omecodes/common/ports"
 	pb "github.com/omecodes/common/proto/service"
 	"github.com/omecodes/service/interceptors"
 	"go.uber.org/zap"
@@ -292,14 +293,14 @@ func (box *Box) StartCAService(credentialsVerifier ga.ProxyCredentialsVerifyFunc
 		return err
 	}
 
-	address := fmt.Sprintf("%s:9090", box.Domain())
+	address := fmt.Sprintf("%s:%d", box.Domain(), ports.CA)
 
 	listener, err := tls.Listen("tcp", address, tc)
 	if err != nil {
 		return err
 	}
 
-	log.Info("starting gRPC server", log.Field("service", "CA"), log.Field("at", address))
+	log.Info("starting gRPC", log.Field("service", "CA"), log.Field("at", address))
 	var opts []grpc.ServerOption
 
 	defaultInterceptor := interceptors.Default(
