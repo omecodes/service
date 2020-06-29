@@ -2,7 +2,10 @@ package service
 
 import (
 	"context"
+	"github.com/omecodes/common/errors"
+	"github.com/omecodes/common/log"
 	authpb "github.com/omecodes/common/proto/auth"
+	pb2 "github.com/omecodes/common/proto/service"
 	"github.com/omecodes/service/jwt"
 )
 
@@ -25,4 +28,27 @@ func (box *Box) JwtVerifyFunc(ctx context.Context, jwt string) (context.Context,
 	}
 
 	return ctx, nil
+}
+
+func VerifyJwt(ctx context.Context, jwt string) error {
+	box := BoxFromContext(ctx)
+	_, err := box.JwtVerifyFunc(ctx, jwt)
+	return err
+}
+
+func RevokeJwt(ctx context.Context, jwt string) error {
+	conn, err := Connect(ctx, pb2.Type_TokenStore)
+	if err != nil {
+		return err
+	}
+
+	t, err := authpb.ParseJWT(jwt)
+	if err != nil {
+		log.Error("could not parse JWT", err)
+		return errors.BadInput
+	}
+
+	client := authpb.NewTokenStoreServiceClient(conn)
+	_, err = client.RevokeToken(ctx, &authpb.RevokeTokenRequest{Jwt: t})
+	return err
 }
