@@ -43,7 +43,7 @@ func (box *Box) StartGateway(params *GatewayNodeParams) error {
 	gt := &httpNode{}
 	gt.Server = srv
 	gt.Address = address
-	if params.Tls != nil {
+	if params.Tls != nil || params.Node.Security != pb.Security_None {
 		gt.Scheme = "https"
 	} else {
 		gt.Scheme = "http"
