@@ -21,6 +21,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/status"
 	"net/http"
 	"strings"
 )
@@ -65,7 +66,10 @@ func (box *Box) StartGatewayGrpcMappingNode(params *GatewayGrpcMappingParams) er
 			endpoint := fmt.Sprintf("%s-gateway-endpoint", params.TargetNodeName)
 			grpcServerEndpoint := flag.String(endpoint, node.Address, "gRPC server endpoint")
 			ctx := context.Background()
-			mux := runtime.NewServeMux(runtime.WithForwardResponseOption(gs.SetCookieFromGRPCMetadata))
+			mux := runtime.NewServeMux(
+				runtime.WithForwardResponseOption(gs.SetCookieFromGRPCMetadata),
+				runtime.WithProtoErrorHandler(box.handlerError),
+			)
 			var opts []grpc.DialOption
 
 			if node.Security == pb.Security_None {
@@ -184,7 +188,9 @@ func (box *Box) StartGrpcNode(params *GrpcNodeParams) error {
 
 	chainUnaryInterceptor := grpc_middleware.ChainUnaryServer(unaryInterceptors...)
 	chainStreamInterceptor := grpc_middleware.ChainStreamServer(streamInterceptors...)
-	opts = append(opts, grpc.StreamInterceptor(chainStreamInterceptor), grpc.UnaryInterceptor(chainUnaryInterceptor))
+	opts = append(opts,
+		grpc.StreamInterceptor(chainStreamInterceptor),
+		grpc.UnaryInterceptor(chainUnaryInterceptor))
 
 	srv := grpc.NewServer(opts...)
 	rs := new(gPRCNode)
@@ -330,4 +336,14 @@ func (box *Box) StartCAService(credentialsVerifier ga.ProxyCredentialsVerifyFunc
 
 	go srv.Serve(listener)
 	return nil
+}
+
+func (box *Box) handlerError(ctx context.Context, mux *runtime.ServeMux, m runtime.Marshaler, w http.ResponseWriter, r *http.Request, err error) {
+	log.Info("caught error", log.Field("err", err))
+	st, ok := status.FromError(err)
+	if !ok {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(errors.HttpStatus(errors.New(st.Message())))
 }

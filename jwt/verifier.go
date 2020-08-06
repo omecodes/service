@@ -85,7 +85,7 @@ func (j *jwtVerifier) Verify(ctx context.Context, t *authpb.JWT) (authpb.JWTStat
 				return 0, errors.Forbidden
 			}
 
-			dictStore, err := dict.NewSQL(database.SQLiteConfig(filepath.Join(j.cacheDir, "jwt-store.db")), "jwt", codec.Default)
+			dictStore, err := dict.New(database.SQLiteConfig(filepath.Join(j.cacheDir, "jwt-store.db")), "jwt", codec.Default)
 			if err != nil {
 				return 0, errors.Internal
 			}
@@ -168,7 +168,7 @@ func (j *jwtVerifier) initStores() {
 			if node.Protocol == pb2.Protocol_Grpc {
 				storeName := fmt.Sprintf("%s@%s", node.Id, info.Id)
 
-				dictStore, err := dict.NewSQL(database.SQLiteConfig(filepath.Join(j.cacheDir, fmt.Sprintf("%s-jwt-store.db", node.Id))), "jwt", codec.Default)
+				dictStore, err := dict.New(database.SQLiteConfig(filepath.Join(j.cacheDir, fmt.Sprintf("%s-jwt-store.db", node.Id))), "jwt", codec.Default)
 				if err != nil {
 					log.Error("[jwt verifier] failed to initialize store database", err, log.Field("service", info.Id), log.Field("node", node.Id))
 					return
