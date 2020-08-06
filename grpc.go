@@ -13,7 +13,6 @@ import (
 	crypto2 "github.com/omecodes/common/crypto"
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/grpc-authentication"
-	gs "github.com/omecodes/common/grpc-session"
 	"github.com/omecodes/common/log"
 	"github.com/omecodes/common/ports"
 	pb "github.com/omecodes/common/proto/service"
@@ -67,7 +66,6 @@ func (box *Box) StartGatewayGrpcMappingNode(params *GatewayGrpcMappingParams) er
 			grpcServerEndpoint := flag.String(endpoint, node.Address, "gRPC server endpoint")
 			ctx := context.Background()
 			mux := runtime.NewServeMux(
-				runtime.WithForwardResponseOption(gs.SetCookieFromGRPCMetadata),
 				runtime.WithProtoErrorHandler(box.handlerError),
 			)
 			var opts []grpc.DialOption
