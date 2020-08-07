@@ -3,7 +3,6 @@ package interceptors
 import (
 	"github.com/gorilla/securecookie"
 	"github.com/omecodes/common/log"
-	"github.com/omecodes/common/oauth2"
 	authpb "github.com/omecodes/common/proto/auth"
 	"net/http"
 	"strings"
@@ -20,7 +19,7 @@ func (atv *authorizationBearer) Middleware(next http.Handler) http.Handler {
 		if strings.HasPrefix(authorizationHeader, "Bearer ") {
 			accessToken := strings.TrimLeft(authorizationHeader, "Bearer ")
 
-			strJWT, err := oauth2.ExtractJwtFromAccessToken("", accessToken, atv.codecs...)
+			strJWT, err := authpb.ExtractJwtFromAccessToken("", accessToken, atv.codecs...)
 			if err != nil {
 				log.Error("could not extract jwt from access token", err)
 				next.ServeHTTP(w, r)

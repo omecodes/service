@@ -10,7 +10,7 @@ import (
 )
 
 type Box struct {
-	params Params
+	params *Params
 
 	serverMutex sync.Mutex
 
@@ -34,7 +34,21 @@ type Box struct {
 	dialerCache map[string]Dialer
 }
 
-func NewBox(p Params) (*Box, error) {
+func CreateBox(ctx context.Context, p *Params, opts ...InitOption) (*Box, error) {
+	b := &Box{params: p}
+	err := b.validateParams()
+	if err != nil {
+		return nil, err
+	}
+
+	b.dialerCache = map[string]Dialer{}
+	b.httpNodes = map[string]*httpNode{}
+	b.gRPCNodes = map[string]*gPRCNode{}
+	b.ctx = ContextWithBox(ctx, b)
+	return b, b.Init(opts...)
+}
+
+func NewBox(p *Params) (*Box, error) {
 	b := &Box{params: p}
 	err := b.validateParams()
 	if err != nil {
@@ -48,21 +62,10 @@ func NewBox(p Params) (*Box, error) {
 	return b, nil
 }
 
-func NewBoxWithContext(ctx context.Context, p Params) (*Box, error) {
-	b := &Box{params: p}
-	err := b.validateParams()
-	if err != nil {
-		return nil, err
-	}
-
-	b.dialerCache = map[string]Dialer{}
-	b.httpNodes = map[string]*httpNode{}
-	b.gRPCNodes = map[string]*gPRCNode{}
-	b.ctx, b.ctxCancelFunc = context.WithCancel(context.WithValue(ctx, box{}, b))
-	return b, nil
-}
-
 func (box *Box) Context() context.Context {
+	if box.ctx == nil {
+		box.ctx = ContextWithBox(context.Background(), box)
+	}
 	return box.ctx
 }
 
