@@ -9,7 +9,7 @@ const (
 	CmdFlagIP             = "ip"
 	CmdFlagExternalIP     = "eip"
 	CmdFlagName           = "name"
-	CmdFlagDomain         = "domain"
+	CmdFlagDomain         = "dn"
 	CmdFlagCert           = "cert"
 	CmdFlagKey            = "key"
 	CmdFlagNamespace      = "ns"

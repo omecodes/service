@@ -50,8 +50,12 @@ func (box *Box) validateParams() error {
 		return err
 	}
 
-	if box.params.CAAddress == "" {
-		box.params.CAAddress = fmt.Sprintf("%s:9090", box.params.Domain)
+	if box.params.CAAddress == "" && !box.params.CA {
+		return errors.New("command line: ca-addr flag must be passed")
+	}
+
+	if box.params.RegistryAddress == "" {
+		return errors.New("command line: ca-addr flag must be passed")
 	}
 
 	if box.params.CACertPath == "" {

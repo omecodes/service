@@ -106,12 +106,12 @@ func (box *Box) initRegistry() (err error) {
 		}
 	}
 
-	dc := &discover.ServerConfig{
-		BindAddress:  box.params.RegistryAddress,
-		CertFilename: box.CertificateFilename(),
-		KeyFilename:  box.KeyFilename(),
-	}
 	if box.params.WithRegistryServer {
+		dc := &discover.ServerConfig{
+			BindAddress:  box.params.RegistryAddress,
+			CertFilename: box.CertificateFilename(),
+			KeyFilename:  box.KeyFilename(),
+		}
 		box.registry, err = discover.Serve(dc)
 		if err != nil {
 			log.Error("impossible to run discovery server", err)
