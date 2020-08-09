@@ -81,7 +81,7 @@ func (box *Box) StartGatewayGrpcMappingNode(params *GatewayGrpcMappingParams) er
 				return err
 			}
 
-			log.Info("starting http server", log.Field("service", params.NodeName), log.Field("address", address))
+			log.Info("starting HTTP server", log.Field("service-gateway", params.NodeName), log.Field("for", params.TargetNodeName), log.Field("address", address))
 			srv := &http.Server{Addr: address}
 
 			if params.MuxWrapper != nil {
@@ -161,7 +161,7 @@ func (box *Box) StartGrpcNode(params *GrpcNodeParams) error {
 		address = strings.Replace(address, box.params.Ip, box.params.Domain, 1)
 	}
 
-	log.Info("starting gRPC server node", log.Field("node", params.Node.Id), log.Field("address", address))
+	log.Info("starting gRPC server", log.Field("service", params.Node.Id), log.Field("address", address))
 	var opts []grpc.ServerOption
 
 	defaultInterceptor := interceptors.Default(
@@ -304,7 +304,7 @@ func (box *Box) StartCAService(credentialsVerifier ga.ProxyCredentialsVerifyFunc
 		return err
 	}
 
-	log.Info("starting gRPC", log.Field("service", "CA"), log.Field("at", address))
+	log.Info("starting gRPC server", log.Field("service", "CA"), log.Field("at", address))
 	var opts []grpc.ServerOption
 
 	defaultInterceptor := interceptors.Default(

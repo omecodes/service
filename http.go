@@ -35,7 +35,7 @@ func (box *Box) StartGateway(params *GatewayNodeParams) error {
 		handler = router
 	}
 
-	log.Info("starting HTTP server", log.Field("gPRCNode", params.Node.Id), log.Field("address", address))
+	log.Info("starting HTTP server", log.Field("gateway", params.Node.Id), log.Field("address", address))
 	srv := &http.Server{
 		Addr:    address,
 		Handler: handler,
