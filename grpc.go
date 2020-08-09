@@ -18,11 +18,14 @@ import (
 	pb "github.com/omecodes/common/proto/service"
 	"github.com/omecodes/service/interceptors"
 	"go.uber.org/zap"
+	"golang.org/x/crypto/acme/autocert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 	"net/http"
+	"path/filepath"
 	"strings"
+	"time"
 )
 
 func (box *Box) CAClientAuthentication() credentials.PerRPCCredentials {
@@ -145,6 +148,145 @@ func (box *Box) StartGatewayGrpcMappingNode(params *GatewayGrpcMappingParams) er
 		}
 	}
 	return errors.New("matching gRPC service not found")
+}
+
+func (box *Box) StartAcmeServiceGatewayMapping(params *ACMEServiceGatewayParams) error {
+
+	box.serverMutex.Lock()
+	defer box.serverMutex.Unlock()
+
+	info, err := box.registry.GetService(params.ServiceName)
+	if err != nil {
+		return err
+	}
+
+	for _, node := range info.Nodes {
+		if node.Id != params.TargetNodeName {
+			continue
+		}
+
+		cacheDir := filepath.Dir(box.CertificateFilename())
+		hostPolicy := func(ctx context.Context, host string) error {
+			// Note: change to your real domain
+			allowedHost := box.Domain()
+			if host == allowedHost {
+				return nil
+			}
+			return fmt.Errorf("acme/autocert: only %s host is allowed", allowedHost)
+		}
+		man := &autocert.Manager{
+			Prompt:     autocert.AcceptTOS,
+			HostPolicy: hostPolicy,
+			Cache:      autocert.DirCache(cacheDir),
+		}
+
+		listener, err := box.listen(443, 0, &tls.Config{GetCertificate: man.GetCertificate})
+		if err != nil {
+			return err
+		}
+
+		address := listener.Addr().String()
+		if box.params.Domain != "" {
+			address = strings.Replace(address, box.params.Ip, box.params.Domain, 1)
+		}
+
+		endpoint := fmt.Sprintf("%s-gateway-endpoint", params.TargetNodeName)
+		grpcServerEndpoint := flag.String(endpoint, node.Address, "gRPC server endpoint")
+		ctx := context.Background()
+		mux := runtime.NewServeMux(
+			runtime.WithProtoErrorHandler(box.handlerError),
+		)
+		var opts []grpc.DialOption
+
+		if node.Security == pb.Security_None {
+			opts = append(opts, grpc.WithInsecure())
+		} else {
+			opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(box.ClientMutualTLS())))
+		}
+
+		err = params.Binder(ctx, mux, *grpcServerEndpoint, opts)
+		if err != nil {
+			return err
+		}
+
+		log.Info("starting HTTP server", log.Field("service-gateway", params.NodeName), log.Field("for", params.TargetNodeName), log.Field("address", address))
+		srv := &http.Server{
+			Addr:         address,
+			ReadTimeout:  5 * time.Second,
+			WriteTimeout: 5 * time.Second,
+			IdleTimeout:  120 * time.Second,
+		}
+
+		if params.MuxWrapper != nil {
+			srv.Handler = params.MuxWrapper(mux)
+		} else {
+			srv.Handler = mux
+		}
+
+		gt := &httpNode{}
+		gt.Server = srv
+		gt.Address = address
+		gt.Scheme = "https"
+
+		gt.Name = params.NodeName
+		box.httpNodes[params.NodeName] = gt
+		go func() {
+			err := srv.Serve(listener)
+			if err != http.ErrServerClosed {
+				log.Fatal("failed to start server", err)
+			}
+
+			if box.info != nil {
+				var newNodeList []*pb.Node
+				for _, node := range box.info.Nodes {
+					if node.Id != params.NodeName {
+						newNodeList = append(newNodeList, node)
+					}
+				}
+				box.info.Nodes = newNodeList
+				_ = box.registry.RegisterService(box.info)
+			}
+
+			httpSrv := &http.Server{
+				ReadTimeout:  5 * time.Second,
+				WriteTimeout: 5 * time.Second,
+				IdleTimeout:  120 * time.Second,
+				Handler:      man.HTTPHandler(srv.Handler),
+				Addr:         fmt.Sprintf("%s:80", box.Host()),
+			}
+			err = httpSrv.ListenAndServe()
+			if err != nil {
+				log.Error("failed to run acme server", err)
+			}
+		}()
+
+		if params.ForceRegister || !box.params.CA && !box.params.Autonomous {
+			if box.registry != nil {
+				if box.info == nil {
+					box.info = &pb.Info{}
+					box.info.Id = box.Name()
+					box.info.Type = info.Type
+				}
+
+				n := &pb.Node{}
+				n.Id = params.NodeName
+				n.Address = address
+				n.Protocol = pb.Protocol_Http
+				n.Security = pb.Security_ACME
+				n.Meta = params.Meta
+				box.info.Nodes = append(box.info.Nodes, n)
+
+				err = box.registry.RegisterService(box.info)
+				if err != nil {
+					log.Error("could not register service", err)
+				}
+			}
+		}
+		return nil
+	}
+
+	log.Error("could not run gateway", errors.NotFound, log.Field("for", params.TargetNodeName))
+	return errors.NotFound
 }
 
 func (box *Box) StartGrpcNode(params *GrpcNodeParams) error {

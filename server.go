@@ -15,6 +15,17 @@ import (
 
 type WireEndpointFunc func(ctx context.Context, serveMux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) error
 
+type ACMEServiceGatewayParams struct {
+	ForceRegister  bool
+	ServiceName    string
+	TargetNodeName string
+	NodeName       string
+	ServiceType    pb.Type
+	Binder         WireEndpointFunc
+	MuxWrapper     grpc_gateway.MuxWrapper
+	Meta           map[string]string
+}
+
 type GatewayGrpcMappingParams struct {
 	ForceRegister  bool
 	ServiceName    string
