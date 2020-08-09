@@ -180,16 +180,6 @@ func (box *Box) StartAcmeServiceGatewayMapping(params *ACMEServiceGatewayParams)
 			Cache:      autocert.DirCache(cacheDir),
 		}
 
-		listener, err := box.listen(443, 0, &tls.Config{GetCertificate: man.GetCertificate})
-		if err != nil {
-			return err
-		}
-
-		address := listener.Addr().String()
-		if box.params.Domain != "" {
-			address = strings.Replace(address, box.params.Ip, box.params.Domain, 1)
-		}
-
 		endpoint := fmt.Sprintf("%s-gateway-endpoint", params.TargetNodeName)
 		grpcServerEndpoint := flag.String(endpoint, node.Address, "gRPC server endpoint")
 		ctx := context.Background()
@@ -209,12 +199,15 @@ func (box *Box) StartAcmeServiceGatewayMapping(params *ACMEServiceGatewayParams)
 			return err
 		}
 
+		address := fmt.Sprintf("%s:443", box.Host())
+
 		log.Info("starting HTTP server", log.Field("service-gateway", params.NodeName), log.Field("for", params.TargetNodeName), log.Field("address", address))
 		srv := &http.Server{
 			Addr:         address,
 			ReadTimeout:  5 * time.Second,
 			WriteTimeout: 5 * time.Second,
 			IdleTimeout:  120 * time.Second,
+			TLSConfig:    &tls.Config{GetCertificate: man.GetCertificate},
 		}
 
 		if params.MuxWrapper != nil {
@@ -231,7 +224,7 @@ func (box *Box) StartAcmeServiceGatewayMapping(params *ACMEServiceGatewayParams)
 		gt.Name = params.NodeName
 		box.httpNodes[params.NodeName] = gt
 		go func() {
-			err := srv.Serve(listener)
+			err := srv.ListenAndServeTLS("", "")
 			if err != http.ErrServerClosed {
 				log.Fatal("failed to start server", err)
 			}

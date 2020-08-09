@@ -117,12 +117,8 @@ func (box *Box) StartAcmeGateway(params *AcmeGatewayParams) error {
 		HostPolicy: hostPolicy,
 		Cache:      autocert.DirCache(cacheDir),
 	}
-	listener, err := box.listen(443, 0, &tls.Config{GetCertificate: man.GetCertificate})
-	if err != nil {
-		return err
-	}
 
-	address := listener.Addr().String()
+	address := fmt.Sprintf("%s:443", box.Host())
 	if box.params.Domain != "" {
 		address = strings.Replace(address, strings.Split(address, ":")[0], box.params.Domain, 1)
 	}
@@ -146,6 +142,7 @@ func (box *Box) StartAcmeGateway(params *AcmeGatewayParams) error {
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 5 * time.Second,
 		IdleTimeout:  120 * time.Second,
+		TLSConfig:    &tls.Config{GetCertificate: man.GetCertificate},
 	}
 
 	gt := &httpNode{}
@@ -156,7 +153,7 @@ func (box *Box) StartAcmeGateway(params *AcmeGatewayParams) error {
 	gt.Name = params.Node.Id
 	box.httpNodes[params.Node.Id] = gt
 	go func() {
-		err = srv.Serve(listener)
+		err := srv.ListenAndServeTLS("", "")
 		if err != nil {
 			if err != http.ErrServerClosed {
 				log.Error("http server stopped", err)
@@ -201,7 +198,7 @@ func (box *Box) StartAcmeGateway(params *AcmeGatewayParams) error {
 		box.info.Nodes = append(box.info.Nodes, n)
 
 		// gt.RegistryID, err = box.registry.RegisterService(info, pb.ActionOnRegisterExistingService_AddNodes|pb.ActionOnRegisterExistingService_UpdateExisting)
-		err = box.registry.RegisterService(box.info)
+		err := box.registry.RegisterService(box.info)
 		if err != nil {
 			log.Error("could not register gateway", err, log.Field("name", params.Node.Id))
 		}
