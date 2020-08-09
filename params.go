@@ -13,6 +13,7 @@ type Params struct {
 	Domain          string
 	Ip              string
 	ExternalIp      string
+	Acme            bool
 	CertificatePath string
 	KeyPath         string
 	Autonomous      bool

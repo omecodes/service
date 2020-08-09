@@ -12,7 +12,7 @@ const (
 	CmdFlagDomain         = "dn"
 	CmdFlagCert           = "cert"
 	CmdFlagKey            = "key"
-	CmdFlagNamespace      = "ns"
+	CmdFlagAcme           = "acme"
 	CmdFlagCA             = "ca"
 	CmdFlagCAAddr         = "ca-addr"
 	CmdFlagCACert         = "ca-cert"
@@ -49,6 +49,7 @@ func CMD(use string, params *Params) *cobra.Command {
 	flags.StringVar(&params.Domain, CmdFlagDomain, "", "Domain name")
 
 	flags.BoolVar(&params.CA, CmdFlagCA, false, "Is CA - Runs service as CA")
+	flags.BoolVar(&params.CA, CmdFlagAcme, false, "Enables auto-cert using let's encrypt")
 	flags.StringVar(&params.CACertPath, CmdFlagCACert, "", "Authority Certificate - file path")
 	flags.StringVar(&params.CAAddress, CmdFlagCAAddr, "", "Authority ServerGRPC - address location")
 	flags.StringVar(&params.CACredentials, CmdFlagCACred, "", "Authority Credentials - authority authentication credentials")
@@ -77,6 +78,7 @@ func SetCMDFlags(cmd *cobra.Command, params *Params, ignoreFlagName bool) {
 	flags.StringVar(&params.Domain, CmdFlagDomain, "", "Domain name")
 
 	flags.BoolVar(&params.CA, CmdFlagCA, false, "Is CA - Runs service as CA")
+	flags.BoolVar(&params.CA, CmdFlagAcme, false, "Enables auto-cert using let's encrypt")
 	flags.StringVar(&params.CACertPath, CmdFlagCACert, "", "Authority Certificate - file path")
 	flags.StringVar(&params.CAAddress, CmdFlagCAAddr, "", "Authority ServerGRPC - address location")
 	flags.StringVar(&params.CACredentials, CmdFlagCACred, "", "Authority Credentials - authority authentication credentials")
