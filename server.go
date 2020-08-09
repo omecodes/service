@@ -40,12 +40,20 @@ type GatewayGrpcMappingParams struct {
 	Meta           map[string]string
 }
 
-type GatewayNodeParams struct {
+type GatewayParams struct {
 	ForceRegister  bool
 	MiddlewareList []mux.MiddlewareFunc
 	Port           int
 	ProvideRouter  func() *mux.Router
 	Tls            *tls.Config
+	ServiceType    pb.Type
+	Node           *pb.Node
+}
+
+type AcmeGatewayParams struct {
+	ForceRegister  bool
+	MiddlewareList []mux.MiddlewareFunc
+	ProvideRouter  func() *mux.Router
 	ServiceType    pb.Type
 	Node           *pb.Node
 }
