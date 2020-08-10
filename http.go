@@ -105,7 +105,6 @@ func (box *Box) StartAcmeGateway(params *AcmeGatewayParams) error {
 
 	cacheDir := filepath.Dir(box.CertificateFilename())
 	hostPolicy := func(ctx context.Context, host string) error {
-		// Note: change to your real domain
 		allowedHost := box.Domain()
 		if host == allowedHost {
 			return nil
