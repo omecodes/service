@@ -3,10 +3,10 @@ package jwt
 import (
 	"context"
 	"crypto/tls"
+	"github.com/omecodes/common/dao/dict"
 	"github.com/omecodes/common/errors"
-	"github.com/omecodes/common/log"
-	"github.com/omecodes/common/persist/dict"
-	authpb "github.com/omecodes/common/proto/auth"
+	authpb "github.com/omecodes/common/ome/proto/auth"
+	"github.com/omecodes/common/utils/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"

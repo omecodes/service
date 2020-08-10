@@ -9,12 +9,12 @@ import (
 	"crypto/x509"
 	"fmt"
 	"github.com/iancoleman/strcase"
-	crypto2 "github.com/omecodes/common/crypto"
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/futils"
-	"github.com/omecodes/common/grpc-authentication"
-	"github.com/omecodes/common/log"
-	pb "github.com/omecodes/common/proto/service"
+	"github.com/omecodes/common/grpcx"
+	pb "github.com/omecodes/common/ome/proto/service"
+	crypto2 "github.com/omecodes/common/security/crypto"
+	"github.com/omecodes/common/utils/log"
 	"google.golang.org/grpc"
 	"net"
 	"os"
@@ -148,7 +148,7 @@ func (box *Box) loadOrGenerateCertificateKeyPair() (err error) {
 
 		if box.caClientAuthentication == nil {
 			parts := strings.Split(box.params.CACredentials, ":")
-			box.caClientAuthentication = ga.NewGRPCBasic(parts[0], parts[1])
+			box.caClientAuthentication = grpcx.NewGRPCBasic(parts[0], parts[1])
 		}
 
 		conn, err := grpc.Dial(box.params.CAAddress, grpc.WithTransportCredentials(box.caGRPCTransportCredentials), grpc.WithPerRPCCredentials(box.caClientAuthentication))

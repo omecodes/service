@@ -7,15 +7,15 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"github.com/omecodes/common"
-	"github.com/omecodes/common/codec"
-	crypto2 "github.com/omecodes/common/crypto"
+	"github.com/omecodes/common/dao/dict"
 	"github.com/omecodes/common/database"
 	"github.com/omecodes/common/errors"
-	"github.com/omecodes/common/log"
-	"github.com/omecodes/common/persist/dict"
-	authpb "github.com/omecodes/common/proto/auth"
-	pb2 "github.com/omecodes/common/proto/service"
+	"github.com/omecodes/common/ome"
+	authpb "github.com/omecodes/common/ome/proto/auth"
+	pb2 "github.com/omecodes/common/ome/proto/service"
+	crypto2 "github.com/omecodes/common/security/crypto"
+	"github.com/omecodes/common/utils/codec"
+	"github.com/omecodes/common/utils/log"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -52,7 +52,7 @@ func (j *jwtVerifier) Verify(ctx context.Context, t *authpb.JWT) (authpb.JWTStat
 			return 0, errors.Forbidden
 		}
 
-		encodedKey := s.Meta[common.MetaTokenVerifyingKey]
+		encodedKey := s.Meta[ome.MetaTokenVerifyingKey]
 		key, _, err := crypto2.PEMDecodePublicKey([]byte(encodedKey))
 		if err != nil {
 			return 0, err

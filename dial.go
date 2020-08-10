@@ -3,8 +3,8 @@ package service
 import (
 	"fmt"
 	"github.com/omecodes/common/errors"
-	"github.com/omecodes/common/log"
-	pb "github.com/omecodes/common/proto/service"
+	pb "github.com/omecodes/common/ome/proto/service"
+	"github.com/omecodes/common/utils/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"

@@ -6,22 +6,22 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/x509"
-	crypto2 "github.com/omecodes/common/crypto"
 	"github.com/omecodes/common/errors"
-	"github.com/omecodes/common/grpc-authentication"
-	pb "github.com/omecodes/common/proto/service"
+	"github.com/omecodes/common/grpcx"
+	pb "github.com/omecodes/common/ome/proto/service"
+	crypto2 "github.com/omecodes/common/security/crypto"
 	"net"
 	"time"
 )
 
 type csrServerHandler struct {
-	credentialsVerifyFunc ga.ProxyCredentialsVerifyFunc
+	credentialsVerifyFunc grpcx.ProxyCredentialsVerifyFunc
 	PrivateKey            crypto.PrivateKey
 	Certificate           *x509.Certificate
 }
 
 func (h *csrServerHandler) SignCertificate(ctx context.Context, in *pb.SignCertificateRequest) (*pb.SignCertificateResponse, error) {
-	cred := ga.ProxyCredentialsFromContext(ctx)
+	cred := grpcx.ProxyCredentialsFromContext(ctx)
 	valid, err := h.credentialsVerifyFunc(cred)
 	if err != nil {
 		return nil, err

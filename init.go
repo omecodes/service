@@ -2,10 +2,10 @@ package service
 
 import (
 	"fmt"
-	crypto2 "github.com/omecodes/common/crypto"
 	"github.com/omecodes/common/errors"
-	"github.com/omecodes/common/grpc-authentication"
-	"github.com/omecodes/common/log"
+	"github.com/omecodes/common/grpcx"
+	crypto2 "github.com/omecodes/common/security/crypto"
+	"github.com/omecodes/common/utils/log"
 	"github.com/omecodes/discover"
 	"google.golang.org/grpc/credentials"
 	"strings"
@@ -87,7 +87,7 @@ func (box *Box) loadCACredentials() (err error) {
 	}
 
 	parts := strings.Split(box.params.CACredentials, ":")
-	box.caClientAuthentication = ga.NewGRPCProxy(parts[0], parts[1])
+	box.caClientAuthentication = grpcx.NewGRPCProxy(parts[0], parts[1])
 
 	return
 }

@@ -10,13 +10,12 @@ import (
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	grpc_opentracing "github.com/grpc-ecosystem/go-grpc-middleware/tracing/opentracing"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
-	crypto2 "github.com/omecodes/common/crypto"
 	"github.com/omecodes/common/errors"
-	"github.com/omecodes/common/grpc-authentication"
-	"github.com/omecodes/common/log"
-	"github.com/omecodes/common/ports"
-	pb "github.com/omecodes/common/proto/service"
-	"github.com/omecodes/service/interceptors"
+	"github.com/omecodes/common/grpcx"
+	"github.com/omecodes/common/ome/ports"
+	pb "github.com/omecodes/common/ome/proto/service"
+	crypto2 "github.com/omecodes/common/security/crypto"
+	"github.com/omecodes/common/utils/log"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/acme/autocert"
 	"google.golang.org/grpc"
@@ -31,7 +30,7 @@ import (
 func (box *Box) CAClientAuthentication() credentials.PerRPCCredentials {
 	if box.caClientAuthentication == nil {
 		parts := strings.Split(box.params.CACredentials, ":")
-		box.caClientAuthentication = ga.NewGRPCBasic(parts[0], parts[1])
+		box.caClientAuthentication = grpcx.NewGRPCBasic(parts[0], parts[1])
 	}
 	return box.caClientAuthentication
 }
@@ -299,9 +298,9 @@ func (box *Box) StartGrpcNode(params *GrpcNodeParams) error {
 	log.Info("starting gRPC server", log.Field("service", params.Node.Id), log.Field("address", address))
 	var opts []grpc.ServerOption
 
-	defaultInterceptor := interceptors.Default(
-		interceptors.ProxyBasic(),
-		interceptors.Jwt(box.JwtVerifyFunc),
+	defaultInterceptor := grpcx.Default(
+		grpcx.ProxyBasic(),
+		grpcx.Jwt(box.JwtVerifyFunc),
 	)
 
 	streamInterceptors := append([]grpc.StreamServerInterceptor{},
@@ -411,7 +410,7 @@ func (box *Box) stopServices() error {
 	return nil
 }
 
-func (box *Box) StartCAService(credentialsVerifier ga.ProxyCredentialsVerifyFunc) error {
+func (box *Box) StartCAService(credentialsVerifier grpcx.ProxyCredentialsVerifyFunc) error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
 
@@ -442,8 +441,8 @@ func (box *Box) StartCAService(credentialsVerifier ga.ProxyCredentialsVerifyFunc
 	log.Info("starting gRPC server", log.Field("service", "CA"), log.Field("at", address))
 	var opts []grpc.ServerOption
 
-	defaultInterceptor := interceptors.Default(
-		interceptors.ProxyBasic(),
+	defaultInterceptor := grpcx.Default(
+		grpcx.ProxyBasic(),
 	)
 
 	logger, _ := zap.NewProduction()

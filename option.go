@@ -2,20 +2,20 @@ package service
 
 import (
 	"context"
-	"github.com/omecodes/common/grpc-authentication"
-	authpb "github.com/omecodes/common/proto/auth"
-	"github.com/omecodes/common/proto/service"
+	"github.com/omecodes/common/grpcx"
+	authpb "github.com/omecodes/common/ome/proto/auth"
+	"github.com/omecodes/common/ome/proto/service"
 	"google.golang.org/grpc"
 )
 
 type initOptions struct {
 	registry           pb.Registry
-	caProxyCredentials *ga.ProxyCredentials
+	caProxyCredentials *grpcx.ProxyCredentials
 }
 
 type InitOption func(*initOptions)
 
-func WithCACredentials(pc *ga.ProxyCredentials) InitOption {
+func WithCACredentials(pc *grpcx.ProxyCredentials) InitOption {
 	return func(opts *initOptions) {
 		opts.caProxyCredentials = pc
 	}
@@ -41,13 +41,13 @@ func GRPCCallOptionsFromContext(ctx context.Context, ot ...GRPCCallOption) ([]gr
 			}
 
 			if token != nil {
-				gRPCCallOptions = append(gRPCCallOptions, grpc.PerRPCCredentials(ga.NewGRPCClientJwt(strToken)))
+				gRPCCallOptions = append(gRPCCallOptions, grpc.PerRPCCredentials(grpcx.NewGRPCClientJwt(strToken)))
 			}
 
 		} else if t == CallOptProxyCredentials {
-			cred := ga.ProxyCredentialsFromContext(ctx)
+			cred := grpcx.ProxyCredentialsFromContext(ctx)
 			if cred != nil {
-				gRPCCallOptions = append(gRPCCallOptions, grpc.PerRPCCredentials(ga.NewGRPCProxy(
+				gRPCCallOptions = append(gRPCCallOptions, grpc.PerRPCCredentials(grpcx.NewGRPCProxy(
 					cred.Key, cred.Secret)))
 			}
 		}

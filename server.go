@@ -6,9 +6,8 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
-	grpc_gateway "github.com/omecodes/common/grpc-gateway"
-	pb "github.com/omecodes/common/proto/service"
-	"github.com/omecodes/service/interceptors"
+	"github.com/omecodes/common/grpcx"
+	pb "github.com/omecodes/common/ome/proto/service"
 	"google.golang.org/grpc"
 	"net/http"
 )
@@ -22,7 +21,7 @@ type ACMEServiceGatewayParams struct {
 	NodeName       string
 	ServiceType    pb.Type
 	Binder         WireEndpointFunc
-	MuxWrapper     grpc_gateway.MuxWrapper
+	MuxWrapper     grpcx.MuxWrapper
 	Meta           map[string]string
 }
 
@@ -36,7 +35,7 @@ type GatewayGrpcMappingParams struct {
 	ServiceType    pb.Type
 	Security       pb.Security
 	Binder         WireEndpointFunc
-	MuxWrapper     grpc_gateway.MuxWrapper
+	MuxWrapper     grpcx.MuxWrapper
 	Meta           map[string]string
 }
 
@@ -62,7 +61,7 @@ type GrpcNodeParams struct {
 	ForceRegister       bool
 	Port                int
 	Tls                 *tls.Config
-	Interceptor         interceptors.GRPC
+	Interceptor         grpcx.GRPC
 	RegisterHandlerFunc func(*grpc.Server)
 	ServiceType         pb.Type
 	Meta                map[string]string
