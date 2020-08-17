@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/grpcx"
-	crypto2 "github.com/omecodes/common/security/crypto"
+	"github.com/omecodes/common/ome/crypt"
 	"github.com/omecodes/common/utils/log"
 	"github.com/omecodes/discover"
 	"google.golang.org/grpc/credentials"
@@ -60,9 +60,9 @@ func (box *Box) Init(opts ...InitOption) error {
 
 func (box *Box) loadCertificateKeyPairFromFiles() error {
 	var err error
-	box.cert, err = crypto2.LoadCertificate(box.params.CertificatePath)
+	box.cert, err = crypt.LoadCertificate(box.params.CertificatePath)
 	if err == nil {
-		box.privateKey, err = crypto2.LoadPrivateKey(nil, box.params.KeyPath)
+		box.privateKey, err = crypt.LoadPrivateKey(nil, box.params.KeyPath)
 	}
 	return err
 }
@@ -76,7 +76,7 @@ func (box *Box) loadCACredentials() (err error) {
 		return errors.New("missing CA client login/password parameter")
 	}
 
-	box.caCert, err = crypto2.LoadCertificate(box.params.CACertPath)
+	box.caCert, err = crypt.LoadCertificate(box.params.CACertPath)
 	if err != nil {
 		return
 	}

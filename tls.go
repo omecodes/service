@@ -12,8 +12,8 @@ import (
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/futils"
 	"github.com/omecodes/common/grpcx"
+	"github.com/omecodes/common/ome/crypt"
 	pb "github.com/omecodes/common/ome/proto/service"
-	crypto2 "github.com/omecodes/common/security/crypto"
 	"github.com/omecodes/common/utils/log"
 	"google.golang.org/grpc"
 	"net"
@@ -39,12 +39,12 @@ func (box *Box) loadOrGenerateCACertificateKeyPair() (err error) {
 
 	shouldGenerateNewPair := !futils.FileExists(box.params.CertificatePath) || !futils.FileExists(box.params.KeyPath)
 	if !shouldGenerateNewPair {
-		box.privateKey, err = crypto2.LoadPrivateKey([]byte{}, box.params.KeyPath)
+		box.privateKey, err = crypt.LoadPrivateKey([]byte{}, box.params.KeyPath)
 		if err != nil {
 			return fmt.Errorf("could not load private key: %s", err)
 		}
 
-		box.cert, err = crypto2.LoadCertificate(box.params.CertificatePath)
+		box.cert, err = crypt.LoadCertificate(box.params.CertificatePath)
 		if err != nil {
 			return fmt.Errorf("could not load certificate: %s", err)
 		}
@@ -58,7 +58,7 @@ func (box *Box) loadOrGenerateCACertificateKeyPair() (err error) {
 		}
 		pub := box.privateKey.(*ecdsa.PrivateKey).PublicKey
 
-		caCertTemplate := &crypto2.CertificateTemplate{
+		caCertTemplate := &crypt.CertificateTemplate{
 			Organization:      "oe",
 			Name:              "CA-" + box.params.Name,
 			Domains:           []string{box.params.Domain},
@@ -73,13 +73,13 @@ func (box *Box) loadOrGenerateCACertificateKeyPair() (err error) {
 			caCertTemplate.IPs = append(caCertTemplate.IPs, net.ParseIP(ip))
 		}
 
-		box.cert, err = crypto2.GenerateCACertificate(caCertTemplate)
+		box.cert, err = crypt.GenerateCACertificate(caCertTemplate)
 		if err != nil {
 			return fmt.Errorf("could not generate CA cert: %s", err)
 		}
 
-		_ = crypto2.StoreCertificate(box.cert, box.params.CertificatePath, os.ModePerm)
-		_ = crypto2.StorePrivateKey(box.privateKey, nil, box.params.KeyPath)
+		_ = crypt.StoreCertificate(box.cert, box.params.CertificatePath, os.ModePerm)
+		_ = crypt.StorePrivateKey(box.privateKey, nil, box.params.KeyPath)
 	}
 	return
 }
@@ -100,7 +100,7 @@ func (box *Box) loadOrGenerateCertificateKeyPair() (err error) {
 		return
 	}
 
-	box.caCert, err = crypto2.LoadCertificate(box.params.CACertPath)
+	box.caCert, err = crypt.LoadCertificate(box.params.CACertPath)
 	if err != nil {
 		return errors.Errorf("could not load CA certificate: %s", err)
 	}
@@ -116,12 +116,12 @@ func (box *Box) loadOrGenerateCertificateKeyPair() (err error) {
 
 	shouldGenerateNewPair := !futils.FileExists(box.params.CertificatePath) || !futils.FileExists(box.params.KeyPath)
 	if !shouldGenerateNewPair {
-		box.privateKey, err = crypto2.LoadPrivateKey([]byte{}, box.params.KeyPath)
+		box.privateKey, err = crypt.LoadPrivateKey([]byte{}, box.params.KeyPath)
 		if err != nil {
 			return fmt.Errorf("could not load private key: %s", err)
 		}
 
-		box.cert, err = crypto2.LoadCertificate(box.params.CertificatePath)
+		box.cert, err = crypt.LoadCertificate(box.params.CertificatePath)
 		if err != nil {
 			return fmt.Errorf("could not load certificate: %s", err)
 		}
@@ -176,8 +176,8 @@ func (box *Box) loadOrGenerateCertificateKeyPair() (err error) {
 			return err
 		}
 
-		_ = crypto2.StoreCertificate(box.cert, box.params.CertificatePath, os.ModePerm)
-		_ = crypto2.StorePrivateKey(box.privateKey, nil, box.params.KeyPath)
+		_ = crypt.StoreCertificate(box.cert, box.params.CertificatePath, os.ModePerm)
+		_ = crypt.StorePrivateKey(box.privateKey, nil, box.params.KeyPath)
 	}
 	return nil
 }

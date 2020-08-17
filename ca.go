@@ -8,8 +8,8 @@ import (
 	"crypto/x509"
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/grpcx"
+	"github.com/omecodes/common/ome/crypt"
 	pb "github.com/omecodes/common/ome/proto/service"
-	crypto2 "github.com/omecodes/common/security/crypto"
 	"net"
 	"time"
 )
@@ -43,7 +43,7 @@ func (h *csrServerHandler) SignCertificate(ctx context.Context, in *pb.SignCerti
 		Y:     y,
 	}
 
-	cert, err := crypto2.GenerateServiceCertificate(&crypto2.CertificateTemplate{
+	cert, err := crypt.GenerateServiceCertificate(&crypt.CertificateTemplate{
 		Name:              in.Csr.Subject,
 		SignerCertificate: h.Certificate,
 		SignerPrivateKey:  h.PrivateKey,

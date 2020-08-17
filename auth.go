@@ -10,7 +10,7 @@ import (
 )
 
 func (box *Box) TokenVerifier() authpb.TokenVerifier {
-	return jwt.NewVerifier(box.CACertificate(), box.ServiceCert(), box.ServiceKey(), box.Registry(), box.params.Dir)
+	return jwt.NewSyncedVerifier(box.CACertificate(), box.ServiceCert(), box.ServiceKey(), box.Registry(), box.params.Dir)
 }
 
 func (box *Box) JwtVerifyFunc(ctx context.Context, jwt string) (context.Context, error) {

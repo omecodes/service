@@ -13,9 +13,9 @@ import (
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/grpcx"
 	"github.com/omecodes/common/httpx/backend"
+	"github.com/omecodes/common/ome/crypt"
 	"github.com/omecodes/common/ome/ports"
 	pb "github.com/omecodes/common/ome/proto/service"
-	crypto2 "github.com/omecodes/common/security/crypto"
 	"github.com/omecodes/common/utils/log"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/acme/autocert"
@@ -418,8 +418,8 @@ func (box *Box) StartCAService(credentialsVerifier grpcx.ProxyCredentialsVerifyF
 	defer box.serverMutex.Unlock()
 
 	var tc *tls.Config
-	certPEMBytes, _ := crypto2.PEMEncodeCertificate(box.cert)
-	keyPEMBytes, _ := crypto2.PEMEncodeKey(box.privateKey)
+	certPEMBytes, _ := crypt.PEMEncodeCertificate(box.cert)
+	keyPEMBytes, _ := crypt.PEMEncodeKey(box.privateKey)
 	tlsCert, err := tls.X509KeyPair(certPEMBytes, keyPEMBytes)
 	if err == nil {
 		clientCAs := x509.NewCertPool()

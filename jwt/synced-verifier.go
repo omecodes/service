@@ -8,12 +8,12 @@ import (
 	"crypto/x509"
 	"fmt"
 	"github.com/omecodes/common/dao/dict"
-	"github.com/omecodes/common/database"
+	"github.com/omecodes/common/env/app"
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/ome"
-	authpb "github.com/omecodes/common/ome/proto/auth"
+	"github.com/omecodes/common/ome/crypt"
+	"github.com/omecodes/common/ome/proto/auth"
 	pb2 "github.com/omecodes/common/ome/proto/service"
-	crypto2 "github.com/omecodes/common/security/crypto"
 	"github.com/omecodes/common/utils/codec"
 	"github.com/omecodes/common/utils/log"
 	"path/filepath"
@@ -22,7 +22,7 @@ import (
 	"time"
 )
 
-type jwtVerifier struct {
+type syncedVerifier struct {
 	sync.Mutex
 	registry          pb2.Registry
 	storesMutex       sync.Mutex
@@ -35,7 +35,7 @@ type jwtVerifier struct {
 	storesInitialized bool
 }
 
-func (j *jwtVerifier) Verify(ctx context.Context, t *authpb.JWT) (authpb.JWTState, error) {
+func (j *syncedVerifier) Verify(ctx context.Context, t *authpb.JWT) (authpb.JWTState, error) {
 
 	j.initStores()
 
@@ -53,7 +53,7 @@ func (j *jwtVerifier) Verify(ctx context.Context, t *authpb.JWT) (authpb.JWTStat
 		}
 
 		encodedKey := s.Meta[ome.MetaTokenVerifyingKey]
-		key, _, err := crypto2.PEMDecodePublicKey([]byte(encodedKey))
+		key, _, err := crypt.PEMDecodePublicKey([]byte(encodedKey))
 		if err != nil {
 			return 0, err
 		}
@@ -85,7 +85,7 @@ func (j *jwtVerifier) Verify(ctx context.Context, t *authpb.JWT) (authpb.JWTStat
 				return 0, errors.Forbidden
 			}
 
-			dictStore, err := dict.New(database.SQLiteConfig(filepath.Join(j.cacheDir, "jwt-store.db")), "jwt", codec.Default)
+			dictStore, err := dict.New(app.SQLiteConfig(filepath.Join(j.cacheDir, "jwt-store.db")), "jwt", codec.Default)
 			if err != nil {
 				return 0, errors.Internal
 			}
@@ -112,7 +112,7 @@ func (j *jwtVerifier) Verify(ctx context.Context, t *authpb.JWT) (authpb.JWTStat
 	return authpb.JWTState_VALID, nil
 }
 
-func (j *jwtVerifier) VerifyJWT(ctx context.Context, jwt string) (authpb.JWTState, error) {
+func (j *syncedVerifier) VerifyJWT(ctx context.Context, jwt string) (authpb.JWTState, error) {
 	j.initStores()
 
 	t, err := authpb.ParseJWT(jwt)
@@ -123,31 +123,31 @@ func (j *jwtVerifier) VerifyJWT(ctx context.Context, jwt string) (authpb.JWTStat
 	return j.Verify(ctx, t)
 }
 
-func (j *jwtVerifier) saveJwtVerifier(name string, v authpb.TokenVerifier) {
+func (j *syncedVerifier) saveJwtVerifier(name string, v authpb.TokenVerifier) {
 	j.Lock()
 	defer j.Unlock()
 	j.tokenVerifiers[name] = v
 }
 
-func (j *jwtVerifier) getJwtVerifier(name string) authpb.TokenVerifier {
+func (j *syncedVerifier) getJwtVerifier(name string) authpb.TokenVerifier {
 	j.Lock()
 	defer j.Unlock()
 	return j.tokenVerifiers[name]
 }
 
-func (j *jwtVerifier) getStore(name string) *SyncedStore {
+func (j *syncedVerifier) getStore(name string) *SyncedStore {
 	j.Lock()
 	defer j.Unlock()
 	return j.syncedStores[name]
 }
 
-func (j *jwtVerifier) saveStore(name string, s *SyncedStore) {
+func (j *syncedVerifier) saveStore(name string, s *SyncedStore) {
 	j.Lock()
 	defer j.Unlock()
 	j.syncedStores[name] = s
 }
 
-func (j *jwtVerifier) initStores() {
+func (j *syncedVerifier) initStores() {
 	j.Lock()
 	defer j.Unlock()
 
@@ -168,7 +168,7 @@ func (j *jwtVerifier) initStores() {
 			if node.Protocol == pb2.Protocol_Grpc {
 				storeName := fmt.Sprintf("%s@%s", node.Id, info.Id)
 
-				dictStore, err := dict.New(database.SQLiteConfig(filepath.Join(j.cacheDir, fmt.Sprintf("%s-jwt-store.db", node.Id))), "jwt", codec.Default)
+				dictStore, err := dict.New(app.SQLiteConfig(filepath.Join(j.cacheDir, fmt.Sprintf("%s-jwt-store.db", node.Id))), "jwt", codec.Default)
 				if err != nil {
 					log.Error("[jwt verifier] failed to initialize store database", log.Err(err), log.Field("service", info.Id), log.Field("node", node.Id))
 					return
@@ -193,8 +193,8 @@ func (j *jwtVerifier) initStores() {
 	<-time.After(time.Second)
 }
 
-func NewVerifier(caCert, cert *x509.Certificate, privateKey crypto.PrivateKey, registry pb2.Registry, cacheDir string) authpb.TokenVerifier {
-	verifier := &jwtVerifier{
+func NewSyncedVerifier(caCert, cert *x509.Certificate, privateKey crypto.PrivateKey, registry pb2.Registry, cacheDir string) authpb.TokenVerifier {
+	verifier := &syncedVerifier{
 		tokenVerifiers: map[string]authpb.TokenVerifier{},
 		syncedStores:   map[string]*SyncedStore{},
 		registry:       registry,
