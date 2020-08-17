@@ -3,9 +3,9 @@ package service
 import (
 	"context"
 	"github.com/omecodes/common/errors"
-	authpb "github.com/omecodes/common/ome/proto/auth"
-	pb2 "github.com/omecodes/common/ome/proto/service"
 	"github.com/omecodes/common/utils/log"
+	authpb "github.com/omecodes/libome/proto/auth"
+	pb2 "github.com/omecodes/libome/proto/service"
 	"github.com/omecodes/service/jwt"
 )
 

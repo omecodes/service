@@ -7,7 +7,7 @@ import (
 	"crypto/x509"
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/grpcx"
-	pb "github.com/omecodes/common/ome/proto/service"
+	pb "github.com/omecodes/libome/proto/service"
 	"google.golang.org/grpc"
 	"strings"
 )

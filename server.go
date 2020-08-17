@@ -7,7 +7,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/omecodes/common/grpcx"
-	pb "github.com/omecodes/common/ome/proto/service"
+	pb "github.com/omecodes/libome/proto/service"
 	"google.golang.org/grpc"
 	"net/http"
 )

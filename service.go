@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	pb "github.com/omecodes/common/ome/proto/service"
+	pb "github.com/omecodes/libome/proto/service"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )

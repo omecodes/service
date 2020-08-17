@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto"
 	"crypto/x509"
-	pb "github.com/omecodes/common/ome/proto/service"
+	pb "github.com/omecodes/libome/proto/service"
 	"google.golang.org/grpc/credentials"
 	"sync"
 )

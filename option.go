@@ -3,8 +3,8 @@ package service
 import (
 	"context"
 	"github.com/omecodes/common/grpcx"
-	authpb "github.com/omecodes/common/ome/proto/auth"
-	"github.com/omecodes/common/ome/proto/service"
+	authpb "github.com/omecodes/libome/proto/auth"
+	"github.com/omecodes/libome/proto/service"
 	"google.golang.org/grpc"
 )
 

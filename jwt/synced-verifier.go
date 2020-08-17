@@ -10,12 +10,12 @@ import (
 	"github.com/omecodes/common/dao/dict"
 	"github.com/omecodes/common/env/app"
 	"github.com/omecodes/common/errors"
-	"github.com/omecodes/common/ome"
-	"github.com/omecodes/common/ome/crypt"
-	"github.com/omecodes/common/ome/proto/auth"
-	pb2 "github.com/omecodes/common/ome/proto/service"
 	"github.com/omecodes/common/utils/codec"
 	"github.com/omecodes/common/utils/log"
+	ome2 "github.com/omecodes/libome"
+	"github.com/omecodes/libome/crypt"
+	"github.com/omecodes/libome/proto/auth"
+	pb2 "github.com/omecodes/libome/proto/service"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -52,7 +52,7 @@ func (j *syncedVerifier) Verify(ctx context.Context, t *authpb.JWT) (authpb.JWTS
 			return 0, errors.Forbidden
 		}
 
-		encodedKey := s.Meta[ome.MetaTokenVerifyingKey]
+		encodedKey := s.Meta[ome2.MetaTokenVerifyingKey]
 		key, _, err := crypt.PEMDecodePublicKey([]byte(encodedKey))
 		if err != nil {
 			return 0, err

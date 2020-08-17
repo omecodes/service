@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"github.com/omecodes/common/errors"
-	pb "github.com/omecodes/common/ome/proto/service"
+	pb "github.com/omecodes/libome/proto/service"
 	"net"
 )
 

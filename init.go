@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/grpcx"
-	"github.com/omecodes/common/ome/crypt"
 	"github.com/omecodes/common/utils/log"
 	"github.com/omecodes/discover"
+	"github.com/omecodes/libome/crypt"
 	"google.golang.org/grpc/credentials"
 	"strings"
 )
