@@ -114,7 +114,7 @@ func (box *Box) initRegistry() (err error) {
 		}
 		box.registry, err = discover.Serve(dc)
 		if err != nil {
-			log.Error("impossible to run discovery server", err)
+			log.Error("impossible to run discovery server", log.Err(err))
 		}
 	} else {
 		box.registry = discover.NewMSGClient(box.params.RegistryAddress, box.ClientTLS())

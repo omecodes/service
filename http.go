@@ -60,7 +60,7 @@ func (box *Box) StartGateway(params *GatewayParams) error {
 		err = srv.Serve(listener)
 		if err != nil {
 			if err != http.ErrServerClosed {
-				log.Error("http server stopped", err)
+				log.Error("http server stopped", log.Err(err))
 			}
 
 			if box.info != nil {
@@ -93,7 +93,7 @@ func (box *Box) StartGateway(params *GatewayParams) error {
 		// gt.RegistryID, err = box.registry.RegisterService(info, pb.ActionOnRegisterExistingService_AddNodes|pb.ActionOnRegisterExistingService_UpdateExisting)
 		err = box.registry.RegisterService(box.info)
 		if err != nil {
-			log.Error("could not register gateway", err, log.Field("name", params.Node.Id))
+			log.Error("could not register gateway", log.Err(err), log.Field("name", params.Node.Id))
 		}
 	}
 	return nil
@@ -155,7 +155,7 @@ func (box *Box) StartAcmeGateway(params *AcmeGatewayParams) error {
 		err := srv.ListenAndServeTLS("", "")
 		if err != nil {
 			if err != http.ErrServerClosed {
-				log.Error("http server stopped", err)
+				log.Error("http server stopped", log.Err(err))
 			}
 
 			if box.info != nil {
@@ -178,7 +178,7 @@ func (box *Box) StartAcmeGateway(params *AcmeGatewayParams) error {
 			}
 			err = httpSrv.ListenAndServe()
 			if err != nil {
-				log.Error("failed to run acme server", err)
+				log.Error("failed to run acme server", log.Err(err))
 			}
 		}
 	}()
@@ -199,7 +199,7 @@ func (box *Box) StartAcmeGateway(params *AcmeGatewayParams) error {
 		// gt.RegistryID, err = box.registry.RegisterService(info, pb.ActionOnRegisterExistingService_AddNodes|pb.ActionOnRegisterExistingService_UpdateExisting)
 		err := box.registry.RegisterService(box.info)
 		if err != nil {
-			log.Error("could not register gateway", err, log.Field("name", params.Node.Id))
+			log.Error("could not register gateway", log.Err(err), log.Field("name", params.Node.Id))
 		}
 	}
 	return nil
@@ -211,7 +211,7 @@ func (box *Box) stopGateways() error {
 	for name, srv := range box.httpNodes {
 		err := srv.Stop()
 		if err != nil {
-			log.Error(fmt.Sprintf("gateway stopped"), err, log.Field("gPRCNode", name))
+			log.Error(fmt.Sprintf("gateway stopped"), log.Err(err), log.Field("gPRCNode", name))
 		}
 	}
 	return nil

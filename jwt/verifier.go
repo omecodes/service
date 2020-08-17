@@ -81,7 +81,7 @@ func (j *jwtVerifier) Verify(ctx context.Context, t *authpb.JWT) (authpb.JWTStat
 
 			node, err := j.registry.GetNode(serviceName, nodeName)
 			if err != nil {
-				log.Error("[jwt verifier] failed to get node info", err, log.Field("service", serviceName), log.Field("node", nodeName))
+				log.Error("[jwt verifier] failed to get node info", log.Err(err), log.Field("service", serviceName), log.Field("node", nodeName))
 				return 0, errors.Forbidden
 			}
 
@@ -159,7 +159,7 @@ func (j *jwtVerifier) initStores() {
 	log.Info("[jwt verifier] initializing token stores")
 	infos, err := j.registry.GetOfType(pb2.Type_TokenStore)
 	if err != nil {
-		log.Error("[jwt verifier] could not load token stores info", err)
+		log.Error("[jwt verifier] could not load token stores info", log.Err(err))
 		return
 	}
 
@@ -170,7 +170,7 @@ func (j *jwtVerifier) initStores() {
 
 				dictStore, err := dict.New(database.SQLiteConfig(filepath.Join(j.cacheDir, fmt.Sprintf("%s-jwt-store.db", node.Id))), "jwt", codec.Default)
 				if err != nil {
-					log.Error("[jwt verifier] failed to initialize store database", err, log.Field("service", info.Id), log.Field("node", node.Id))
+					log.Error("[jwt verifier] failed to initialize store database", log.Err(err), log.Field("service", info.Id), log.Field("node", node.Id))
 					return
 				}
 

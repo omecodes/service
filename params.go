@@ -47,7 +47,6 @@ func (box *Box) validateParams() error {
 	var err error
 	box.params.Dir, err = filepath.Abs(box.params.Dir)
 	if err != nil {
-		// log.Printf("command line: could not find %s\n", box.Dir())
 		return err
 	}
 
@@ -72,11 +71,9 @@ func (box *Box) validateParams() error {
 		return fmt.Errorf("command line: ca-cred flag required")
 	}
 
-	/* if box.params.RegistryAddress != "" {
-		if box.params.RegistryAddress != "" {
-			return errors.New("command line: --namespace must always be provided with --registryAddress")
-		}
-	}*/
+	if box.params.RegistryAddress == "" {
+		return fmt.Errorf("command line: reg flag required")
+	}
 
 	if box.params.CertificatePath != "" || box.params.KeyPath != "" {
 		if box.params.CertificatePath == "" || box.params.KeyPath == "" {

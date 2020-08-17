@@ -82,7 +82,7 @@ func (s *SyncedStore) work() {
 		s.conn = nil
 		if s.connectionAttempts == 1 {
 			s.unconnectedTime = time.Now()
-			log.Error("[jwt store] unconnected", errors.Errorf("%d", status.Code(err)))
+			log.Error("[jwt store] unconnected", log.Err(errors.Errorf("%d", status.Code(err))))
 			log.Info("[jwt store] trying again...")
 		}
 		return
@@ -120,7 +120,7 @@ func (s *SyncedStore) send(stream authpb.TokenStoreService_SyncClient, wg *sync.
 			err := stream.Send(event)
 			if err != nil {
 				if err != io.EOF {
-					log.Error("[jwt store] send event", err)
+					log.Error("[jwt store] send event", log.Err(err))
 				}
 				return
 			}
@@ -136,7 +136,7 @@ func (s *SyncedStore) recv(stream authpb.TokenStoreService_SyncClient, wg *sync.
 			s.sendCloseSignal <- true
 			close(s.sendCloseSignal)
 			if err != io.EOF {
-				log.Error("[jwt store] recv event", err)
+				log.Error("[jwt store] recv event", log.Err(err))
 			}
 			return
 		}
@@ -147,13 +147,13 @@ func (s *SyncedStore) recv(stream authpb.TokenStoreService_SyncClient, wg *sync.
 		case authpb.EventAction_Save:
 			err = s.store.Save(event.Info.Jti, event.Info)
 			if err != nil {
-				log.Error("[jwt store] failed to save jwt info", err, log.Field("id", event.Info.Jti))
+				log.Error("[jwt store] failed to save jwt info", log.Err(err), log.Field("id", event.Info.Jti))
 			}
 
 		case authpb.EventAction_Delete:
 			err = s.store.Delete(event.Info.Jti)
 			if err != nil {
-				log.Error("failed to delete jwt info", err, log.Field("id", event.Info.Jti))
+				log.Error("failed to delete jwt info", log.Err(err), log.Field("id", event.Info.Jti))
 			}
 		}
 	}

@@ -44,7 +44,7 @@ func RevokeJwt(ctx context.Context, jwt string) error {
 
 	t, err := authpb.ParseJWT(jwt)
 	if err != nil {
-		log.Error("could not parse JWT", err)
+		log.Error("could not parse JWT", log.Err(err))
 		return errors.BadInput
 	}
 

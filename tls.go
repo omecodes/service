@@ -133,7 +133,7 @@ func (box *Box) loadOrGenerateCertificateKeyPair() (err error) {
 		_, err = box.cert.Verify(x509.VerifyOptions{Roots: CAPool})
 		if err != nil || time.Now().After(box.cert.NotAfter) || time.Now().Before(box.cert.NotBefore) {
 			if err != nil {
-				log.Error("service certificate verification failed", err)
+				log.Error("service certificate verification failed", log.Err(err))
 			}
 			shouldGenerateNewPair = true
 		}

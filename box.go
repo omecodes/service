@@ -41,25 +41,13 @@ func CreateBox(ctx context.Context, p *Params, opts ...InitOption) (*Box, error)
 		return nil, err
 	}
 
+	b.Dir()
+
 	b.dialerCache = map[string]Dialer{}
 	b.httpNodes = map[string]*httpNode{}
 	b.gRPCNodes = map[string]*gPRCNode{}
 	b.ctx = ContextWithBox(ctx, b)
 	return b, b.Init(opts...)
-}
-
-func NewBox(p *Params) (*Box, error) {
-	b := &Box{params: p}
-	err := b.validateParams()
-	if err != nil {
-		return nil, err
-	}
-
-	b.dialerCache = map[string]Dialer{}
-	b.httpNodes = map[string]*httpNode{}
-	b.gRPCNodes = map[string]*gPRCNode{}
-	b.ctx, b.ctxCancelFunc = context.WithCancel(context.WithValue(context.Background(), box{}, b))
-	return b, nil
 }
 
 func (box *Box) Context() context.Context {

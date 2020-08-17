@@ -12,6 +12,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/grpcx"
+	"github.com/omecodes/common/httpx/backend"
 	"github.com/omecodes/common/ome/ports"
 	pb "github.com/omecodes/common/ome/proto/service"
 	crypto2 "github.com/omecodes/common/security/crypto"
@@ -91,6 +92,7 @@ func (box *Box) StartGatewayGrpcMappingNode(params *GatewayGrpcMappingParams) er
 			} else {
 				srv.Handler = mux
 			}
+			srv.Handler = backend.NewHttpLogger(params.NodeName).Handle(srv.Handler)
 
 			gt := &httpNode{}
 			gt.Server = srv
@@ -106,7 +108,7 @@ func (box *Box) StartGatewayGrpcMappingNode(params *GatewayGrpcMappingParams) er
 			go func() {
 				err := srv.Serve(listener)
 				if err != http.ErrServerClosed {
-					log.Error("http server stopped", err)
+					log.Error("http server stopped", log.Err(err))
 				}
 
 				if box.info != nil {
@@ -139,7 +141,7 @@ func (box *Box) StartGatewayGrpcMappingNode(params *GatewayGrpcMappingParams) er
 
 					err = box.registry.RegisterService(box.info)
 					if err != nil {
-						log.Error("could not register service", err)
+						log.Error("could not register service", log.Err(err))
 					}
 				}
 			}
@@ -214,6 +216,7 @@ func (box *Box) StartAcmeServiceGatewayMapping(params *ACMEServiceGatewayParams)
 		} else {
 			srv.Handler = mux
 		}
+		srv.Handler = backend.NewHttpLogger(params.NodeName).Handle(srv.Handler)
 
 		gt := &httpNode{}
 		gt.Server = srv
@@ -225,7 +228,7 @@ func (box *Box) StartAcmeServiceGatewayMapping(params *ACMEServiceGatewayParams)
 		go func() {
 			err := srv.ListenAndServeTLS("", "")
 			if err != http.ErrServerClosed {
-				log.Fatal("failed to start server", err)
+				log.Fatal("failed to start server", log.Err(err))
 			}
 
 			if box.info != nil {
@@ -248,7 +251,7 @@ func (box *Box) StartAcmeServiceGatewayMapping(params *ACMEServiceGatewayParams)
 			}
 			err = httpSrv.ListenAndServe()
 			if err != nil {
-				log.Error("failed to run acme server", err)
+				log.Error("failed to run acme server", log.Err(err))
 			}
 		}()
 
@@ -270,14 +273,14 @@ func (box *Box) StartAcmeServiceGatewayMapping(params *ACMEServiceGatewayParams)
 
 				err = box.registry.RegisterService(box.info)
 				if err != nil {
-					log.Error("could not register service", err)
+					log.Error("could not register service", log.Err(err))
 				}
 			}
 		}
 		return nil
 	}
 
-	log.Error("could not run gateway", errors.NotFound, log.Field("for", params.TargetNodeName))
+	log.Error("could not run gateway", log.Field("for", params.TargetNodeName), log.Err(errors.NotFound))
 	return errors.NotFound
 }
 
@@ -298,9 +301,9 @@ func (box *Box) StartGrpcNode(params *GrpcNodeParams) error {
 	log.Info("starting gRPC server", log.Field("service", params.Node.Id), log.Field("address", address))
 	var opts []grpc.ServerOption
 
-	defaultInterceptor := grpcx.Default(
-		grpcx.ProxyBasic(),
-		grpcx.Jwt(box.JwtVerifyFunc),
+	defaultInterceptor := Default(
+		ProxyBasic(),
+		Jwt(box.JwtVerifyFunc),
 	)
 
 	streamInterceptors := append([]grpc.StreamServerInterceptor{},
@@ -337,7 +340,7 @@ func (box *Box) StartGrpcNode(params *GrpcNodeParams) error {
 	go func() {
 		err := srv.Serve(listener)
 		if err != grpc.ErrServerStopped {
-			log.Error("grpc server stopped", err)
+			log.Error("grpc server stopped", log.Err(err))
 		}
 
 		if box.info != nil {
@@ -370,7 +373,7 @@ func (box *Box) StartGrpcNode(params *GrpcNodeParams) error {
 
 		err = box.registry.RegisterService(box.info)
 		if err != nil {
-			log.Error("could not register service", err, log.Field("name", params.Node.Id))
+			log.Error("could not register service", log.Err(err), log.Field("name", params.Node.Id))
 		}
 	}
 	return nil
@@ -384,7 +387,7 @@ func (box *Box) StopService(name string) {
 	if !box.params.Autonomous && rs != nil && box.registry != nil {
 		err := box.registry.DeregisterService(name)
 		if err != nil {
-			log.Error("could not deregister service", err, log.Field("name", name))
+			log.Error("could not deregister service", log.Err(err), log.Field("name", name))
 		}
 		rs.Stop()
 	}
@@ -402,7 +405,7 @@ func (box *Box) stopServices() error {
 		if !box.params.Autonomous {
 			err := box.registry.DeregisterService(box.Name(), box.Name())
 			if err != nil {
-				log.Error("could not de register service", err, log.Field("name", box.Name()))
+				log.Error("could not de register service", log.Err(err), log.Field("name", box.Name()))
 			}
 		}
 	}
@@ -427,7 +430,7 @@ func (box *Box) StartCAService(credentialsVerifier grpcx.ProxyCredentialsVerifyF
 			ClientAuth:   tls.VerifyClientCertIfGiven,
 		}
 	} else {
-		log.Error("could not load TLS configs", err)
+		log.Error("could not load TLS configs", log.Err(err))
 		return err
 	}
 
@@ -441,8 +444,8 @@ func (box *Box) StartCAService(credentialsVerifier grpcx.ProxyCredentialsVerifyF
 	log.Info("starting gRPC server", log.Field("service", "CA"), log.Field("at", address))
 	var opts []grpc.ServerOption
 
-	defaultInterceptor := grpcx.Default(
-		grpcx.ProxyBasic(),
+	defaultInterceptor := Default(
+		ProxyBasic(),
 	)
 
 	logger, _ := zap.NewProduction()
