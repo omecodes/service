@@ -211,7 +211,7 @@ func (box *Box) stopGateways() error {
 	for name, srv := range box.httpNodes {
 		err := srv.Stop()
 		if err != nil {
-			log.Error(fmt.Sprintf("gateway stopped"), log.Err(err), log.Field("gPRCNode", name))
+			log.Error(fmt.Sprintf("gateway stopped"), log.Err(err), log.Field("node", name))
 		}
 	}
 	return nil

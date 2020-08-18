@@ -108,6 +108,10 @@ func (j *syncedVerifier) Verify(ctx context.Context, t *authpb.JWT) (authpb.JWTS
 		if err != nil {
 			return state, err
 		}
+
+		if state != authpb.JWTState_VALID {
+			return 0, errors.Forbidden
+		}
 	}
 	return authpb.JWTState_VALID, nil
 }

@@ -91,5 +91,5 @@ func (g *httpNode) URL() string {
 }
 
 func (g *httpNode) Stop() error {
-	return g.Server.Shutdown(nil)
+	return g.Server.Shutdown(context.Background())
 }

@@ -3,12 +3,15 @@ package service
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/grpcx"
 	"github.com/omecodes/common/utils/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+	"path"
 	"strings"
+	"time"
 )
 
 type defaultInterceptor struct {
@@ -17,6 +20,8 @@ type defaultInterceptor struct {
 
 func (interceptor *defaultInterceptor) InterceptUnary(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	var err error
+	start := time.Now()
+	method := path.Base(info.FullMethod)
 
 	for _, i := range interceptor.interceptors {
 		ctx, err = i.Intercept(ctx)
@@ -26,12 +31,22 @@ func (interceptor *defaultInterceptor) InterceptUnary(ctx context.Context, req i
 	}
 
 	rsp, err := handler(ctx, req)
+	if err != nil {
+		log.Error(fmt.Sprintf("[gRPC] %s", method), log.Field("request", req), log.Err(err), log.Field("duration", time.Since(start)))
+
+	} else {
+		log.Error(fmt.Sprintf("[gRPC] %s", method), log.Field("req", req), log.Field("rsp", rsp), log.Field("duration", time.Since(start)))
+	}
+
 	return rsp, err
 }
 
 func (interceptor *defaultInterceptor) InterceptStream(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 	var err error
 	ctx := ss.Context()
+
+	method := path.Base(info.FullMethod)
+	start := time.Now()
 
 	for _, i := range interceptor.interceptors {
 		ctx, err = i.Intercept(ctx)
@@ -40,6 +55,13 @@ func (interceptor *defaultInterceptor) InterceptStream(srv interface{}, ss grpc.
 	ss = grpcx.WrapServerStream(ctx, ss)
 
 	err = handler(srv, ss)
+	if err != nil {
+		log.Error(fmt.Sprintf("[gRPC stream] %s", method), log.Err(err), log.Field("duration", time.Since(start)))
+
+	} else {
+		log.Error(fmt.Sprintf("[gRPC stream] %s", method), log.Field("duration", time.Since(start)))
+	}
+
 	return err
 }
 
