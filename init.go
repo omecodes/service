@@ -111,6 +111,7 @@ func (box *Box) initRegistry() (err error) {
 			BindAddress:  box.params.RegistryAddress,
 			CertFilename: box.CertificateFilename(),
 			KeyFilename:  box.KeyFilename(),
+			StoreDir:     box.Dir(),
 		}
 		box.registry, err = discover.Serve(dc)
 		if err != nil {

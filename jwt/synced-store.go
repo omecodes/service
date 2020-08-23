@@ -60,13 +60,22 @@ func (s *SyncedStore) sync() {
 	}
 	s.setSyncing()
 
+	err := s.store.Clear()
+	if err != nil {
+		log.Error("failed to clear jwt store", log.Err(err))
+	}
+
 	for !s.stopRequested {
-		err := s.connect()
+		err = s.connect()
 		if err != nil {
 			time.After(time.Second * 2)
 			continue
 		}
 		s.work()
+		err = s.store.Clear()
+		if err != nil {
+			log.Error("failed to clear jwt store", log.Err(err))
+		}
 	}
 }
 
