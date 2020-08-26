@@ -7,6 +7,7 @@ import (
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/grpcx"
 	"github.com/omecodes/common/utils/log"
+	ome "github.com/omecodes/libome"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"path"
@@ -140,7 +141,7 @@ func (b *proxyBasic) Intercept(ctx context.Context) (context.Context, error) {
 			secret = splits[1]
 		}
 
-		ctx = grpcx.ContextWithProxyCredentials(ctx, &grpcx.ProxyCredentials{
+		ctx = ome.ContextWithProxyCredentials(ctx, &ome.ProxyCredentials{
 			Key:    key,
 			Secret: secret,
 		})

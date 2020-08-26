@@ -6,7 +6,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"github.com/omecodes/common/errors"
-	"github.com/omecodes/common/grpcx"
+	ome "github.com/omecodes/libome"
 	pb "github.com/omecodes/libome/proto/service"
 	"google.golang.org/grpc"
 	"strings"
@@ -64,7 +64,7 @@ func Registry(ctx context.Context) pb.Registry {
 	return box.registry
 }
 
-func CACredentials(ctx context.Context) *grpcx.ProxyCredentials {
+func CACredentials(ctx context.Context) *ome.ProxyCredentials {
 	box := serviceBox(ctx)
 	if box == nil {
 		return nil
@@ -72,7 +72,7 @@ func CACredentials(ctx context.Context) *grpcx.ProxyCredentials {
 
 	parts := strings.Split(box.params.CACredentials, ":")
 
-	return &grpcx.ProxyCredentials{
+	return &ome.ProxyCredentials{
 		Key:    parts[0],
 		Secret: parts[1],
 	}

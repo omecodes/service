@@ -7,21 +7,24 @@ import (
 	"crypto/elliptic"
 	"crypto/x509"
 	"github.com/omecodes/common/errors"
-	"github.com/omecodes/common/grpcx"
+	ome "github.com/omecodes/libome"
 	"github.com/omecodes/libome/crypt"
 	pb "github.com/omecodes/libome/proto/service"
 	"net"
 	"time"
 )
 
+type ctxServiceCredentials struct{}
+
 type csrServerHandler struct {
-	credentialsVerifyFunc grpcx.ProxyCredentialsVerifyFunc
+	credentialsVerifyFunc CredentialsVerifyFunc
 	PrivateKey            crypto.PrivateKey
 	Certificate           *x509.Certificate
 }
 
 func (h *csrServerHandler) SignCertificate(ctx context.Context, in *pb.SignCertificateRequest) (*pb.SignCertificateResponse, error) {
-	cred := grpcx.ProxyCredentialsFromContext(ctx)
+	cred := ome.ProxyCredentialsFromContext(ctx)
+
 	valid, err := h.credentialsVerifyFunc(cred)
 	if err != nil {
 		return nil, err

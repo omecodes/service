@@ -12,7 +12,6 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/grpcx"
-	"github.com/omecodes/common/httpx/backend"
 	"github.com/omecodes/common/utils/log"
 	"github.com/omecodes/libome/crypt"
 	"github.com/omecodes/libome/ports"
@@ -92,7 +91,18 @@ func (box *Box) StartGatewayGrpcMappingNode(params *GatewayGrpcMappingParams) er
 			} else {
 				srv.Handler = mux
 			}
-			srv.Handler = backend.NewHttpLogger(params.NodeName).Handle(srv.Handler)
+
+			srv.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				start := time.Now()
+				srv.Handler.ServeHTTP(w, r)
+				duration := time.Since(start)
+				log.Info(
+					r.Method+" "+r.RequestURI,
+					log.Field("params", r.URL.RawQuery),
+					log.Field("handler", params.NodeName),
+					log.Field("duration", duration.String()),
+				)
+			})
 
 			gt := &httpNode{}
 			gt.Server = srv
@@ -216,7 +226,17 @@ func (box *Box) StartAcmeServiceGatewayMapping(params *ACMEServiceGatewayParams)
 		} else {
 			srv.Handler = mux
 		}
-		srv.Handler = backend.NewHttpLogger(params.NodeName).Handle(srv.Handler)
+		srv.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
+			srv.Handler.ServeHTTP(w, r)
+			duration := time.Since(start)
+			log.Info(
+				r.Method+" "+r.RequestURI,
+				log.Field("params", r.URL.RawQuery),
+				log.Field("handler", params.NodeName),
+				log.Field("duration", duration.String()),
+			)
+		})
 
 		gt := &httpNode{}
 		gt.Server = srv
@@ -413,7 +433,7 @@ func (box *Box) stopServices() error {
 	return nil
 }
 
-func (box *Box) StartCAService(credentialsVerifier grpcx.ProxyCredentialsVerifyFunc) error {
+func (box *Box) StartCAService(credentialsVerifier CredentialsVerifyFunc) error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
 

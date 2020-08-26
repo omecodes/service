@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/utils/log"
+	ome "github.com/omecodes/libome"
 	authpb "github.com/omecodes/libome/proto/auth"
 	pb2 "github.com/omecodes/libome/proto/service"
 	"github.com/omecodes/service/jwt"
@@ -52,3 +53,5 @@ func RevokeJwt(ctx context.Context, jwt string) error {
 	_, err = client.RevokeToken(ctx, &authpb.RevokeTokenRequest{Jwt: t})
 	return err
 }
+
+type CredentialsVerifyFunc func(credentials *ome.ProxyCredentials) (bool, error)

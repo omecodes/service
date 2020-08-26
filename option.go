@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"github.com/omecodes/common/grpcx"
+	ome "github.com/omecodes/libome"
 	authpb "github.com/omecodes/libome/proto/auth"
 	"github.com/omecodes/libome/proto/service"
 	"google.golang.org/grpc"
@@ -10,12 +11,12 @@ import (
 
 type initOptions struct {
 	registry           pb.Registry
-	caProxyCredentials *grpcx.ProxyCredentials
+	caProxyCredentials *ome.ProxyCredentials
 }
 
 type InitOption func(*initOptions)
 
-func WithCACredentials(pc *grpcx.ProxyCredentials) InitOption {
+func WithCACredentials(pc *ome.ProxyCredentials) InitOption {
 	return func(opts *initOptions) {
 		opts.caProxyCredentials = pc
 	}
@@ -45,7 +46,7 @@ func GRPCCallOptionsFromContext(ctx context.Context, ot ...GRPCCallOption) ([]gr
 			}
 
 		} else if t == CallOptProxyCredentials {
-			cred := grpcx.ProxyCredentialsFromContext(ctx)
+			cred := ome.ProxyCredentialsFromContext(ctx)
 			if cred != nil {
 				gRPCCallOptions = append(gRPCCallOptions, grpc.PerRPCCredentials(grpcx.NewGRPCProxy(
 					cred.Key, cred.Secret)))
