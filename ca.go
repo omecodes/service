@@ -14,8 +14,6 @@ import (
 	"time"
 )
 
-type ctxServiceCredentials struct{}
-
 type csrServerHandler struct {
 	credentialsVerifyFunc CredentialsVerifyFunc
 	PrivateKey            crypto.PrivateKey

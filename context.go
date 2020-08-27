@@ -14,6 +14,8 @@ import (
 
 type box struct{}
 
+type ctxServiceCredentials struct{}
+
 type serviceContext struct{}
 
 func serviceBox(ctx context.Context) *Box {

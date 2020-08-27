@@ -12,6 +12,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/grpcx"
+	"github.com/omecodes/common/httpx"
 	"github.com/omecodes/common/utils/log"
 	"github.com/omecodes/libome/crypt"
 	"github.com/omecodes/libome/ports"
@@ -89,20 +90,11 @@ func (box *Box) StartGatewayGrpcMappingNode(params *GatewayGrpcMappingParams) er
 			if params.MuxWrapper != nil {
 				srv.Handler = params.MuxWrapper(mux)
 			} else {
-				srv.Handler = mux
+				srv.Handler = httpx.Logger(params.NodeName).Handle(mux)
 			}
-
-			srv.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				start := time.Now()
-				srv.Handler.ServeHTTP(w, r)
-				duration := time.Since(start)
-				log.Info(
-					r.Method+" "+r.RequestURI,
-					log.Field("params", r.URL.RawQuery),
-					log.Field("handler", params.NodeName),
-					log.Field("duration", duration.String()),
-				)
-			})
+			srv.Handler = httpx.ContextUpdater(func(ctx context.Context) context.Context {
+				return ContextWithBox(ctx, box)
+			}).Handle(srv.Handler)
 
 			gt := &httpNode{}
 			gt.Server = srv
@@ -224,19 +216,12 @@ func (box *Box) StartAcmeServiceGatewayMapping(params *ACMEServiceGatewayParams)
 		if params.MuxWrapper != nil {
 			srv.Handler = params.MuxWrapper(mux)
 		} else {
-			srv.Handler = mux
+			srv.Handler = httpx.Logger(params.NodeName).Handle(mux)
 		}
-		srv.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			start := time.Now()
-			srv.Handler.ServeHTTP(w, r)
-			duration := time.Since(start)
-			log.Info(
-				r.Method+" "+r.RequestURI,
-				log.Field("params", r.URL.RawQuery),
-				log.Field("handler", params.NodeName),
-				log.Field("duration", duration.String()),
-			)
-		})
+
+		srv.Handler = httpx.ContextUpdater(func(ctx context.Context) context.Context {
+			return ContextWithBox(ctx, box)
+		}).Handle(srv.Handler)
 
 		gt := &httpNode{}
 		gt.Server = srv

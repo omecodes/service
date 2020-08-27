@@ -3,11 +3,18 @@ package service
 import (
 	"context"
 	"crypto/tls"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"github.com/gorilla/securecookie"
+	"github.com/omecodes/common/httpx"
 	"github.com/omecodes/common/utils/log"
+	ome "github.com/omecodes/libome"
+	authpb "github.com/omecodes/libome/proto/auth"
 	pb "github.com/omecodes/libome/proto/service"
 	"golang.org/x/crypto/acme/autocert"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"time"
@@ -35,10 +42,13 @@ func (box *Box) StartGateway(params *GatewayParams) error {
 		for _, m := range params.MiddlewareList {
 			handler = m.Middleware(handler)
 		}
-
 	} else {
-		handler = router
+		handler = httpx.Logger(params.Node.Id).Handle(router)
 	}
+
+	handler = httpx.ContextUpdater(func(ctx context.Context) context.Context {
+		return ContextWithBox(ctx, box)
+	}).Handle(handler)
 
 	log.Info("starting HTTP server", log.Field("gateway", params.Node.Id), log.Field("address", address))
 	srv := &http.Server{
@@ -215,4 +225,193 @@ func (box *Box) stopGateways() error {
 		}
 	}
 	return nil
+}
+
+func ProxyAuthenticationMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proxyAuthorizationHeader := r.Header.Get("")
+		if proxyAuthorizationHeader != "" {
+			decodedBytes, err := base64.StdEncoding.DecodeString(proxyAuthorizationHeader)
+			if err != nil {
+				w.WriteHeader(http.StatusProxyAuthRequired)
+				return
+			}
+
+			var key string
+			var secret string
+
+			splits := strings.Split(string(decodedBytes), ":")
+			key = splits[0]
+			if len(splits) > 1 {
+				secret = splits[1]
+			}
+
+			ctx := r.Context()
+			r = r.WithContext(ome.ContextWithProxyCredentials(ctx, &ome.ProxyCredentials{
+				Key:    key,
+				Secret: secret,
+			}))
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+type authorizationBearer struct {
+	codecs   []securecookie.Codec
+	verifier authpb.TokenVerifier
+}
+
+func (atv *authorizationBearer) Middleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authorizationHeader := r.Header.Get("Authorization")
+		if strings.HasPrefix(authorizationHeader, "Bearer ") {
+			accessToken := strings.TrimLeft(authorizationHeader, "Bearer ")
+
+			strJWT, err := authpb.ExtractJwtFromAccessToken("", accessToken, atv.codecs...)
+			if err != nil {
+				//log.Error("could not extract jwt from access token", log.Err(err))
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			jwt, err := authpb.ParseJWT(strJWT)
+			if err != nil {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			state, err := atv.verifier.Verify(r.Context(), jwt)
+			if err != nil {
+				//log.Error("could not verify JWT", log.Err(err), log.Field("jwt", strJWT))
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			if state != authpb.JWTState_VALID {
+				//log.Info("invalid JWT", log.Field("jwt", strJWT))
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+
+			// enrich context with
+			ctx := r.Context()
+			ctx = authpb.ContextWithToken(ctx, jwt)
+			r = r.WithContext(ctx)
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func Oauth2(verifier authpb.TokenVerifier, codecs ...securecookie.Codec) *authorizationBearer {
+	return &authorizationBearer{
+		codecs:   codecs,
+		verifier: verifier,
+	}
+}
+
+type authorizationJWT struct {
+	verifier authpb.TokenVerifier
+}
+
+func (atv *authorizationJWT) Middleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authorizationHeader := r.Header.Get("Authorization")
+		if strings.HasPrefix(authorizationHeader, "Bearer ") {
+			strJWT := strings.TrimLeft(authorizationHeader, "Bearer ")
+			if strings.Count(strJWT, ".") != 2 {
+				log.Info("bearer info might be access token. Starting access token introspection")
+
+				box := BoxFromContext(r.Context())
+				reg := box.Registry()
+				info, err := reg.FirstOfType(pb.Type_Auth)
+				if err != nil {
+					log.Error("could not find authentication server in registry")
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+
+				for _, node := range info.Nodes {
+					if node.Protocol == pb.Protocol_Http {
+						endpoint := fmt.Sprintf("https://%s/token/introspect", node.Address)
+						client := http.Client{}
+						if node.Security != pb.Security_None {
+							// by default no mutual TLS
+							client.Transport = &http.Transport{TLSClientConfig: box.ClientTLS()}
+						}
+
+						form := url.Values{}
+						form.Add("token", strJWT)
+
+						req, err := http.NewRequest(http.MethodPost, endpoint, strings.NewReader(form.Encode()))
+						if err != nil {
+							log.Error("failed to create token introspection request", log.Err(err))
+							w.WriteHeader(http.StatusInternalServerError)
+							return
+						}
+
+						req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+						credentialsPart := strings.Split(box.params.CACredentials, ":")
+						req.SetBasicAuth(credentialsPart[0], credentialsPart[1])
+
+						rsp, err := client.Do(req)
+						if err != nil {
+							log.Error("could not send request token introspection", log.Err(err))
+							w.WriteHeader(http.StatusInternalServerError)
+							return
+						}
+
+						if rsp.StatusCode != 200 {
+							log.Error("token introspection failed", log.Field("status", rsp.Status))
+							w.WriteHeader(http.StatusForbidden)
+							return
+						}
+
+						var jwt authpb.JWT
+						err = json.NewDecoder(rsp.Body).Decode(&jwt)
+						if err != nil {
+							log.Error("could not read introspection body response", log.Err(err))
+							w.WriteHeader(http.StatusForbidden)
+							return
+						}
+
+						ctx := r.Context()
+						ctx = authpb.ContextWithToken(ctx, &jwt)
+						r = r.WithContext(ctx)
+					}
+				}
+			} else {
+				t, err := authpb.ParseJWT(strJWT)
+				if err != nil {
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+
+				state, err := atv.verifier.Verify(r.Context(), t)
+				if err != nil {
+					log.Error("could not verify JWT", log.Err(err), log.Field("jwt", strJWT))
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+
+				if state != authpb.JWTState_VALID {
+					log.Info("invalid JWT", log.Field("jwt", strJWT))
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+
+				// enrich context with
+				ctx := r.Context()
+				ctx = authpb.ContextWithToken(ctx, t)
+				r = r.WithContext(ctx)
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func JWT(verifier authpb.TokenVerifier) *authorizationJWT {
+	return &authorizationJWT{
+		verifier: verifier,
+	}
 }
