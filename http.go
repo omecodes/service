@@ -229,9 +229,10 @@ func (box *Box) stopGateways() error {
 
 func ProxyAuthenticationMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		proxyAuthorizationHeader := r.Header.Get("")
+		proxyAuthorizationHeader := r.Header.Get("Proxy-Authorization")
 		if proxyAuthorizationHeader != "" {
-			decodedBytes, err := base64.StdEncoding.DecodeString(proxyAuthorizationHeader)
+			authorization := strings.TrimPrefix(proxyAuthorizationHeader, "Basic ")
+			decodedBytes, err := base64.StdEncoding.DecodeString(authorization)
 			if err != nil {
 				w.WriteHeader(http.StatusProxyAuthRequired)
 				return

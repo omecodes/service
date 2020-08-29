@@ -28,12 +28,17 @@ import (
 	"time"
 )
 
-func (box *Box) CAClientAuthentication() credentials.PerRPCCredentials {
+func (box *Box) OmeBasicClientCredentials() credentials.PerRPCCredentials {
 	if box.caClientAuthentication == nil {
 		parts := strings.Split(box.params.CACredentials, ":")
 		box.caClientAuthentication = grpcx.NewGRPCBasic(parts[0], parts[1])
 	}
 	return box.caClientAuthentication
+}
+
+func (box *Box) OmeProxyBasicClientCredentials() credentials.PerRPCCredentials {
+	parts := strings.Split(box.params.CACredentials, ":")
+	return grpcx.NewGRPCProxy(parts[0], parts[1])
 }
 
 func (box *Box) CAClientTransportCredentials() credentials.TransportCredentials {
