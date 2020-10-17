@@ -68,7 +68,7 @@ func (interceptor *interceptorChain) InterceptStream(srv interface{}, ss grpc.Se
 }
 
 // NewInterceptorsChain is a chain of interceptors
-func NewInterceptorsChain(i ...Interceptor) *interceptorChain {
+func NewInterceptorsChain(i ...Interceptor) grpcx.GRPC {
 	return &interceptorChain{interceptors: i}
 }
 
