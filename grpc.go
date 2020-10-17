@@ -6,7 +6,12 @@ import (
 	"crypto/x509"
 	"flag"
 	"fmt"
-	"github.com/grpc-ecosystem/go-grpc-middleware"
+	"net/http"
+	"path/filepath"
+	"strings"
+	"time"
+
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	grpc_opentracing "github.com/grpc-ecosystem/go-grpc-middleware/tracing/opentracing"
 	"github.com/grpc-ecosystem/grpc-gateway/runtime"
@@ -22,10 +27,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
-	"net/http"
-	"path/filepath"
-	"strings"
-	"time"
 )
 
 func (box *Box) OmeBasicClientCredentials() credentials.PerRPCCredentials {
@@ -311,19 +312,23 @@ func (box *Box) StartGrpcNode(params *GrpcNodeParams) error {
 	log.Info("starting gRPC server", log.Field("service", params.Node.Id), log.Field("address", address))
 	var opts []grpc.ServerOption
 
-	defaultInterceptor := Default(
-		ProxyBasic(),
-		Jwt(box.JwtVerifyFunc),
+	interceptorChain := NewInterceptorsChain(
+		InterceptorFunc(
+			func(ctx context.Context) (context.Context, error) {
+				return ContextWithBox(ctx, box), nil
+			}),
+		NewProxyBasicInterceptor(),
+		NewJwtVerifierInterceptor(box.JwtVerifyFunc),
 	)
 
 	streamInterceptors := append([]grpc.StreamServerInterceptor{},
 		grpc_opentracing.StreamServerInterceptor(),
-		defaultInterceptor.InterceptStream,
+		interceptorChain.InterceptStream,
 	)
 
 	unaryInterceptors := append([]grpc.UnaryServerInterceptor{},
 		grpc_opentracing.UnaryServerInterceptor(),
-		defaultInterceptor.InterceptUnary,
+		interceptorChain.InterceptUnary,
 	)
 
 	if params.Interceptor != nil {
@@ -454,8 +459,8 @@ func (box *Box) StartCAService(credentialsVerifier CredentialsVerifyFunc) error 
 	log.Info("starting gRPC server", log.Field("service", "CA"), log.Field("at", address))
 	var opts []grpc.ServerOption
 
-	defaultInterceptor := Default(
-		ProxyBasic(),
+	defaultInterceptor := NewInterceptorsChain(
+		NewProxyBasicInterceptor(),
 	)
 
 	logger, _ := zap.NewProduction()

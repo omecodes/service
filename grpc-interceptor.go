@@ -4,22 +4,23 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"path"
+	"strings"
+	"time"
+
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/grpcx"
 	"github.com/omecodes/common/utils/log"
 	ome "github.com/omecodes/libome"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
-	"path"
-	"strings"
-	"time"
 )
 
-type defaultInterceptor struct {
+type interceptorChain struct {
 	interceptors []Interceptor
 }
 
-func (interceptor *defaultInterceptor) InterceptUnary(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+func (interceptor *interceptorChain) InterceptUnary(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	var err error
 	start := time.Now()
 	method := path.Base(info.FullMethod)
@@ -42,7 +43,7 @@ func (interceptor *defaultInterceptor) InterceptUnary(ctx context.Context, req i
 	return rsp, err
 }
 
-func (interceptor *defaultInterceptor) InterceptStream(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+func (interceptor *interceptorChain) InterceptStream(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 	var err error
 	ctx := ss.Context()
 
@@ -66,21 +67,34 @@ func (interceptor *defaultInterceptor) InterceptStream(srv interface{}, ss grpc.
 	return err
 }
 
-func Default(i ...Interceptor) *defaultInterceptor {
-	return &defaultInterceptor{interceptors: i}
+// NewInterceptorsChain is a chain of interceptors
+func NewInterceptorsChain(i ...Interceptor) *interceptorChain {
+	return &interceptorChain{interceptors: i}
 }
 
+// Interceptor is context wrapper which is executed when gRPC function is called
+// it can be use to enrich context or verify authentication.
 type Interceptor interface {
+	// Intercept gets token works with and return a new token
 	Intercept(ctx context.Context) (context.Context, error)
 }
 
+// InterceptorFunc is an interceptor function
+type InterceptorFunc func(ctx context.Context) (context.Context, error)
+
+// Intercept gets token works with and return a new token
+func (interceptorFunc InterceptorFunc) Intercept(ctx context.Context) (context.Context, error) {
+	return interceptorFunc(ctx)
+}
+
+// JwtVerifyFunc is a function thats verify jwt passed through authorization header
 type JwtVerifyFunc func(ctx context.Context, jwt string) (context.Context, error)
 
-type idToken struct {
+type jwtVerifier struct {
 	verifyFunc JwtVerifyFunc
 }
 
-func (j *idToken) Intercept(ctx context.Context) (context.Context, error) {
+func (j *jwtVerifier) Intercept(ctx context.Context) (context.Context, error) {
 	var err error
 
 	md, ok := metadata.FromIncomingContext(ctx)
@@ -104,8 +118,9 @@ func (j *idToken) Intercept(ctx context.Context) (context.Context, error) {
 	return ctx, err
 }
 
-func Jwt(verifyFunc JwtVerifyFunc) *idToken {
-	return &idToken{
+// NewJwtVerifierInterceptor returns a wrapper that detects bearer authorization
+func NewJwtVerifierInterceptor(verifyFunc JwtVerifyFunc) *jwtVerifier {
+	return &jwtVerifier{
 		verifyFunc: verifyFunc,
 	}
 }
@@ -149,6 +164,7 @@ func (b *proxyBasic) Intercept(ctx context.Context) (context.Context, error) {
 	return ctx, nil
 }
 
-func ProxyBasic() *proxyBasic {
+// NewProxyBasicInterceptor returns a context wrapper that detects proxy authorization
+func NewProxyBasicInterceptor() *proxyBasic {
 	return &proxyBasic{}
 }
