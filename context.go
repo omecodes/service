@@ -5,11 +5,13 @@ import (
 	"crypto"
 	"crypto/tls"
 	"crypto/x509"
+	"strings"
+
 	"github.com/omecodes/common/errors"
 	ome "github.com/omecodes/libome"
 	pb "github.com/omecodes/libome/proto/service"
 	"google.golang.org/grpc"
-	"strings"
+	"google.golang.org/grpc/credentials"
 )
 
 type box struct{}
@@ -78,6 +80,18 @@ func CACredentials(ctx context.Context) *ome.ProxyCredentials {
 		Key:    parts[0],
 		Secret: parts[1],
 	}
+}
+
+func CAGRPCAuthentication(ctx context.Context) credentials.PerRPCCredentials {
+	box := serviceBox(ctx)
+	if box == nil {
+		return nil
+	}
+
+	if box.caClientAuthentication == nil {
+		box.loadCACredentials()
+	}
+	return box.caClientAuthentication
 }
 
 func Name(ctx context.Context) string {
