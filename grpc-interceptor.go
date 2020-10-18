@@ -37,9 +37,8 @@ func (interceptor *interceptorChain) InterceptUnary(ctx context.Context, req int
 		log.Error(fmt.Sprintf("[gRPC] %s", method), log.Field("request", req), log.Err(err), log.Field("duration", time.Since(start)))
 
 	} else {
-		log.Error(fmt.Sprintf("[gRPC] %s", method), log.Field("req", req), log.Field("rsp", rsp), log.Field("duration", time.Since(start)))
+		log.Info(fmt.Sprintf("[gRPC] %s", method), log.Field("req", req), log.Field("rsp", rsp), log.Field("duration", time.Since(start)))
 	}
-
 	return rsp, err
 }
 
