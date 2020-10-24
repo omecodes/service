@@ -2,15 +2,17 @@ package service
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/grpcx"
 	"github.com/omecodes/common/utils/log"
 	"github.com/omecodes/discover"
 	"github.com/omecodes/libome/crypt"
 	"google.golang.org/grpc/credentials"
-	"strings"
 )
 
+// Init initializes box from parameters
 func (box *Box) Init(opts ...InitOption) error {
 	if box.params.Autonomous {
 		return nil
@@ -47,14 +49,15 @@ func (box *Box) Init(opts ...InitOption) error {
 		}
 	}
 
-	box.registry = options.registry
-	if options.registry == nil {
-		err = box.initRegistry()
-		if err != nil {
-			return errors.Errorf("could not initialize registry: %s", err)
+	if !box.params.NoRegistry {
+		box.registry = options.registry
+		if options.registry == nil {
+			err = box.initRegistry()
+			if err != nil {
+				return errors.Errorf("could not initialize registry: %s", err)
+			}
 		}
 	}
-
 	return nil
 }
 
@@ -106,7 +109,7 @@ func (box *Box) initRegistry() (err error) {
 		}
 	}
 
-	if box.params.WithRegistryServer {
+	if box.params.RegistryServer {
 		dc := &discover.ServerConfig{
 			BindAddress:  box.params.RegistryAddress,
 			CertFilename: box.CertificateFilename(),
@@ -123,6 +126,7 @@ func (box *Box) initRegistry() (err error) {
 	return
 }
 
+// Stop stops all started services and gateways
 func (box *Box) Stop() {
 	_ = box.stopServices()
 	_ = box.stopGateways()

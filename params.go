@@ -3,14 +3,16 @@ package service
 import (
 	"errors"
 	"fmt"
-	"github.com/omecodes/common/futils"
 	"path/filepath"
+
+	"github.com/omecodes/common/futils"
 )
 
 type Params struct {
 	Name            string
 	Dir             string
 	Domain          string
+	OtherDomains    []string
 	Ip              string
 	ExternalIp      string
 	Acme            bool
@@ -19,11 +21,11 @@ type Params struct {
 	Autonomous      bool
 	Keys            [][]byte
 
-	WithRegistryServer bool
-	RegistryAddress    string
-	RegistrySecure     bool
-	RegistryID         string
-	StartRegistry      bool
+	NoRegistry      bool
+	RegistryServer  bool
+	RegistryAddress string
+	RegistrySecure  bool
+	RegistryID      string
 
 	CA            bool
 	CAAddress     string
