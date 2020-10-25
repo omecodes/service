@@ -2,7 +2,6 @@ package service
 
 import (
 	"errors"
-	"fmt"
 	"path/filepath"
 
 	"github.com/omecodes/common/futils"
@@ -35,7 +34,7 @@ type Params struct {
 
 func (box *Box) validateParams() error {
 	if box.params.Name == "" {
-		return errors.New("command line: --name flags is required")
+		return errors.New("box params: name is empty")
 	}
 
 	if box.params.Autonomous {
@@ -43,7 +42,7 @@ func (box *Box) validateParams() error {
 	}
 
 	if box.params.Domain == "" && box.params.Ip == "" {
-		return errors.New("command line: one or both --domain and --ip flags must be passed")
+		return errors.New("box params: both domain and ip are empty")
 	}
 
 	var err error
@@ -53,11 +52,11 @@ func (box *Box) validateParams() error {
 	}
 
 	if box.params.CAAddress == "" && !box.params.CA {
-		return errors.New("command line: ca-addr flag must be passed")
+		return errors.New("box params: CA address is empty")
 	}
 
-	if box.params.RegistryAddress == "" {
-		return errors.New("command line: ca-addr flag must be passed")
+	if !box.params.NoRegistry && box.params.RegistryAddress == "" {
+		return errors.New("box params: registry server address is empty")
 	}
 
 	if box.params.CACertPath == "" {
@@ -70,16 +69,12 @@ func (box *Box) validateParams() error {
 	}
 
 	if !box.params.CA && box.params.CACredentials == "" {
-		return fmt.Errorf("command line: ca-cred flag required")
-	}
-
-	if box.params.RegistryAddress == "" {
-		return fmt.Errorf("command line: reg flag required")
+		return errors.New("box params: CA credentials is empty")
 	}
 
 	if box.params.CertificatePath != "" || box.params.KeyPath != "" {
 		if box.params.CertificatePath == "" || box.params.KeyPath == "" {
-			return errors.New("command line: --cert must always be provided with --key")
+			return errors.New("box params: certificate and key file paths are empty")
 		}
 	}
 
