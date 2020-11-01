@@ -51,7 +51,7 @@ func RevokeJwt(ctx context.Context, jwt string) error {
 	}
 
 	client := authpb.NewTokenStoreServiceClient(conn)
-	_, err = client.DeleteJwt(ctx, &authpb.DeleteJwtRequest{Jwt: t.Claims.Jti})
+	_, err = client.DeleteJwt(ctx, &authpb.DeleteJwtRequest{Jti: t.Claims.Jti})
 	return err
 }
 
