@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/utils/log"
 	ome "github.com/omecodes/libome"
@@ -50,7 +51,7 @@ func RevokeJwt(ctx context.Context, jwt string) error {
 	}
 
 	client := authpb.NewTokenStoreServiceClient(conn)
-	_, err = client.RevokeToken(ctx, &authpb.RevokeTokenRequest{Jwt: t})
+	_, err = client.DeleteJwt(ctx, &authpb.DeleteJwtRequest{Jwt: t.Claims.Jti})
 	return err
 }
 

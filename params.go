@@ -3,8 +3,10 @@ package service
 import (
 	"errors"
 	"path/filepath"
+	"strings"
 
 	"github.com/omecodes/common/futils"
+	ome "github.com/omecodes/libome"
 )
 
 type Params struct {
@@ -70,6 +72,15 @@ func (box *Box) validateParams() error {
 
 	if !box.params.CA && box.params.CACredentials == "" {
 		return errors.New("box params: CA credentials is empty")
+	}
+
+	if box.params.CACredentials != "" {
+		parts := strings.Split(box.params.CACredentials, ":")
+		box.credentials = new(ome.ProxyCredentials)
+		box.credentials.Key = parts[0]
+		if len(parts) > 1 {
+			box.credentials.Secret = parts[1]
+		}
 	}
 
 	if box.params.CertificatePath != "" || box.params.KeyPath != "" {

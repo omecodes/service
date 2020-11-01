@@ -7,6 +7,11 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"path/filepath"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/omecodes/common/dao/dict"
 	"github.com/omecodes/common/env/app"
 	"github.com/omecodes/common/errors"
@@ -14,12 +19,8 @@ import (
 	"github.com/omecodes/common/utils/log"
 	ome2 "github.com/omecodes/libome"
 	"github.com/omecodes/libome/crypt"
-	"github.com/omecodes/libome/proto/auth"
+	authpb "github.com/omecodes/libome/proto/auth"
 	pb2 "github.com/omecodes/libome/proto/service"
-	"path/filepath"
-	"strings"
-	"sync"
-	"time"
 )
 
 type syncedVerifier struct {
@@ -71,11 +72,11 @@ func (j *syncedVerifier) Verify(ctx context.Context, t *authpb.JWT) (authpb.JWTS
 		return 0, errors.Forbidden
 	}
 
-	if t.Claims.JwtStore != "" {
-		jwtStore := j.getStore(t.Claims.JwtStore)
+	if t.Claims.State != nil {
+		jwtStore := j.getStore(t.Claims.State.Service)
 
 		if jwtStore == nil {
-			parts := strings.Split(t.Claims.JwtStore, "@")
+			parts := strings.Split(t.Claims.State.Service, "@")
 			nodeName := parts[0]
 			serviceName := parts[1]
 
@@ -101,7 +102,7 @@ func (j *syncedVerifier) Verify(ctx context.Context, t *authpb.JWT) (authpb.JWTS
 			}
 
 			jwtStore = NewSyncedStore(node.Address, tlsConfig, dictStore)
-			j.saveStore(t.Claims.JwtStore, jwtStore)
+			j.saveStore(t.Claims.State.Service, jwtStore)
 		}
 
 		state, err = jwtStore.State(t.Claims.Jti)

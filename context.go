@@ -82,6 +82,15 @@ func CACredentials(ctx context.Context) *ome.ProxyCredentials {
 	}
 }
 
+// Secret returns the application shared secret
+func Secret(ctx context.Context) string {
+	box := serviceBox(ctx)
+	if box == nil {
+		return ""
+	}
+	return box.credentials.Secret
+}
+
 func CAGRPCAuthentication(ctx context.Context) credentials.PerRPCCredentials {
 	box := serviceBox(ctx)
 	if box == nil {

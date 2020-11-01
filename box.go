@@ -4,9 +4,11 @@ import (
 	"context"
 	"crypto"
 	"crypto/x509"
+	"sync"
+
+	ome "github.com/omecodes/libome"
 	pb "github.com/omecodes/libome/proto/service"
 	"google.golang.org/grpc/credentials"
-	"sync"
 )
 
 type Box struct {
@@ -24,9 +26,9 @@ type Box struct {
 	registryCert               *x509.Certificate
 	cert                       *x509.Certificate
 	privateKey                 crypto.PrivateKey
-
-	ctx           context.Context
-	ctxCancelFunc context.CancelFunc
+	credentials                *ome.ProxyCredentials
+	ctx                        context.Context
+	ctxCancelFunc              context.CancelFunc
 
 	info *pb.Info
 
