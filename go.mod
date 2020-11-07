@@ -10,7 +10,7 @@ require (
 	github.com/iancoleman/strcase v0.1.2
 	github.com/omecodes/common v0.0.0-20200903214349-239152c626f5
 	github.com/omecodes/discover v0.0.1
-	github.com/omecodes/libome v0.0.1
+	github.com/omecodes/libome v1.0.0
 	github.com/spf13/cobra v1.1.1
 	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897
