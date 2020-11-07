@@ -472,11 +472,7 @@ func (box *Box) StartCAService(credentialsVerifier CredentialsVerifyFunc) error 
 
 	opts = append(opts, grpc.UnaryInterceptor(chainUnaryInterceptor))
 	srv := grpc.NewServer(opts...)
-	pb.RegisterCSRServer(srv, &csrServerHandler{
-		credentialsVerifyFunc: credentialsVerifier,
-		PrivateKey:            box.privateKey,
-		Certificate:           box.cert,
-	})
+	pb.RegisterCSRServer(srv, NewCSRServerHandling(credentialsVerifier, box.privateKey, box.cert))
 
 	rs := new(gPRCNode)
 	rs.Address = address
