@@ -9,12 +9,16 @@ import (
 	"time"
 
 	"github.com/omecodes/common/errors"
-	"github.com/omecodes/common/grpcx"
 	"github.com/omecodes/common/utils/log"
 	ome "github.com/omecodes/libome"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
+
+type MergedInterceptor interface {
+	InterceptUnary(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error)
+	InterceptStream(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error
+}
 
 type interceptorChain struct {
 	interceptors []Interceptor
@@ -53,7 +57,7 @@ func (interceptor *interceptorChain) InterceptStream(srv interface{}, ss grpc.Se
 		ctx, err = i.Intercept(ctx)
 	}
 
-	ss = grpcx.WrapServerStream(ctx, ss)
+	ss = ome.GRPCStream(ctx, ss)
 
 	err = handler(srv, ss)
 	if err != nil {
@@ -67,7 +71,7 @@ func (interceptor *interceptorChain) InterceptStream(srv interface{}, ss grpc.Se
 }
 
 // NewInterceptorsChain is a chain of interceptors
-func NewInterceptorsChain(i ...Interceptor) grpcx.GRPC {
+func NewInterceptorsChain(i ...Interceptor) MergedInterceptor {
 	return &interceptorChain{interceptors: i}
 }
 

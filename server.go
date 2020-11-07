@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/omecodes/common/grpcx"
 	pb "github.com/omecodes/libome/proto/service"
 	"google.golang.org/grpc"
 	"net/http"
@@ -61,7 +60,7 @@ type GrpcNodeParams struct {
 	ForceRegister       bool
 	Port                int
 	Tls                 *tls.Config
-	Interceptor         grpcx.GRPC
+	Interceptor         MergedInterceptor
 	RegisterHandlerFunc func(*grpc.Server)
 	ServiceType         pb.Type
 	Meta                map[string]string
