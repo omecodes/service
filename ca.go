@@ -20,6 +20,10 @@ type csrServerHandler struct {
 	Certificate           *x509.Certificate
 }
 
+func (h *csrServerHandler) mustEmbedUnimplementedRegistryServer() {
+
+}
+
 func (h *csrServerHandler) SignCertificate(ctx context.Context, in *pb.SignCertificateRequest) (*pb.SignCertificateResponse, error) {
 	cred := ome.ProxyCredentialsFromContext(ctx)
 
