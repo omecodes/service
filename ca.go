@@ -15,23 +15,11 @@ import (
 )
 
 type csrServerHandler struct {
+	pb.UnimplementedCSRServer
 	credentialsVerifyFunc CredentialsVerifyFunc
 	PrivateKey            crypto.PrivateKey
 	Certificate           *x509.Certificate
 }
-
-func NewCSRServerHandling(credentialsVerifier CredentialsVerifyFunc, privateKey crypto.PrivateKey,
-	cert *x509.Certificate) pb.CSRServer {
-	var o interface{}
-	o = &csrServerHandler{
-		credentialsVerifyFunc: credentialsVerifier,
-		PrivateKey:            privateKey,
-		Certificate:           cert,
-	}
-	return o.(pb.CSRServer)
-}
-
-func (h *csrServerHandler) mustEmbedUnimplementedCSRServer() {}
 
 func (h *csrServerHandler) SignCertificate(ctx context.Context, in *pb.SignCertificateRequest) (*pb.SignCertificateResponse, error) {
 	cred := ome.ProxyCredentialsFromContext(ctx)
