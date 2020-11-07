@@ -11,8 +11,8 @@ import (
 	"github.com/iancoleman/strcase"
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/futils"
-	"github.com/omecodes/common/grpcx"
 	"github.com/omecodes/common/utils/log"
+	ome "github.com/omecodes/libome"
 	"github.com/omecodes/libome/crypt"
 	pb "github.com/omecodes/libome/proto/service"
 	"google.golang.org/grpc"
@@ -148,7 +148,7 @@ func (box *Box) loadOrGenerateCertificateKeyPair() (err error) {
 
 		if box.caClientAuthentication == nil {
 			parts := strings.Split(box.params.CACredentials, ":")
-			box.caClientAuthentication = grpcx.NewGRPCBasic(parts[0], parts[1])
+			box.caClientAuthentication = ome.NewGRPCBasic(parts[0], parts[1])
 		}
 
 		conn, err := grpc.Dial(box.params.CAAddress, grpc.WithTransportCredentials(box.caGRPCTransportCredentials), grpc.WithPerRPCCredentials(box.caClientAuthentication))

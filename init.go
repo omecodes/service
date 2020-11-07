@@ -2,10 +2,10 @@ package service
 
 import (
 	"fmt"
+	ome "github.com/omecodes/libome"
 	"strings"
 
 	"github.com/omecodes/common/errors"
-	"github.com/omecodes/common/grpcx"
 	"github.com/omecodes/common/utils/log"
 	"github.com/omecodes/discover"
 	"github.com/omecodes/libome/crypt"
@@ -90,7 +90,7 @@ func (box *Box) loadCACredentials() (err error) {
 	}
 
 	parts := strings.Split(box.params.CACredentials, ":")
-	box.caClientAuthentication = grpcx.NewGRPCProxy(parts[0], parts[1])
+	box.caClientAuthentication = ome.NewGRPCProxy(parts[0], parts[1])
 
 	return
 }

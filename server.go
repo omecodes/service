@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"github.com/gorilla/mux"
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/omecodes/common/grpcx"
 	pb "github.com/omecodes/libome/proto/service"
 	"google.golang.org/grpc"
@@ -21,7 +21,7 @@ type ACMEServiceGatewayParams struct {
 	NodeName       string
 	ServiceType    pb.Type
 	Binder         WireEndpointFunc
-	MuxWrapper     grpcx.MuxWrapper
+	MuxWrapper     MuxWrapper
 	Meta           map[string]string
 }
 
@@ -35,7 +35,7 @@ type GatewayGrpcMappingParams struct {
 	ServiceType    pb.Type
 	Security       pb.Security
 	Binder         WireEndpointFunc
-	MuxWrapper     grpcx.MuxWrapper
+	MuxWrapper     MuxWrapper
 	Meta           map[string]string
 }
 

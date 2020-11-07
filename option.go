@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"github.com/omecodes/common/grpcx"
 	ome "github.com/omecodes/libome"
 	authpb "github.com/omecodes/libome/proto/auth"
 	"github.com/omecodes/libome/proto/service"
@@ -42,13 +41,13 @@ func GRPCCallOptionsFromContext(ctx context.Context, ot ...GRPCCallOption) ([]gr
 			}
 
 			if token != nil {
-				gRPCCallOptions = append(gRPCCallOptions, grpc.PerRPCCredentials(grpcx.NewGRPCClientJwt(strToken)))
+				gRPCCallOptions = append(gRPCCallOptions, grpc.PerRPCCredentials(ome.NewGRPCClientJwt(strToken)))
 			}
 
 		} else if t == CallOptProxyCredentials {
 			cred := ome.ProxyCredentialsFromContext(ctx)
 			if cred != nil {
-				gRPCCallOptions = append(gRPCCallOptions, grpc.PerRPCCredentials(grpcx.NewGRPCProxy(
+				gRPCCallOptions = append(gRPCCallOptions, grpc.PerRPCCredentials(ome.NewGRPCProxy(
 					cred.Key, cred.Secret)))
 			}
 		}

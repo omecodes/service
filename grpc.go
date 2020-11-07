@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"flag"
 	"fmt"
+	ome "github.com/omecodes/libome"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -14,9 +15,8 @@ import (
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	grpc_opentracing "github.com/grpc-ecosystem/go-grpc-middleware/tracing/opentracing"
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/omecodes/common/errors"
-	"github.com/omecodes/common/grpcx"
 	"github.com/omecodes/common/httpx"
 	"github.com/omecodes/common/utils/log"
 	"github.com/omecodes/libome/crypt"
@@ -29,17 +29,21 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+type Mapper func(context.Context, *runtime.ServeMux, string, []grpc.DialOption) error
+
+type MuxWrapper func(mux *runtime.ServeMux) http.Handler
+
 func (box *Box) OmeBasicClientCredentials() credentials.PerRPCCredentials {
 	if box.caClientAuthentication == nil {
 		parts := strings.Split(box.params.CACredentials, ":")
-		box.caClientAuthentication = grpcx.NewGRPCBasic(parts[0], parts[1])
+		box.caClientAuthentication = ome.NewGRPCBasic(parts[0], parts[1])
 	}
 	return box.caClientAuthentication
 }
 
 func (box *Box) OmeProxyBasicClientCredentials() credentials.PerRPCCredentials {
 	parts := strings.Split(box.params.CACredentials, ":")
-	return grpcx.NewGRPCProxy(parts[0], parts[1])
+	return ome.NewGRPCProxy(parts[0], parts[1])
 }
 
 func (box *Box) CAClientTransportCredentials() credentials.TransportCredentials {
@@ -75,7 +79,7 @@ func (box *Box) StartGatewayGrpcMappingNode(params *GatewayGrpcMappingParams) er
 			grpcServerEndpoint := flag.String(endpoint, node.Address, "gRPC server endpoint")
 			ctx := context.Background()
 			mux := runtime.NewServeMux(
-				runtime.WithProtoErrorHandler(box.handlerError),
+				runtime.WithErrorHandler(box.handlerError),
 			)
 			var opts []grpc.DialOption
 
@@ -193,7 +197,7 @@ func (box *Box) StartAcmeServiceGatewayMapping(params *ACMEServiceGatewayParams)
 		grpcServerEndpoint := flag.String(endpoint, node.Address, "gRPC server endpoint")
 		ctx := context.Background()
 		mux := runtime.NewServeMux(
-			runtime.WithProtoErrorHandler(box.handlerError),
+			runtime.WithErrorHandler(box.handlerError),
 		)
 		var opts []grpc.DialOption
 
