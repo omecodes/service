@@ -2,14 +2,14 @@ package service
 
 import (
 	"fmt"
-	"github.com/omecodes/libome/crypt"
-	"github.com/omecodes/libome/ports"
-	"github.com/omecodes/service/v2/registry"
 	"strings"
 
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/utils/log"
 	"github.com/omecodes/libome"
+	"github.com/omecodes/libome/crypt"
+	"github.com/omecodes/libome/ports"
+	"github.com/omecodes/service/registry"
 	"google.golang.org/grpc/credentials"
 )
 
