@@ -8,8 +8,7 @@ import (
 	"strings"
 
 	"github.com/omecodes/common/errors"
-	ome "github.com/omecodes/libome"
-	pb "github.com/omecodes/libome/proto/service"
+	"github.com/omecodes/libome"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -60,7 +59,7 @@ func PrivateKey(ctx context.Context) crypto.PrivateKey {
 	return box.privateKey
 }
 
-func Registry(ctx context.Context) pb.Registry {
+func Registry(ctx context.Context) ome.Registry {
 	box := serviceBox(ctx)
 	if box == nil {
 		return nil
@@ -147,7 +146,7 @@ func ClientTLSConfig(ctx context.Context) *tls.Config {
 	return box.ClientMutualTLS()
 }
 
-func Dial(ctx context.Context, st pb.Type) (*grpc.ClientConn, error) {
+func Dial(ctx context.Context, st ome.ServiceType) (*grpc.ClientConn, error) {
 	box := serviceBox(ctx)
 	if box == nil {
 		return nil, errors.New("no service box associated to context")

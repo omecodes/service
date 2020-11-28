@@ -1,39 +1,39 @@
-package jwt
+package service
 
 import (
 	"context"
 	"crypto/tls"
-	"github.com/omecodes/common/dao/dict"
+	"io"
+	"sync"
+	"time"
+
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/utils/log"
-	authpb "github.com/omecodes/libome/proto/auth"
+	"github.com/omecodes/libome"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
-	"io"
-	"sync"
-	"time"
 )
 
-type SyncedStore struct {
+type synchronizedStore struct {
 	sync.Mutex
-	store              dict.Dict
+	store              JwtInfoStore
 	serverAddress      string
 	tls                *tls.Config
 	conn               *grpc.ClientConn
-	client             authpb.TokenStoreServiceClient
+	client             ome.TokenStoreServiceClient
 	stopRequested      bool
 	connectionAttempts int
 	unconnectedTime    time.Time
 	syncing            bool
 	syncMutex          sync.Mutex
-	outboundStream     chan *authpb.SyncMessage
-	inboundStream      chan *authpb.SyncMessage
+	outboundStream     chan *ome.JWTStateMessage
+	inboundStream      chan *ome.JWTStateMessage
 	sendCloseSignal    chan bool
 }
 
-func (s *SyncedStore) connect() error {
+func (s *synchronizedStore) connect() error {
 	if s.conn != nil && s.conn.GetState() == connectivity.Ready {
 		return nil
 	}
@@ -50,17 +50,17 @@ func (s *SyncedStore) connect() error {
 	if err != nil {
 		return err
 	}
-	s.client = authpb.NewTokenStoreServiceClient(s.conn)
+	s.client = ome.NewTokenStoreServiceClient(s.conn)
 	return nil
 }
 
-func (s *SyncedStore) sync() {
+func (s *synchronizedStore) sync() {
 	if s.isSyncing() {
 		return
 	}
 	s.setSyncing()
 
-	err := s.store.Clear()
+	err := s.store.DeleteAllFromService(s.serverAddress)
 	if err != nil {
 		log.Error("failed to clear jwt store", log.Err(err))
 	}
@@ -72,21 +72,21 @@ func (s *SyncedStore) sync() {
 			continue
 		}
 		s.work()
-		err = s.store.Clear()
+		err = s.store.DeleteAllFromService(s.serverAddress)
 		if err != nil {
 			log.Error("failed to clear jwt store", log.Err(err))
 		}
 	}
 }
 
-func (s *SyncedStore) work() {
+func (s *synchronizedStore) work() {
 	s.sendCloseSignal = make(chan bool)
-	s.outboundStream = make(chan *authpb.SyncMessage, 30)
+	s.outboundStream = make(chan *ome.JWTStateMessage, 30)
 	defer close(s.outboundStream)
 
 	s.connectionAttempts++
 
-	stream, err := s.client.Sync(context.Background())
+	stream, err := s.client.Synchronize(context.Background())
 	if err != nil {
 		s.conn = nil
 		if s.connectionAttempts == 1 {
@@ -112,7 +112,7 @@ func (s *SyncedStore) work() {
 	wg.Wait()
 }
 
-func (s *SyncedStore) send(stream authpb.TokenStoreService_SyncClient, wg *sync.WaitGroup) {
+func (s *synchronizedStore) send(stream ome.TokenStoreService_SynchronizeClient, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for !s.stopRequested {
@@ -137,7 +137,7 @@ func (s *SyncedStore) send(stream authpb.TokenStoreService_SyncClient, wg *sync.
 	}
 }
 
-func (s *SyncedStore) recv(stream authpb.TokenStoreService_SyncClient, wg *sync.WaitGroup) {
+func (s *synchronizedStore) recv(stream ome.TokenStoreService_SynchronizeClient, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for !s.stopRequested {
 		event, err := stream.Recv()
@@ -150,16 +150,16 @@ func (s *SyncedStore) recv(stream authpb.TokenStoreService_SyncClient, wg *sync.
 			return
 		}
 
-		log.Info("[jwt store] new event", log.Field("action", event.Action), log.Field("id", event.Info.Jti))
+		log.Info("[jwt store] new event", log.Field("action", event.State), log.Field("id", event.Info.Jti))
 
-		switch event.Action {
-		case authpb.EventAction_Save:
-			err = s.store.Save(event.Info.Jti, event.Info)
+		switch event.State {
+		case ome.JWTState_Valid:
+			err = s.store.Save(s.serverAddress, event.Info)
 			if err != nil {
 				log.Error("[jwt store] failed to save jwt info", log.Err(err), log.Field("id", event.Info.Jti))
 			}
 
-		case authpb.EventAction_Delete:
+		case ome.JWTState_Revoked:
 			err = s.store.Delete(event.Info.Jti)
 			if err != nil {
 				log.Error("failed to delete jwt info", log.Err(err), log.Field("id", event.Info.Jti))
@@ -168,53 +168,51 @@ func (s *SyncedStore) recv(stream authpb.TokenStoreService_SyncClient, wg *sync.
 	}
 }
 
-func (s *SyncedStore) isSyncing() bool {
+func (s *synchronizedStore) isSyncing() bool {
 	s.syncMutex.Lock()
 	defer s.syncMutex.Unlock()
 	return s.syncing
 }
 
-func (s *SyncedStore) setSyncing() {
+func (s *synchronizedStore) setSyncing() {
 	s.syncMutex.Lock()
 	defer s.syncMutex.Unlock()
 	s.syncing = true
 }
 
-func (s *SyncedStore) getJwtState(jti string) (authpb.JWTState, error) {
-	info := new(authpb.JwtInfo)
-	err := s.store.Read(jti, info)
+func (s *synchronizedStore) getJwtState(jti string) (ome.JWTState, error) {
+	info, err := s.store.Get(jti)
 	if err != nil {
 		return 0, err
 	}
 
 	now := time.Now().Unix()
 	if info.Nbf > now {
-		return authpb.JWTState_NOT_EFFECTIVE, errors.New("jwt not effective")
+		return ome.JWTState_NotEffective, errors.New("jwt not effective")
 	}
 
 	if info.Exp != -1 && info.Exp < now {
-		return authpb.JWTState_EXPIRED, errors.New("jwt expired")
+		return ome.JWTState_Expired, errors.New("jwt expired")
 	}
 
-	return authpb.JWTState_VALID, nil
+	return ome.JWTState_Valid, nil
 }
 
-func (s *SyncedStore) State(jti string) (authpb.JWTState, error) {
+func (s *synchronizedStore) State(jti string) (ome.JWTState, error) {
 	return s.getJwtState(jti)
 }
 
-func (s *SyncedStore) Close() error {
+func (s *synchronizedStore) Close() error {
 	s.stopRequested = true
-	return s.store.Close()
+	return nil
 }
 
-func NewSyncedStore(server string, tls *tls.Config, store dict.Dict) *SyncedStore {
-	syncedStore := &SyncedStore{
-		serverAddress: server,
+func NewSyncedStore(serverAddress string, tls *tls.Config, store JwtInfoStore) *synchronizedStore {
+	syncedStore := &synchronizedStore{
+		serverAddress: serverAddress,
 		tls:           tls,
 		store:         store,
 	}
-
 	_ = store.Clear()
 	go syncedStore.sync()
 	return syncedStore

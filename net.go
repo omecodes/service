@@ -3,12 +3,13 @@ package service
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/omecodes/common/errors"
-	pb "github.com/omecodes/libome/proto/service"
 	"net"
+
+	"github.com/omecodes/common/errors"
+	"github.com/omecodes/libome"
 )
 
-func (box *Box) listen(port int, security pb.Security, tc *tls.Config) (net.Listener, error) {
+func (box *Box) listen(port int, security ome.Security, tc *tls.Config) (net.Listener, error) {
 	var (
 		listener net.Listener
 		err      error
@@ -21,16 +22,16 @@ func (box *Box) listen(port int, security pb.Security, tc *tls.Config) (net.List
 		address = fmt.Sprintf("%s:", box.Host())
 	}
 
-	if !box.params.Autonomous && (tc != nil || security != pb.Security_None) {
+	if !box.params.Autonomous && (tc != nil || security != ome.Security_Insecure) {
 		if tc == nil {
 			err = box.loadOrGenerateCertificateKeyPair()
 			if err != nil {
 				return nil, err
 			}
 
-			if security == pb.Security_TLS {
+			if security == ome.Security_Tls {
 				tc = box.ServerTLS()
-			} else if security == pb.Security_MutualTLS {
+			} else if security == ome.Security_MutualTls {
 				tc = box.serverMutualTLS()
 			} else {
 				return nil, errors.New("unsupported security type")

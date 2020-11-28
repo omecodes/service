@@ -5,14 +5,14 @@ import (
 	"crypto/ecdsa"
 	"crypto/tls"
 	"fmt"
+	"github.com/omecodes/libome/crypt"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/utils/log"
-	"github.com/omecodes/libome/v2"
-	"github.com/omecodes/libome/v2/crypt"
+	"github.com/omecodes/libome"
 )
 
 type syncedVerifier struct {

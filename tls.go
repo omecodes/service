@@ -8,19 +8,19 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"github.com/iancoleman/strcase"
-	"github.com/omecodes/common/errors"
-	"github.com/omecodes/common/futils"
-	"github.com/omecodes/common/utils/log"
-	ome "github.com/omecodes/libome"
-	"github.com/omecodes/libome/crypt"
-	pb "github.com/omecodes/libome/proto/service"
-	"google.golang.org/grpc"
 	"net"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/iancoleman/strcase"
+	"github.com/omecodes/common/errors"
+	"github.com/omecodes/common/futils"
+	"github.com/omecodes/common/utils/log"
+	"github.com/omecodes/libome"
+	"github.com/omecodes/libome/crypt"
+	"google.golang.org/grpc"
 )
 
 func (box *Box) loadOrGenerateCACertificateKeyPair() (err error) {
@@ -156,15 +156,15 @@ func (box *Box) loadOrGenerateCertificateKeyPair() (err error) {
 			return err
 		}
 
-		client := pb.NewCSRClient(conn)
-		csrData := &pb.CSRData{
+		client := ome.NewCSRClient(conn)
+		csrData := &ome.CSRData{
 			Domains:   []string{box.params.Domain},
 			Addresses: box.IpList(),
 			Subject:   strcase.ToDelimited(box.params.Name, '.'),
 			PublicKey: elliptic.Marshal(elliptic.P256(), pub.X, pub.Y),
 		}
 
-		rsp, err := client.SignCertificate(context.Background(), &pb.SignCertificateRequest{
+		rsp, err := client.SignCertificate(context.Background(), &ome.SignCertificateRequest{
 			Csr: csrData,
 		})
 		if err != nil {

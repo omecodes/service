@@ -2,13 +2,14 @@ package service
 
 import (
 	"fmt"
-	ome "github.com/omecodes/libome"
+	"github.com/omecodes/libome/crypt"
+	"github.com/omecodes/libome/ports"
+	"github.com/omecodes/service/v2/registry"
 	"strings"
 
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/utils/log"
-	"github.com/omecodes/discover"
-	"github.com/omecodes/libome/crypt"
+	"github.com/omecodes/libome"
 	"google.golang.org/grpc/credentials"
 )
 
@@ -97,31 +98,31 @@ func (box *Box) loadCACredentials() (err error) {
 
 func (box *Box) initRegistry() (err error) {
 	if box.params.RegistryAddress == "" {
-		box.params.RegistryAddress = fmt.Sprintf("%s%s", box.Host(), RegistryDefaultHost)
+		box.params.RegistryAddress = fmt.Sprintf("%s:%d", box.Host(), ports.Discover)
 
 	} else {
 		parts := strings.Split(box.params.RegistryAddress, ":")
 		if len(parts) != 2 {
 			if len(parts) == 1 {
-				box.params.RegistryAddress = box.params.RegistryAddress + RegistryDefaultHost
+				box.params.RegistryAddress = fmt.Sprintf("%s:%d", box.params.RegistryAddress, ports.Discover)
 			}
 			return errors.New("malformed registry address. Should be like HOST:PORT")
 		}
 	}
 
 	if box.params.RegistryServer {
-		dc := &discover.ServerConfig{
+		dc := &registry.ServerConfig{
 			BindAddress:  box.params.RegistryAddress,
 			CertFilename: box.CertificateFilename(),
 			KeyFilename:  box.KeyFilename(),
 			StoreDir:     box.Dir(),
 		}
-		box.registry, err = discover.Serve(dc)
+		box.registry, err = registry.Serve(dc)
 		if err != nil {
 			log.Error("impossible to run discovery server", log.Err(err))
 		}
 	} else {
-		box.registry = discover.NewMSGClient(box.params.RegistryAddress, box.ClientTLS())
+		box.registry = registry.NewZebouClient(box.params.RegistryAddress, box.ClientTLS())
 	}
 	return
 }

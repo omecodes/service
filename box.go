@@ -6,8 +6,7 @@ import (
 	"crypto/x509"
 	"sync"
 
-	ome "github.com/omecodes/libome"
-	pb "github.com/omecodes/libome/proto/service"
+	"github.com/omecodes/libome"
 	"google.golang.org/grpc/credentials"
 )
 
@@ -19,7 +18,7 @@ type Box struct {
 	gRPCNodes map[string]*gPRCNode
 	httpNodes map[string]*httpNode
 
-	registry                   pb.Registry
+	registry                   ome.Registry
 	caCert                     *x509.Certificate
 	caClientAuthentication     credentials.PerRPCCredentials
 	caGRPCTransportCredentials credentials.TransportCredentials
@@ -30,7 +29,7 @@ type Box struct {
 	ctx                        context.Context
 	ctxCancelFunc              context.CancelFunc
 
-	info *pb.Info
+	info *ome.ServiceInfo
 
 	dialerMutex sync.Mutex
 	dialerCache map[string]Dialer
@@ -83,7 +82,7 @@ func (box *Box) RegistryCert() *x509.Certificate {
 	return box.registryCert
 }
 
-func (box *Box) Registry() pb.Registry {
+func (box *Box) Registry() ome.Registry {
 	return box.registry
 }
 

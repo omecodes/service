@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/utils/log"
-	pb "github.com/omecodes/libome/proto/service"
+	"github.com/omecodes/libome"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
 )
 
-func (box *Box) dialToService(serviceType pb.Type) (*grpc.ClientConn, error) {
+func (box *Box) dialToService(serviceType ome.ServiceType) (*grpc.ClientConn, error) {
 	infoList, err := box.Registry().GetOfType(serviceType)
 	if err != nil {
 		return nil, err
@@ -22,7 +22,7 @@ func (box *Box) dialToService(serviceType pb.Type) (*grpc.ClientConn, error) {
 	for _, info := range selection {
 		// Search for cached connection dialer
 		for _, node := range info.Nodes {
-			if node.Protocol == pb.Protocol_Grpc {
+			if node.Protocol == ome.Protocol_Grpc {
 				conn := box.dialFromCache(node.Address)
 				if conn != nil {
 					return conn, nil
@@ -32,7 +32,7 @@ func (box *Box) dialToService(serviceType pb.Type) (*grpc.ClientConn, error) {
 
 		// if no existing connection dialer found, dial new one
 		for _, node := range info.Nodes {
-			if node.Protocol == pb.Protocol_Grpc {
+			if node.Protocol == ome.Protocol_Grpc {
 				tlsConf := box.ClientMutualTLS()
 				if tlsConf == nil {
 					dialer = NewDialer(node.Address)

@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/omecodes/common/futils"
-	ome "github.com/omecodes/libome"
+	"github.com/omecodes/libome"
 )
 
 type Params struct {

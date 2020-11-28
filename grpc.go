@@ -6,12 +6,6 @@ import (
 	"crypto/x509"
 	"flag"
 	"fmt"
-	ome "github.com/omecodes/libome"
-	"net/http"
-	"path/filepath"
-	"strings"
-	"time"
-
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	grpc_opentracing "github.com/grpc-ecosystem/go-grpc-middleware/tracing/opentracing"
@@ -19,14 +13,18 @@ import (
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/httpx"
 	"github.com/omecodes/common/utils/log"
+	"github.com/omecodes/libome"
 	"github.com/omecodes/libome/crypt"
 	"github.com/omecodes/libome/ports"
-	pb "github.com/omecodes/libome/proto/service"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/acme/autocert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
+	"net/http"
+	"path/filepath"
+	"strings"
+	"time"
 )
 
 type Mapper func(context.Context, *runtime.ServeMux, string, []grpc.DialOption) error
@@ -83,7 +81,7 @@ func (box *Box) StartGatewayGrpcMappingNode(params *GatewayGrpcMappingParams) er
 			)
 			var opts []grpc.DialOption
 
-			if node.Security == pb.Security_None {
+			if node.Security == ome.Security_Insecure {
 				opts = append(opts, grpc.WithInsecure())
 			} else {
 				opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(box.ClientMutualTLS())))
@@ -109,7 +107,7 @@ func (box *Box) StartGatewayGrpcMappingNode(params *GatewayGrpcMappingParams) er
 			gt := &httpNode{}
 			gt.Server = srv
 			gt.Address = address
-			if node.Security == pb.Security_None {
+			if node.Security == ome.Security_Insecure {
 				gt.Scheme = "http"
 			} else {
 				gt.Scheme = "https"
@@ -124,7 +122,7 @@ func (box *Box) StartGatewayGrpcMappingNode(params *GatewayGrpcMappingParams) er
 				}
 
 				if box.info != nil {
-					var newNodeList []*pb.Node
+					var newNodeList []*ome.Node
 					for _, node := range box.info.Nodes {
 						if node.Id != params.NodeName {
 							newNodeList = append(newNodeList, node)
@@ -138,15 +136,15 @@ func (box *Box) StartGatewayGrpcMappingNode(params *GatewayGrpcMappingParams) er
 			if params.ForceRegister || !box.params.CA && !box.params.Autonomous {
 				if box.registry != nil {
 					if box.info == nil {
-						box.info = &pb.Info{}
+						box.info = &ome.ServiceInfo{}
 						box.info.Id = box.Name()
 						box.info.Type = info.Type
 					}
 
-					n := &pb.Node{}
+					n := &ome.Node{}
 					n.Id = params.NodeName
 					n.Address = address
-					n.Protocol = pb.Protocol_Http
+					n.Protocol = ome.Protocol_Http
 					n.Security = params.Security
 					n.Meta = params.Meta
 					box.info.Nodes = append(box.info.Nodes, n)
@@ -201,7 +199,7 @@ func (box *Box) StartAcmeServiceGatewayMapping(params *ACMEServiceGatewayParams)
 		)
 		var opts []grpc.DialOption
 
-		if node.Security == pb.Security_None {
+		if node.Security == ome.Security_Insecure {
 			opts = append(opts, grpc.WithInsecure())
 		} else {
 			opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(box.ClientMutualTLS())))
@@ -247,7 +245,7 @@ func (box *Box) StartAcmeServiceGatewayMapping(params *ACMEServiceGatewayParams)
 			}
 
 			if box.info != nil {
-				var newNodeList []*pb.Node
+				var newNodeList []*ome.Node
 				for _, node := range box.info.Nodes {
 					if node.Id != params.NodeName {
 						newNodeList = append(newNodeList, node)
@@ -273,16 +271,16 @@ func (box *Box) StartAcmeServiceGatewayMapping(params *ACMEServiceGatewayParams)
 		if params.ForceRegister || !box.params.CA && !box.params.Autonomous {
 			if box.registry != nil {
 				if box.info == nil {
-					box.info = &pb.Info{}
+					box.info = &ome.ServiceInfo{}
 					box.info.Id = box.Name()
 					box.info.Type = info.Type
 				}
 
-				n := &pb.Node{}
+				n := &ome.Node{}
 				n.Id = params.NodeName
 				n.Address = address
-				n.Protocol = pb.Protocol_Http
-				n.Security = pb.Security_ACME
+				n.Protocol = ome.Protocol_Http
+				n.Security = ome.Security_Acme
 				n.Meta = params.Meta
 				box.info.Nodes = append(box.info.Nodes, n)
 
@@ -303,7 +301,7 @@ func (box *Box) StartGrpcNode(params *GrpcNodeParams) error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
 
-	listener, err := box.listen(params.Port, pb.Security_MutualTLS, params.Tls)
+	listener, err := box.listen(params.Port, ome.Security_MutualTls, params.Tls)
 	if err != nil {
 		return err
 	}
@@ -363,7 +361,7 @@ func (box *Box) StartGrpcNode(params *GrpcNodeParams) error {
 		}
 
 		if box.info != nil {
-			var newNodeList []*pb.Node
+			var newNodeList []*ome.Node
 			for _, node := range box.info.Nodes {
 				if node.Id != params.Node.Id {
 					newNodeList = append(newNodeList, node)
@@ -376,7 +374,7 @@ func (box *Box) StartGrpcNode(params *GrpcNodeParams) error {
 
 	if params.ForceRegister || !box.params.CA && !box.params.Autonomous && params.Node != nil && box.registry != nil {
 		if box.info == nil {
-			box.info = &pb.Info{}
+			box.info = &ome.ServiceInfo{}
 			box.info.Id = box.Name()
 			box.info.Type = params.ServiceType
 			if box.info.Meta == nil {
@@ -476,7 +474,7 @@ func (box *Box) StartCAService(credentialsVerifier CredentialsVerifyFunc) error 
 
 	opts = append(opts, grpc.UnaryInterceptor(chainUnaryInterceptor))
 	srv := grpc.NewServer(opts...)
-	pb.RegisterCSRServer(srv, &csrServerHandler{
+	ome.RegisterCSRServer(srv, &csrServerHandler{
 		credentialsVerifyFunc: credentialsVerifier,
 		PrivateKey:            box.privateKey,
 		Certificate:           box.cert,

@@ -9,9 +9,7 @@ import (
 	"github.com/gorilla/securecookie"
 	"github.com/omecodes/common/httpx"
 	"github.com/omecodes/common/utils/log"
-	ome "github.com/omecodes/libome"
-	authpb "github.com/omecodes/libome/proto/auth"
-	pb "github.com/omecodes/libome/proto/service"
+	"github.com/omecodes/libome"
 	"golang.org/x/crypto/acme/autocert"
 	"net/http"
 	"net/url"
@@ -58,7 +56,7 @@ func (box *Box) StartGateway(params *GatewayParams) error {
 	gt := &httpNode{}
 	gt.Server = srv
 	gt.Address = address
-	if params.Tls != nil || params.Node.Security != pb.Security_None {
+	if params.Tls != nil || params.Node.Security != ome.Security_Insecure {
 		gt.Scheme = "https"
 	} else {
 		gt.Scheme = "http"
@@ -74,7 +72,7 @@ func (box *Box) StartGateway(params *GatewayParams) error {
 			}
 
 			if box.info != nil {
-				var newNodeList []*pb.Node
+				var newNodeList []*ome.Node
 				for _, node := range box.info.Nodes {
 					if node.Id != params.Node.Id {
 						newNodeList = append(newNodeList, node)
@@ -91,7 +89,7 @@ func (box *Box) StartGateway(params *GatewayParams) error {
 		n := params.Node
 		n.Address = address
 		if box.info == nil {
-			box.info = new(pb.Info)
+			box.info = new(ome.ServiceInfo)
 			box.info.Id = box.Name()
 			box.info.Type = params.ServiceType
 			if box.info.Meta == nil {
@@ -100,7 +98,7 @@ func (box *Box) StartGateway(params *GatewayParams) error {
 		}
 		box.info.Nodes = append(box.info.Nodes, n)
 
-		// gt.RegistryID, err = box.registry.RegisterService(info, pb.ActionOnRegisterExistingService_AddNodes|pb.ActionOnRegisterExistingService_UpdateExisting)
+		// gt.RegistryID, err = box.registry.RegisterService(info, ome.ActionOnRegisterExistingService_AddNodes|ome.ActionOnRegisterExistingService_UpdateExisting)
 		err = box.registry.RegisterService(box.info)
 		if err != nil {
 			log.Error("could not register gateway", log.Err(err), log.Field("name", params.Node.Id))
@@ -169,7 +167,7 @@ func (box *Box) StartAcmeGateway(params *AcmeGatewayParams) error {
 			}
 
 			if box.info != nil {
-				var newNodeList []*pb.Node
+				var newNodeList []*ome.Node
 				for _, node := range box.info.Nodes {
 					if node.Id != params.Node.Id {
 						newNodeList = append(newNodeList, node)
@@ -197,7 +195,7 @@ func (box *Box) StartAcmeGateway(params *AcmeGatewayParams) error {
 		n := params.Node
 		n.Address = address
 		if box.info == nil {
-			box.info = new(pb.Info)
+			box.info = new(ome.ServiceInfo)
 			box.info.Id = box.Name()
 			box.info.Type = params.ServiceType
 			if box.info.Meta == nil {
@@ -206,7 +204,7 @@ func (box *Box) StartAcmeGateway(params *AcmeGatewayParams) error {
 		}
 		box.info.Nodes = append(box.info.Nodes, n)
 
-		// gt.RegistryID, err = box.registry.RegisterService(info, pb.ActionOnRegisterExistingService_AddNodes|pb.ActionOnRegisterExistingService_UpdateExisting)
+		// gt.RegistryID, err = box.registry.RegisterService(info, ome.ActionOnRegisterExistingService_AddNodes|ome.ActionOnRegisterExistingService_UpdateExisting)
 		err := box.registry.RegisterService(box.info)
 		if err != nil {
 			log.Error("could not register gateway", log.Err(err), log.Field("name", params.Node.Id))
@@ -260,7 +258,7 @@ func ProxyAuthenticationMiddleware(next http.Handler) http.Handler {
 
 type authorizationBearer struct {
 	codecs   []securecookie.Codec
-	verifier authpb.TokenVerifier
+	verifier ome.TokenVerifier
 }
 
 func (atv *authorizationBearer) Middleware(next http.Handler) http.Handler {
@@ -269,14 +267,14 @@ func (atv *authorizationBearer) Middleware(next http.Handler) http.Handler {
 		if strings.HasPrefix(authorizationHeader, "Bearer ") {
 			accessToken := strings.TrimLeft(authorizationHeader, "Bearer ")
 
-			strJWT, err := authpb.ExtractJwtFromAccessToken("", accessToken, atv.codecs...)
+			strJWT, err := ome.ExtractJwtFromAccessToken("", accessToken, atv.codecs...)
 			if err != nil {
 				//log.Error("could not extract jwt from access token", log.Err(err))
 				next.ServeHTTP(w, r)
 				return
 			}
 
-			jwt, err := authpb.ParseJWT(strJWT)
+			jwt, err := ome.ParseJWT(strJWT)
 			if err != nil {
 				w.WriteHeader(http.StatusUnauthorized)
 				return
@@ -284,27 +282,27 @@ func (atv *authorizationBearer) Middleware(next http.Handler) http.Handler {
 
 			state, err := atv.verifier.Verify(r.Context(), jwt)
 			if err != nil {
-				//log.Error("could not verify JWT", log.Err(err), log.Field("jwt", strJWT))
+				log.Error("could not verify JWT", log.Err(err), log.Field("jwt", strJWT))
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
 
-			if state != authpb.JWTState_VALID {
-				//log.Info("invalid JWT", log.Field("jwt", strJWT))
+			if state != ome.JWTState_Valid {
+				log.Info("invalid JWT", log.Field("jwt", strJWT))
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
 
 			// enrich context with
 			ctx := r.Context()
-			ctx = authpb.ContextWithToken(ctx, jwt)
+			ctx = ome.ContextWithToken(ctx, jwt)
 			r = r.WithContext(ctx)
 		}
 		next.ServeHTTP(w, r)
 	})
 }
 
-func Oauth2(verifier authpb.TokenVerifier, codecs ...securecookie.Codec) *authorizationBearer {
+func Oauth2(verifier ome.TokenVerifier, codecs ...securecookie.Codec) *authorizationBearer {
 	return &authorizationBearer{
 		codecs:   codecs,
 		verifier: verifier,
@@ -312,7 +310,7 @@ func Oauth2(verifier authpb.TokenVerifier, codecs ...securecookie.Codec) *author
 }
 
 type authorizationJWT struct {
-	verifier authpb.TokenVerifier
+	verifier ome.TokenVerifier
 }
 
 func (atv *authorizationJWT) Middleware(next http.Handler) http.Handler {
@@ -325,7 +323,7 @@ func (atv *authorizationJWT) Middleware(next http.Handler) http.Handler {
 
 				box := BoxFromContext(r.Context())
 				reg := box.Registry()
-				info, err := reg.FirstOfType(pb.Type_Auth)
+				info, err := reg.FirstOfType(ome.ServiceType_Authentication)
 				if err != nil {
 					log.Error("could not find authentication server in registry")
 					w.WriteHeader(http.StatusInternalServerError)
@@ -333,10 +331,10 @@ func (atv *authorizationJWT) Middleware(next http.Handler) http.Handler {
 				}
 
 				for _, node := range info.Nodes {
-					if node.Protocol == pb.Protocol_Http {
+					if node.Protocol == ome.Protocol_Http {
 						endpoint := fmt.Sprintf("https://%s/token/introspect", node.Address)
 						client := http.Client{}
-						if node.Security != pb.Security_None {
+						if node.Security != ome.Security_Insecure {
 							// by default no mutual TLS
 							client.Transport = &http.Transport{TLSClientConfig: box.ClientTLS()}
 						}
@@ -368,7 +366,7 @@ func (atv *authorizationJWT) Middleware(next http.Handler) http.Handler {
 							return
 						}
 
-						var jwt authpb.JWT
+						var jwt ome.JWT
 						err = json.NewDecoder(rsp.Body).Decode(&jwt)
 						if err != nil {
 							log.Error("could not read introspection body response", log.Err(err))
@@ -377,12 +375,12 @@ func (atv *authorizationJWT) Middleware(next http.Handler) http.Handler {
 						}
 
 						ctx := r.Context()
-						ctx = authpb.ContextWithToken(ctx, &jwt)
+						ctx = ome.ContextWithToken(ctx, &jwt)
 						r = r.WithContext(ctx)
 					}
 				}
 			} else {
-				t, err := authpb.ParseJWT(strJWT)
+				t, err := ome.ParseJWT(strJWT)
 				if err != nil {
 					w.WriteHeader(http.StatusUnauthorized)
 					return
@@ -395,7 +393,7 @@ func (atv *authorizationJWT) Middleware(next http.Handler) http.Handler {
 					return
 				}
 
-				if state != authpb.JWTState_VALID {
+				if state != ome.JWTState_Valid {
 					log.Info("invalid JWT", log.Field("jwt", strJWT))
 					w.WriteHeader(http.StatusUnauthorized)
 					return
@@ -403,7 +401,7 @@ func (atv *authorizationJWT) Middleware(next http.Handler) http.Handler {
 
 				// enrich context with
 				ctx := r.Context()
-				ctx = authpb.ContextWithToken(ctx, t)
+				ctx = ome.ContextWithToken(ctx, t)
 				r = r.WithContext(ctx)
 			}
 		}
@@ -411,7 +409,7 @@ func (atv *authorizationJWT) Middleware(next http.Handler) http.Handler {
 	})
 }
 
-func JWT(verifier authpb.TokenVerifier) *authorizationJWT {
+func JWT(verifier ome.TokenVerifier) *authorizationJWT {
 	return &authorizationJWT{
 		verifier: verifier,
 	}

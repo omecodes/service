@@ -2,14 +2,13 @@ package service
 
 import (
 	"context"
-	ome "github.com/omecodes/libome"
-	authpb "github.com/omecodes/libome/proto/auth"
-	"github.com/omecodes/libome/proto/service"
 	"google.golang.org/grpc"
+
+	"github.com/omecodes/libome"
 )
 
 type initOptions struct {
-	registry           pb.Registry
+	registry           ome.Registry
 	caProxyCredentials *ome.ProxyCredentials
 }
 
@@ -34,8 +33,8 @@ func GRPCCallOptionsFromContext(ctx context.Context, ot ...GRPCCallOption) ([]gr
 
 	for _, t := range ot {
 		if t == CallOptToken {
-			token := authpb.TokenFromContext(ctx)
-			strToken, err := authpb.String(token)
+			token := ome.TokenFromContext(ctx)
+			strToken, err := ome.String(token)
 			if err != nil {
 				return nil, err
 			}

@@ -7,21 +7,20 @@ import (
 	"crypto/elliptic"
 	"crypto/x509"
 	"github.com/omecodes/common/errors"
-	ome "github.com/omecodes/libome"
+	"github.com/omecodes/libome"
 	"github.com/omecodes/libome/crypt"
-	pb "github.com/omecodes/libome/proto/service"
 	"net"
 	"time"
 )
 
 type csrServerHandler struct {
-	pb.UnimplementedCSRServer
+	ome.UnimplementedCSRServer
 	credentialsVerifyFunc CredentialsVerifyFunc
 	PrivateKey            crypto.PrivateKey
 	Certificate           *x509.Certificate
 }
 
-func (h *csrServerHandler) SignCertificate(ctx context.Context, in *pb.SignCertificateRequest) (*pb.SignCertificateResponse, error) {
+func (h *csrServerHandler) SignCertificate(ctx context.Context, in *ome.SignCertificateRequest) (*ome.SignCertificateResponse, error) {
 	cred := ome.ProxyCredentialsFromContext(ctx)
 
 	valid, err := h.credentialsVerifyFunc(cred)
@@ -58,7 +57,7 @@ func (h *csrServerHandler) SignCertificate(ctx context.Context, in *pb.SignCerti
 		return nil, err
 	}
 
-	return &pb.SignCertificateResponse{
+	return &ome.SignCertificateResponse{
 		RawCertificate: cert.Raw,
 	}, nil
 }

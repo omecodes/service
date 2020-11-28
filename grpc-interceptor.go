@@ -10,7 +10,7 @@ import (
 
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/utils/log"
-	ome "github.com/omecodes/libome"
+	"github.com/omecodes/libome"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )

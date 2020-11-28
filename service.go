@@ -4,7 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	pb "github.com/omecodes/libome/proto/service"
+
+	"github.com/omecodes/libome"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -20,7 +21,7 @@ func (box *Box) ServiceAddress(name string) (string, error) {
 	return s.Address, nil
 }
 
-func GRPCConnectionDialer(ctx context.Context, serviceType pb.Type, opts ...grpc.DialOption) (Dialer, error) {
+func GRPCConnectionDialer(ctx context.Context, serviceType ome.ServiceType, opts ...grpc.DialOption) (Dialer, error) {
 	reg := Registry(ctx)
 	if reg == nil {
 		return nil, errors.New("no registry configured")
@@ -37,7 +38,7 @@ func GRPCConnectionDialer(ctx context.Context, serviceType pb.Type, opts ...grpc
 
 	for _, info := range infos {
 		for _, node := range info.Nodes {
-			if node.Protocol == pb.Protocol_Grpc {
+			if node.Protocol == ome.Protocol_Grpc {
 				tlsConf := ClientTLSConfig(ctx)
 				if tlsConf == nil {
 					return NewDialer(node.Address, opts...), nil
@@ -101,7 +102,7 @@ func SpecificServiceNodeConnectionDialer(ctx context.Context, serviceID string, 
 	return nil, fmt.Errorf("no gPRCNode named %s of service named %s that supports gRPC has been found", nodeName, serviceID)
 }
 
-func Connect(ctx context.Context, ofType pb.Type, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
+func Connect(ctx context.Context, ofType ome.ServiceType, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	dialer, err := GRPCConnectionDialer(ctx, ofType, opts...)
 	if err != nil {
 		return nil, err
@@ -125,7 +126,7 @@ func ConnectToSpecificServiceNode(ctx context.Context, serviceID, nodeName strin
 	return dialer.Dial()
 }
 
-func (box *Box) GRPCConnectionDialer(serviceType pb.Type, opts ...grpc.DialOption) (Dialer, error) {
+func (box *Box) GRPCConnectionDialer(serviceType ome.ServiceType, opts ...grpc.DialOption) (Dialer, error) {
 	reg := box.Registry()
 	if reg == nil {
 		return nil, errors.New("no registry configured")
@@ -142,7 +143,7 @@ func (box *Box) GRPCConnectionDialer(serviceType pb.Type, opts ...grpc.DialOptio
 
 	for _, info := range infos {
 		for _, node := range info.Nodes {
-			if node.Protocol == pb.Protocol_Grpc {
+			if node.Protocol == ome.Protocol_Grpc {
 				tlsConf := box.ClientMutualTLS()
 				if tlsConf == nil {
 					return NewDialer(node.Address, opts...), nil
@@ -206,7 +207,7 @@ func (box *Box) SpecificServiceNodeConnectionDialer(serviceID string, nodeName s
 	return nil, fmt.Errorf("no gPRCNode named %s of service named %s that supports gRPC has been found", nodeName, serviceID)
 }
 
-func (box *Box) Connect(ofType pb.Type, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
+func (box *Box) Connect(ofType ome.ServiceType, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	dialer, err := box.GRPCConnectionDialer(ofType, opts...)
 	if err != nil {
 		return nil, err

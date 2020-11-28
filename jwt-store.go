@@ -4,7 +4,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/omecodes/libome/v2"
+	"github.com/omecodes/libome"
 )
 
 type JwtInfoStore interface {
