@@ -112,6 +112,7 @@ func (box *Box) initRegistry() (err error) {
 
 	if box.params.RegistryServer {
 		dc := &registry.ServerConfig{
+			Name:         box.params.Name,
 			BindAddress:  box.params.RegistryAddress,
 			CertFilename: box.CertificateFilename(),
 			KeyFilename:  box.KeyFilename(),

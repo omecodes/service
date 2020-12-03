@@ -19,6 +19,7 @@ import (
 )
 
 type ServerConfig struct {
+	Name         string
 	StoreDir     string
 	BindAddress  string
 	CertFilename string
@@ -31,6 +32,7 @@ type msgServer struct {
 	listener net.Listener
 	hub      *zebou.Hub
 	store    *bome.DoubleMap
+	name     string
 }
 
 func (s *msgServer) NewClient(ctx context.Context, peer *zebou.PeerInfo) {
@@ -241,7 +243,7 @@ func (s *msgServer) RegisterService(i *ome.ServiceInfo) error {
 	}
 
 	err = s.store.Save(&bome.DoubleMapEntry{
-		FirstKey:  "ome",
+		FirstKey:  s.name,
 		SecondKey: i.Id,
 		Value:     string(encoded),
 	})
@@ -271,7 +273,7 @@ func (s *msgServer) DeregisterService(id string, nodes ...string) error {
 
 	if len(nodes) > 0 {
 		var info ome.ServiceInfo
-		encoded, err := s.store.Get("ome", id)
+		encoded, err := s.store.Get(s.name, id)
 		if err != nil {
 			return err
 		}
@@ -298,14 +300,13 @@ func (s *msgServer) DeregisterService(id string, nodes ...string) error {
 
 		info.Nodes = newNodes
 
-
 		newEncodedBytes, err := json.Marshal(&info)
 		if err != nil {
 			return err
 		}
 
 		err = s.store.Save(&bome.DoubleMapEntry{
-			FirstKey:  "ome",
+			FirstKey:  s.name,
 			SecondKey: id,
 			Value:     string(newEncodedBytes),
 		})
@@ -323,7 +324,7 @@ func (s *msgServer) DeregisterService(id string, nodes ...string) error {
 		s.notifyEvent(ev)
 
 	} else {
-		err := s.store.Delete("ome", id)
+		err := s.store.Delete(s.name, id)
 		if err != nil {
 			return err
 		}
@@ -341,7 +342,7 @@ func (s *msgServer) DeregisterService(id string, nodes ...string) error {
 
 func (s *msgServer) GetService(id string) (*ome.ServiceInfo, error) {
 	var info ome.ServiceInfo
-	encoded, err := s.store.Get("ome", id)
+	encoded, err := s.store.Get(s.name, id)
 	if err != nil {
 		return nil, err
 	}
@@ -502,6 +503,7 @@ func Serve(configs *ServerConfig) (ome.Registry, error) {
 		opts = append(opts, netx.Secure(configs.CertFilename, configs.KeyFilename))
 	}
 
+	s.name = configs.Name
 	var err error
 	s.listener, err = netx.Listen(configs.BindAddress, opts...)
 	if err != nil {
