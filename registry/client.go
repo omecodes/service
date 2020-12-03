@@ -2,12 +2,12 @@ package registry
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"strings"
 	"sync"
 
 	"github.com/google/uuid"
 	"github.com/omecodes/common/errors"
-	"github.com/omecodes/common/utils/codec"
 	"github.com/omecodes/common/utils/log"
 	"github.com/omecodes/libome"
 	"github.com/omecodes/zebou"
@@ -15,7 +15,6 @@ import (
 
 // MsgClient is a zebou messaging based client client
 type MsgClient struct {
-	//handlers  map[string]pb2.EventHandler
 	messenger *zebou.Client
 	store     *sync.Map
 	handlers  *sync.Map
@@ -31,7 +30,7 @@ func (m *MsgClient) RegisterService(info *ome.ServiceInfo) error {
 		Info:      info,
 	})
 
-	encoded, err := codec.Json.Encode(info)
+	encoded, err := json.Marshal(info)
 	if err != nil {
 		log.Info("could not encode service info", log.Err(err))
 		return err
@@ -195,7 +194,7 @@ func (m *MsgClient) handleInbound() {
 		switch msg.Type {
 		case ome.RegistryEventType_Update.String(), ome.RegistryEventType_Register.String():
 			info := new(ome.ServiceInfo)
-			err := codec.Json.Decode(msg.Encoded, info)
+			err := json.Unmarshal(msg.Encoded, info)
 			if err != nil {
 				log.Error("failed to decode service info from message payload", log.Err(err))
 				return
