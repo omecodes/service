@@ -330,6 +330,8 @@ func (s *msgServer) DeregisterService(id string, nodes ...string) error {
 		}
 
 		msg.Type = ome.RegistryEventType_DeRegister.String()
+		msg.Id = id
+
 		s.hub.Broadcast(context.Background(), msg)
 		ev := &ome.RegistryEvent{
 			Type:      ome.RegistryEventType_DeRegister,
