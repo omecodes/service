@@ -125,7 +125,7 @@ func (s *msgServer) getFromClient(id string) ([]*ome.ServiceInfo, error) {
 			return nil, err
 		}
 
-		entry := o.(bome.MapEntry)
+		entry := o.(*bome.MapEntry)
 
 		var info ome.ServiceInfo
 		err = json.Unmarshal([]byte(entry.Value), &info)
