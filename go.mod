@@ -12,7 +12,7 @@ require (
 	github.com/omecodes/bome v0.0.0-20201128175554-02096488538b
 	github.com/omecodes/common v0.0.0-20201205124409-0a391e4b4c08
 	github.com/omecodes/libome v0.0.0-20201202084519-7cffbc7a04c8
-	github.com/omecodes/zebou v0.0.0-20201205133818-77d87f8dcb94
+	github.com/omecodes/zebou v0.0.0-20201205140833-8e5323ef5f8f
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/spf13/cobra v1.1.1
 	go.uber.org/zap v1.16.0

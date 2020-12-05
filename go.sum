@@ -283,6 +283,8 @@ github.com/omecodes/zebou v0.0.0-20201205125103-f7a2a9244e8f h1:tcjdIheDJs8gnl/X
 github.com/omecodes/zebou v0.0.0-20201205125103-f7a2a9244e8f/go.mod h1:BaVpxrNKtfAJKuAaOLwlLySTSLU7e2pv44UNXOzobKo=
 github.com/omecodes/zebou v0.0.0-20201205133818-77d87f8dcb94 h1:AkhGzpaKOF+cWnkVU4meFQcgOV41zfDjz+UdAStSXjA=
 github.com/omecodes/zebou v0.0.0-20201205133818-77d87f8dcb94/go.mod h1:BaVpxrNKtfAJKuAaOLwlLySTSLU7e2pv44UNXOzobKo=
+github.com/omecodes/zebou v0.0.0-20201205140833-8e5323ef5f8f h1:P1U5UE5EGgYnsX/DR6a3a0OBRQtQcFpnSgjId7PXPfU=
+github.com/omecodes/zebou v0.0.0-20201205140833-8e5323ef5f8f/go.mod h1:BaVpxrNKtfAJKuAaOLwlLySTSLU7e2pv44UNXOzobKo=
 github.com/opentracing/opentracing-go v1.1.0/go.mod h1:UkNAQd3GIcIGf0SeVgPpRdFStlNbqXla1AfSYxPUl2o=
 github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+1B0VhjKrZUs=
 github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYrxe9dPLANfrWvHYVTgc=
