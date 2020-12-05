@@ -42,6 +42,7 @@ func (s *msgServer) NewClient(ctx context.Context, peer *zebou.PeerInfo) {
 		log.Info("new client connected")
 	}
 
+
 	c, err := s.store.GetAll()
 	if err != nil {
 		log.Error("could not load services list from store", log.Err(err))
@@ -54,7 +55,10 @@ func (s *msgServer) NewClient(ctx context.Context, peer *zebou.PeerInfo) {
 		}
 	}()
 
+	count := 0
 	for c.HasNext() {
+		count++
+
 		var info ome.ServiceInfo
 		o, err := c.Next()
 		if err != nil {
@@ -73,6 +77,12 @@ func (s *msgServer) NewClient(ctx context.Context, peer *zebou.PeerInfo) {
 			log.Error("could not send message", log.Err(err))
 			return
 		}
+	}
+
+	if count == 0 {
+		log.Info("No info sent to client")
+	} else {
+		log.Info("sent all service info to client", log.Field("count", count))
 	}
 }
 

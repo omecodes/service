@@ -191,6 +191,8 @@ func (m *MsgClient) handleInbound() {
 			continue
 		}
 
+		log.Info("*new message", log.Field("type", msg.Type), log.Field("id", msg.Id))
+
 		switch msg.Type {
 		case ome.RegistryEventType_Update.String(), ome.RegistryEventType_Register.String():
 			info := new(ome.ServiceInfo)
@@ -201,8 +203,6 @@ func (m *MsgClient) handleInbound() {
 			}
 
 			m.store.Store(msg.Id, info)
-
-			log.Info(msg.Type, log.Field("service", info.Id))
 			event := &ome.RegistryEvent{
 				ServiceId: msg.Id,
 				Info:      info,
@@ -212,7 +212,6 @@ func (m *MsgClient) handleInbound() {
 
 		case ome.RegistryEventType_DeRegister.String():
 			m.store.Delete(msg.Id)
-			log.Info(msg.Type, log.Field("service", msg.Id))
 			m.notifyEvent(&ome.RegistryEvent{
 				Type:      ome.RegistryEventType_DeRegister,
 				ServiceId: msg.Id,
