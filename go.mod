@@ -9,7 +9,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.0.1
 	github.com/iancoleman/strcase v0.1.2
-	github.com/omecodes/bome v0.0.0-20201128175554-02096488538b
+	github.com/omecodes/bome v0.0.0-20201204202643-a1dabdee47a4
 	github.com/omecodes/common v0.0.0-20201205124409-0a391e4b4c08
 	github.com/omecodes/libome v0.0.0-20201202084519-7cffbc7a04c8
 	github.com/omecodes/zebou v0.0.0-20201205140833-8e5323ef5f8f
