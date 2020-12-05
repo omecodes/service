@@ -261,9 +261,10 @@ func NewZebouClient(server string, tlsConfig *tls.Config) *MsgClient {
 	c.store = new(sync.Map)
 	c.handlers = new(sync.Map)
 
-	c.messenger = zebou.Connect(server, tlsConfig)
+	c.messenger = zebou.NewClient(server, tlsConfig)
 	c.messenger.SetConnectionSateHandler(zebou.ConnectionStateHandlerFunc(func(active bool) {
 		if active {
+			go c.handleInbound()
 			c.store.Range(func(key, value interface{}) bool {
 				i := value.(*ome.ServiceInfo)
 				err := c.messenger.Send(
@@ -281,7 +282,6 @@ func NewZebouClient(server string, tlsConfig *tls.Config) *MsgClient {
 			log.Info("sent all info to server")
 		}
 	}))
-	go c.handleInbound()
-
+	c.messenger.Connect()
 	return c
 }
