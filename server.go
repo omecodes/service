@@ -19,7 +19,7 @@ type ACMEServiceGatewayParams struct {
 	ServiceName    string
 	TargetNodeName string
 	NodeName       string
-	ServiceType    ome.ServiceType
+	ServiceType    uint32
 	Binder         WireEndpointFunc
 	MuxWrapper     MuxWrapper
 	Meta           map[string]string
@@ -32,7 +32,7 @@ type GatewayGrpcMappingParams struct {
 	NodeName       string
 	Port           int
 	Tls            *tls.Config
-	ServiceType    ome.ServiceType
+	ServiceType    uint32
 	Security       ome.Security
 	Binder         WireEndpointFunc
 	MuxWrapper     MuxWrapper
@@ -45,7 +45,7 @@ type GatewayParams struct {
 	Port           int
 	ProvideRouter  func() *mux.Router
 	Tls            *tls.Config
-	ServiceType    ome.ServiceType
+	ServiceType    uint32
 	Node           *ome.Node
 }
 
@@ -53,7 +53,7 @@ type AcmeGatewayParams struct {
 	ForceRegister  bool
 	MiddlewareList []mux.MiddlewareFunc
 	ProvideRouter  func() *mux.Router
-	ServiceType    ome.ServiceType
+	ServiceType    uint32
 	Node           *ome.Node
 }
 
@@ -63,7 +63,7 @@ type GrpcNodeParams struct {
 	Tls                 *tls.Config
 	Interceptor         MergedInterceptor
 	RegisterHandlerFunc func(*grpc.Server)
-	ServiceType         ome.ServiceType
+	ServiceType         uint32
 	Meta                map[string]string
 	Node                *ome.Node
 }

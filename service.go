@@ -21,7 +21,7 @@ func (box *Box) ServiceAddress(name string) (string, error) {
 	return s.Address, nil
 }
 
-func GRPCConnectionDialer(ctx context.Context, serviceType ome.ServiceType, opts ...grpc.DialOption) (Dialer, error) {
+func GRPCConnectionDialer(ctx context.Context, serviceType uint32, opts ...grpc.DialOption) (Dialer, error) {
 	reg := Registry(ctx)
 	if reg == nil {
 		return nil, errors.New("no registry configured")
@@ -102,7 +102,7 @@ func SpecificServiceNodeConnectionDialer(ctx context.Context, serviceID string, 
 	return nil, fmt.Errorf("no gPRCNode named %s of service named %s that supports gRPC has been found", nodeName, serviceID)
 }
 
-func Connect(ctx context.Context, ofType ome.ServiceType, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
+func Connect(ctx context.Context, ofType uint32, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	dialer, err := GRPCConnectionDialer(ctx, ofType, opts...)
 	if err != nil {
 		return nil, err
@@ -126,7 +126,7 @@ func ConnectToSpecificServiceNode(ctx context.Context, serviceID, nodeName strin
 	return dialer.Dial()
 }
 
-func (box *Box) GRPCConnectionDialer(serviceType ome.ServiceType, opts ...grpc.DialOption) (Dialer, error) {
+func (box *Box) GRPCConnectionDialer(serviceType uint32, opts ...grpc.DialOption) (Dialer, error) {
 	reg := box.Registry()
 	if reg == nil {
 		return nil, errors.New("no registry configured")
@@ -207,7 +207,7 @@ func (box *Box) SpecificServiceNodeConnectionDialer(serviceID string, nodeName s
 	return nil, fmt.Errorf("no gPRCNode named %s of service named %s that supports gRPC has been found", nodeName, serviceID)
 }
 
-func (box *Box) Connect(ofType ome.ServiceType, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
+func (box *Box) Connect(ofType uint32, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	dialer, err := box.GRPCConnectionDialer(ofType, opts...)
 	if err != nil {
 		return nil, err

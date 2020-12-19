@@ -135,7 +135,7 @@ func (j *syncedVerifier) initStores() {
 	j.storesInitialized = true
 
 	log.Info("[jwt verifier] initializing token stores")
-	infos, err := j.registry.GetOfType(ome.ServiceType_TokenStore)
+	infos, err := j.registry.GetOfType(ome.TokenStoreServiceType)
 	if err != nil {
 		log.Error("[jwt verifier] could not load token stores info", log.Err(err))
 		return

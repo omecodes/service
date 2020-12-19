@@ -323,7 +323,7 @@ func (atv *authorizationJWT) Middleware(next http.Handler) http.Handler {
 
 				box := BoxFromContext(r.Context())
 				reg := box.Registry()
-				info, err := reg.FirstOfType(ome.ServiceType_Authentication)
+				info, err := reg.FirstOfType(ome.AuthenticationServiceType)
 				if err != nil {
 					log.Error("could not find authentication server in registry")
 					w.WriteHeader(http.StatusInternalServerError)

@@ -9,8 +9,8 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.0.1
 	github.com/iancoleman/strcase v0.1.2
 	github.com/omecodes/common v0.0.0-20201205124409-0a391e4b4c08
-	github.com/omecodes/discover v0.0.0-20201219122734-70fb556a9ef2
-	github.com/omecodes/libome v0.0.0-20201219112332-e9e07f64c286
+	github.com/omecodes/discover v0.0.0-20201219125130-b93285a50df5
+	github.com/omecodes/libome v0.0.0-20201219125050-603bd134339c
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/spf13/cobra v1.1.1
 	go.uber.org/zap v1.16.0

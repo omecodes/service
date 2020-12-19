@@ -36,7 +36,7 @@ func VerifyJwt(ctx context.Context, jwt string) error {
 }
 
 func RevokeJwt(ctx context.Context, jwt string) error {
-	conn, err := Connect(ctx, ome.ServiceType_TokenStore)
+	conn, err := Connect(ctx, ome.TokenStoreServiceType)
 	if err != nil {
 		return err
 	}

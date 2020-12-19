@@ -10,7 +10,7 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-func (box *Box) dialToService(serviceType ome.ServiceType) (*grpc.ClientConn, error) {
+func (box *Box) dialToService(serviceType uint32) (*grpc.ClientConn, error) {
 	infoList, err := box.Registry().GetOfType(serviceType)
 	if err != nil {
 		return nil, err
