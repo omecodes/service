@@ -6,10 +6,10 @@ import (
 
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/utils/log"
+	"github.com/omecodes/discover"
 	"github.com/omecodes/libome"
 	"github.com/omecodes/libome/crypt"
 	"github.com/omecodes/libome/ports"
-	"github.com/omecodes/service/registry"
 	"google.golang.org/grpc/credentials"
 )
 
@@ -52,7 +52,7 @@ func (box *Box) Init(opts ...InitOption) error {
 
 	if !box.params.NoRegistry {
 		box.registry = options.registry
-		if options.registry == nil {
+		if box.registry == nil {
 			err = box.initRegistry()
 			if err != nil {
 				return errors.Errorf("could not initialize registry: %s", err)
@@ -111,19 +111,20 @@ func (box *Box) initRegistry() (err error) {
 	}
 
 	if box.params.RegistryServer {
-		dc := &registry.ServerConfig{
-			Name:         box.params.Name,
-			BindAddress:  box.params.RegistryAddress,
-			CertFilename: box.CertificateFilename(),
-			KeyFilename:  box.KeyFilename(),
-			StoreDir:     box.Dir(),
+		dc := &discover.ServerConfig{
+			Name:                 box.params.Name,
+			StoreDir:             box.Dir(),
+			BindAddress:          box.params.RegistryAddress,
+			CertFilename:         box.CertificateFilename(),
+			KeyFilename:          box.KeyFilename(),
+			ClientCACertFilename: box.params.CACertPath,
 		}
-		box.registry, err = registry.Serve(dc)
+		box.registry, err = discover.Serve(dc)
 		if err != nil {
 			log.Error("impossible to run discovery server", log.Err(err))
 		}
 	} else {
-		box.registry = registry.NewZebouClient(box.params.RegistryAddress, box.ClientTLS())
+		box.registry = discover.NewZebouClient(box.params.RegistryAddress, box.ClientMutualTLS())
 	}
 	return
 }
