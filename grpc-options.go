@@ -1,13 +1,16 @@
 package service
 
-import "crypto/tls"
+import (
+	"crypto/tls"
+	ome "github.com/omecodes/libome"
+)
 
 type nodeOptions struct {
-	forceRegister bool
-	port          int
-	tlsConfig     *tls.Config
-	interceptors  []Interceptor
-	md            MD
+	register     bool
+	port         int
+	tlsConfig    *tls.Config
+	interceptors []ome.GrpcContextUpdater
+	md           MD
 }
 
 type NodeOption func(options *nodeOptions)
@@ -24,7 +27,7 @@ func WithTLS(t *tls.Config) NodeOption {
 	}
 }
 
-func WithInterceptor(interceptors ...Interceptor) NodeOption {
+func WithInterceptor(interceptors ...ome.GrpcContextUpdater) NodeOption {
 	return func(options *nodeOptions) {
 		options.interceptors = append(options.interceptors, interceptors...)
 	}
@@ -36,8 +39,8 @@ func WithMeta(m MD) NodeOption {
 	}
 }
 
-func ForceRegister(register bool) NodeOption {
+func Register(register bool) NodeOption {
 	return func(options *nodeOptions) {
-		options.forceRegister = register
+		options.register = register
 	}
 }

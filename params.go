@@ -9,38 +9,37 @@ import (
 	"github.com/omecodes/libome"
 )
 
-type Params struct {
-	Name            string
-	Dir             string
-	Domain          string
-	OtherDomains    []string
-	Ip              string
-	ExternalIp      string
-	Acme            bool
+type TLSInfo struct {
 	CertificatePath string
 	KeyPath         string
-	Autonomous      bool
-	Keys            [][]byte
+}
 
-	NoRegistry      bool
-	RegistryServer  bool
-	RegistryAddress string
-	RegistrySecure  bool
-	RegistryID      string
+type NetworkInfo struct {
+	Domain       string
+	Ip           string
+	OtherDomains []string
+	ExternalIp   string
+}
 
-	CA            bool
+type CAInfo struct {
 	CAAddress     string
 	CACertPath    string
 	CACredentials string
 }
 
+type Params struct {
+	NetworkInfo
+	TLSInfo
+	CAInfo
+
+	Name            string
+	Dir             string
+	RegistryAddress string
+}
+
 func (box *Box) validateParams() error {
 	if box.params.Name == "" {
 		return errors.New("box params: name is empty")
-	}
-
-	if box.params.Autonomous {
-		return nil
 	}
 
 	if box.params.Domain == "" && box.params.Ip == "" {
@@ -53,12 +52,8 @@ func (box *Box) validateParams() error {
 		return err
 	}
 
-	if box.params.CAAddress == "" && !box.params.CA {
+	if box.params.CAAddress == "" {
 		return errors.New("box params: CA address is empty")
-	}
-
-	if !box.params.NoRegistry && box.params.RegistryAddress == "" {
-		return errors.New("box params: registry server address is empty")
 	}
 
 	if box.params.CACertPath == "" {
@@ -70,7 +65,7 @@ func (box *Box) validateParams() error {
 		box.params.CACertPath = caCertPath
 	}
 
-	if !box.params.CA && box.params.CACredentials == "" {
+	if box.params.CACredentials == "" {
 		return errors.New("box params: CA credentials is empty")
 	}
 

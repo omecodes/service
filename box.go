@@ -67,10 +67,6 @@ func (box *Box) Domain() string {
 	return box.params.Domain
 }
 
-func (box *Box) AcmeEnabled() bool {
-	return box.params.Acme
-}
-
 func (box *Box) IP() string {
 	return box.params.Ip
 }

@@ -22,7 +22,7 @@ func (box *Box) listen(port int, security ome.Security, tc *tls.Config) (net.Lis
 		address = fmt.Sprintf("%s:", box.Host())
 	}
 
-	if !box.params.Autonomous && (tc != nil || security != ome.Security_Insecure) {
+	if tc != nil || security != ome.Security_Insecure {
 		if tc == nil {
 			err = box.loadOrGenerateCertificateKeyPair()
 			if err != nil {

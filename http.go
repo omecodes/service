@@ -87,10 +87,10 @@ func (box *Box) StartGateway(params *GatewayParams, nOpts ...NodeOption) error {
 				_ = box.registry.RegisterService(box.info)
 			}
 		}
-
 	}()
 
-	if !box.params.Autonomous && box.registry != nil {
+	if options.register {
+		registry := box.Registry()
 		n := params.Node
 		n.Address = address
 		if box.info == nil {
@@ -104,7 +104,7 @@ func (box *Box) StartGateway(params *GatewayParams, nOpts ...NodeOption) error {
 		box.info.Nodes = append(box.info.Nodes, n)
 
 		// gt.RegistryID, err = box.registry.RegisterService(info, ome.ActionOnRegisterExistingService_AddNodes|ome.ActionOnRegisterExistingService_UpdateExisting)
-		err = box.registry.RegisterService(box.info)
+		err = registry.RegisterService(box.info)
 		if err != nil {
 			log.Error("could not register gateway", log.Err(err), log.Field("name", params.Node.Id))
 		}
@@ -112,9 +112,14 @@ func (box *Box) StartGateway(params *GatewayParams, nOpts ...NodeOption) error {
 	return nil
 }
 
-func (box *Box) StartAcmeGateway(params *AcmeGatewayParams) error {
+func (box *Box) StartAcmeGateway(params *AcmeGatewayParams, nOpts ...NodeOption) error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
+
+	var options nodeOptions
+	for _, o := range nOpts {
+		o(&options)
+	}
 
 	cacheDir := filepath.Dir(box.CertificateFilename())
 	hostPolicy := func(ctx context.Context, host string) error {
@@ -196,7 +201,7 @@ func (box *Box) StartAcmeGateway(params *AcmeGatewayParams) error {
 		}
 	}()
 
-	if !box.params.Autonomous && box.registry != nil {
+	if options.register {
 		n := params.Node
 		n.Address = address
 		if box.info == nil {

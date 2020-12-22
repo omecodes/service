@@ -8,7 +8,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,67 +21,6 @@ import (
 	"github.com/omecodes/libome/crypt"
 	"google.golang.org/grpc"
 )
-
-func (box *Box) loadOrGenerateCACertificateKeyPair() (err error) {
-	if box.cert != nil && box.privateKey != nil {
-		return nil
-	}
-
-	name := strcase.ToSnake(box.params.Name)
-	if box.params.CertificatePath == "" {
-		box.params.CertificatePath = filepath.Join(box.params.Dir, fmt.Sprintf("%s.crt", name))
-	}
-
-	if box.params.KeyPath == "" {
-		box.params.KeyPath = filepath.Join(box.params.Dir, fmt.Sprintf("%s.key", name))
-	}
-
-	shouldGenerateNewPair := !futils.FileExists(box.params.CertificatePath) || !futils.FileExists(box.params.KeyPath)
-	if !shouldGenerateNewPair {
-		box.privateKey, err = crypt.LoadPrivateKey([]byte{}, box.params.KeyPath)
-		if err != nil {
-			return fmt.Errorf("could not load private key: %s", err)
-		}
-
-		box.cert, err = crypt.LoadCertificate(box.params.CertificatePath)
-		if err != nil {
-			return fmt.Errorf("could not load certificate: %s", err)
-		}
-		return
-	}
-
-	if shouldGenerateNewPair {
-		box.privateKey, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-		if err != nil {
-			return fmt.Errorf("could not generate key pair: %s", err)
-		}
-		pub := box.privateKey.(*ecdsa.PrivateKey).PublicKey
-
-		caCertTemplate := &crypt.CertificateTemplate{
-			Organization:      "oe",
-			Name:              "CA-" + box.params.Name,
-			Domains:           []string{box.params.Domain},
-			IPs:               []net.IP{},
-			Expiry:            time.Hour * 24 * 370,
-			PublicKey:         &pub,
-			SignerPrivateKey:  box.privateKey,
-			SignerCertificate: box.cert,
-		}
-
-		for _, ip := range box.IpList() {
-			caCertTemplate.IPs = append(caCertTemplate.IPs, net.ParseIP(ip))
-		}
-
-		box.cert, err = crypt.GenerateCACertificate(caCertTemplate)
-		if err != nil {
-			return fmt.Errorf("could not generate CA cert: %s", err)
-		}
-
-		_ = crypt.StoreCertificate(box.cert, box.params.CertificatePath, os.ModePerm)
-		_ = crypt.StorePrivateKey(box.privateKey, nil, box.params.KeyPath)
-	}
-	return
-}
 
 func (box *Box) loadOrGenerateCertificateKeyPair() (err error) {
 	if box.cert != nil && box.privateKey != nil {
@@ -183,15 +121,11 @@ func (box *Box) loadOrGenerateCertificateKeyPair() (err error) {
 }
 
 func (box *Box) serverMutualTLS() *tls.Config {
-	if box.privateKey == nil || box.cert == nil || box.caCert == nil && !box.params.CA {
+	if box.privateKey == nil || box.cert == nil || box.caCert == nil {
 		return nil
 	}
 	CAPool := x509.NewCertPool()
-	if box.params.CA {
-		CAPool.AddCert(box.cert)
-	} else {
-		CAPool.AddCert(box.caCert)
-	}
+	CAPool.AddCert(box.caCert)
 	tlsCert := tls.Certificate{
 		Certificate: [][]byte{box.cert.Raw},
 		PrivateKey:  box.privateKey,
@@ -205,7 +139,7 @@ func (box *Box) serverMutualTLS() *tls.Config {
 }
 
 func (box *Box) ServerTLS() *tls.Config {
-	if box.privateKey == nil || box.cert == nil || box.caCert == nil && !box.params.CA {
+	if box.privateKey == nil || box.cert == nil || box.caCert == nil {
 		return nil
 	}
 	tlsCert := tls.Certificate{
@@ -219,15 +153,12 @@ func (box *Box) ServerTLS() *tls.Config {
 }
 
 func (box *Box) ClientMutualTLS() *tls.Config {
-	if box.privateKey == nil || box.cert == nil || box.caCert == nil && !box.params.CA {
+	if box.privateKey == nil || box.cert == nil || box.caCert == nil {
 		return nil
 	}
 	CAPool := x509.NewCertPool()
-	if box.params.CA {
-		CAPool.AddCert(box.cert)
-	} else {
-		CAPool.AddCert(box.caCert)
-	}
+	CAPool.AddCert(box.caCert)
+
 	tlsCert := tls.Certificate{
 		Certificate: [][]byte{box.cert.Raw},
 		PrivateKey:  box.privateKey.(*ecdsa.PrivateKey),

@@ -3,11 +3,9 @@ package service
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"flag"
 	"fmt"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	grpc_opentracing "github.com/grpc-ecosystem/go-grpc-middleware/tracing/opentracing"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/omecodes/common/errors"
@@ -15,9 +13,7 @@ import (
 	"github.com/omecodes/common/utils/log"
 	"github.com/omecodes/discover"
 	"github.com/omecodes/libome"
-	"github.com/omecodes/libome/crypt"
 	"github.com/omecodes/libome/ports"
-	"go.uber.org/zap"
 	"golang.org/x/crypto/acme/autocert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -33,7 +29,7 @@ type Mapper func(context.Context, *runtime.ServeMux, string, []grpc.DialOption) 
 type MuxWrapper func(mux *runtime.ServeMux) http.Handler
 
 func (box *Box) StartNodeGateway(params *NodeGatewayParams, nOpts ...NodeOption) error {
-	if box.registry != nil && !box.params.Autonomous {
+	if box.registry != nil {
 		box.serverMutex.Lock()
 		defer box.serverMutex.Unlock()
 
@@ -122,7 +118,7 @@ func (box *Box) StartNodeGateway(params *NodeGatewayParams, nOpts ...NodeOption)
 				}
 			}()
 
-			if options.forceRegister || !box.params.CA && !box.params.Autonomous {
+			if options.register {
 				box.ConnectToRegistry()
 
 				if box.registry != nil {
@@ -264,7 +260,7 @@ func (box *Box) StartAcmeNodeGateway(params *ACMENodeGatewayParams, nOpts ...Nod
 			}
 		}()
 
-		if options.forceRegister || !box.params.CA && !box.params.Autonomous {
+		if options.register {
 			if box.registry != nil {
 				if box.info == nil {
 					box.info = &ome.ServiceInfo{}
@@ -315,14 +311,14 @@ func (box *Box) StartNode(params *NodeParams, nOpts ...NodeOption) error {
 	log.Info("starting gRPC server", log.Field("service", params.Node.Id), log.Field("address", address))
 	var opts []grpc.ServerOption
 
-	mergedInterceptors := NewInterceptorsChain(options.interceptors...)
+	mergedInterceptors := ome.NewGrpcContextInterceptor(options.interceptors...)
 	streamInterceptors := append([]grpc.StreamServerInterceptor{},
 		grpc_opentracing.StreamServerInterceptor(),
-		mergedInterceptors.InterceptStream,
+		mergedInterceptors.StreamUpdate,
 	)
 	unaryInterceptors := append([]grpc.UnaryServerInterceptor{},
 		grpc_opentracing.UnaryServerInterceptor(),
-		mergedInterceptors.InterceptUnary,
+		mergedInterceptors.UnaryUpdate,
 	)
 
 	chainUnaryInterceptor := grpc_middleware.ChainUnaryServer(unaryInterceptors...)
@@ -359,7 +355,7 @@ func (box *Box) StartNode(params *NodeParams, nOpts ...NodeOption) error {
 		}
 	}()
 
-	if options.forceRegister || !box.params.CA && !box.params.Autonomous && params.Node != nil {
+	if options.register || params.Node != nil {
 		box.ConnectToRegistry()
 
 		if box.info == nil {
@@ -382,70 +378,6 @@ func (box *Box) StartNode(params *NodeParams, nOpts ...NodeOption) error {
 			log.Error("could not register service", log.Err(err), log.Field("name", params.Node.Id))
 		}
 	}
-	return nil
-}
-
-func (box *Box) StartCA(credentialsVerifier CredentialsValidatorFunc) error {
-	box.serverMutex.Lock()
-	defer box.serverMutex.Unlock()
-
-	var tc *tls.Config
-	certPEMBytes, _ := crypt.PEMEncodeCertificate(box.cert)
-	keyPEMBytes, _ := crypt.PEMEncodeKey(box.privateKey)
-	tlsCert, err := tls.X509KeyPair(certPEMBytes, keyPEMBytes)
-	if err == nil {
-		clientCAs := x509.NewCertPool()
-		clientCAs.AddCert(box.cert)
-		tc = &tls.Config{
-			Certificates: []tls.Certificate{tlsCert},
-			ClientCAs:    clientCAs,
-			ClientAuth:   tls.VerifyClientCertIfGiven,
-		}
-	} else {
-		log.Error("could not load TLS configs", log.Err(err))
-		return err
-	}
-
-	address := fmt.Sprintf("%s:%d", box.Domain(), ports.CA)
-
-	listener, err := tls.Listen("tcp", address, tc)
-	if err != nil {
-		return err
-	}
-
-	log.Info("starting gRPC server", log.Field("service", "CA"), log.Field("at", address))
-	var opts []grpc.ServerOption
-
-	defaultInterceptor := NewInterceptorsChain(
-		NewProxyBasicInterceptor(),
-	)
-
-	logger, _ := zap.NewProduction()
-	chainUnaryInterceptor := grpc_middleware.ChainUnaryServer(
-		defaultInterceptor.InterceptUnary,
-		grpc_opentracing.UnaryServerInterceptor(),
-		grpc_zap.UnaryServerInterceptor(logger),
-	)
-
-	opts = append(opts, grpc.UnaryInterceptor(chainUnaryInterceptor))
-	srv := grpc.NewServer(opts...)
-	ome.RegisterCSRServer(srv, &csrServerHandler{
-		credentialsVerifyFunc: credentialsVerifier,
-		PrivateKey:            box.privateKey,
-		Certificate:           box.cert,
-	})
-
-	rs := new(gPRCNode)
-	rs.Address = address
-	rs.Server = srv
-	rs.Secure = true
-	box.gRPCNodes["ca"] = rs
-
-	go func() {
-		if err := srv.Serve(listener); err != nil {
-			log.Error("failed to serve CA", log.Err(err))
-		}
-	}()
 	return nil
 }
 
@@ -501,7 +433,8 @@ func (box *Box) StopNode(name string) {
 	defer box.serverMutex.Unlock()
 	rs := box.gRPCNodes[name]
 	delete(box.gRPCNodes, name)
-	if !box.params.Autonomous && rs != nil && box.registry != nil {
+
+	if rs != nil && box.registry != nil {
 		err := box.registry.DeregisterService(name)
 		if err != nil {
 			log.Error("could not deregister service", log.Err(err), log.Field("name", name))
@@ -519,11 +452,9 @@ func (box *Box) stopNodes() error {
 			rs.Stop()
 		}
 
-		if !box.params.Autonomous {
-			err := box.registry.DeregisterService(box.Name(), box.Name())
-			if err != nil {
-				log.Error("could not de register service", log.Err(err), log.Field("name", box.Name()))
-			}
+		err := box.registry.DeregisterService(box.Name(), box.Name())
+		if err != nil {
+			log.Error("could not de register service", log.Err(err), log.Field("name", box.Name()))
 		}
 	}
 	box.gRPCNodes = map[string]*gPRCNode{}

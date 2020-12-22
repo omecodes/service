@@ -11,10 +11,6 @@ import (
 
 // Init initializes box from parameters
 func (box *Box) Init(opts ...InitOption) error {
-	if box.params.Autonomous {
-		return nil
-	}
-
 	var err error
 	options := &initOptions{}
 	for _, opt := range opts {
@@ -27,26 +23,18 @@ func (box *Box) Init(opts ...InitOption) error {
 			return errors.Errorf("could not load certificate/key pair from file: %s", err)
 		}
 	} else {
-		if box.params.CA {
-			err = box.loadOrGenerateCACertificateKeyPair()
-			if err != nil {
-				return errors.Errorf("could not load CA key pair: %s", err)
-			}
+		err = box.loadCACredentials()
+		if err != nil {
+			return errors.Errorf("could not initialize CA credentials: %s", err)
+		}
 
-		} else {
-			err = box.loadCACredentials()
-			if err != nil {
-				return errors.Errorf("could not initialize CA credentials: %s", err)
-			}
-
-			err = box.loadOrGenerateCertificateKeyPair()
-			if err != nil {
-				return err
-			}
+		err = box.loadOrGenerateCertificateKeyPair()
+		if err != nil {
+			return err
 		}
 	}
 
-	if !box.params.NoRegistry && options.registry != nil {
+	if options.registry != nil {
 		box.registry = options.registry
 	}
 	return nil

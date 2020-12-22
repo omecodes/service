@@ -10,7 +10,7 @@ require (
 	github.com/iancoleman/strcase v0.1.2
 	github.com/omecodes/common v0.0.0-20201205124409-0a391e4b4c08
 	github.com/omecodes/discover v0.0.0-20201222170647-7647400baa0c
-	github.com/omecodes/libome v0.0.0-20201219125050-603bd134339c
+	github.com/omecodes/libome v0.0.0-20201222212527-11e3f5f47526
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/spf13/cobra v1.1.1
 	go.uber.org/zap v1.16.0
