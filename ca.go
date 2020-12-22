@@ -15,7 +15,7 @@ import (
 
 type csrServerHandler struct {
 	ome.UnimplementedCSRServer
-	credentialsVerifyFunc CredentialsVerifyFunc
+	credentialsVerifyFunc CredentialsValidatorFunc
 	PrivateKey            crypto.PrivateKey
 	Certificate           *x509.Certificate
 }

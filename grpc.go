@@ -13,6 +13,7 @@ import (
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/httpx"
 	"github.com/omecodes/common/utils/log"
+	"github.com/omecodes/discover"
 	"github.com/omecodes/libome"
 	"github.com/omecodes/libome/crypt"
 	"github.com/omecodes/libome/ports"
@@ -31,34 +32,22 @@ type Mapper func(context.Context, *runtime.ServeMux, string, []grpc.DialOption) 
 
 type MuxWrapper func(mux *runtime.ServeMux) http.Handler
 
-func (box *Box) OmeBasicClientCredentials() credentials.PerRPCCredentials {
-	if box.caClientAuthentication == nil {
-		parts := strings.Split(box.params.CACredentials, ":")
-		box.caClientAuthentication = ome.NewGRPCBasic(parts[0], parts[1])
-	}
-	return box.caClientAuthentication
-}
-
-func (box *Box) OmeProxyBasicClientCredentials() credentials.PerRPCCredentials {
-	parts := strings.Split(box.params.CACredentials, ":")
-	return ome.NewGRPCProxy(parts[0], parts[1])
-}
-
-func (box *Box) CAClientTransportCredentials() credentials.TransportCredentials {
-	return box.caGRPCTransportCredentials
-}
-
-func (box *Box) StartGatewayGrpcMappingNode(params *GatewayGrpcMappingParams) error {
+func (box *Box) StartNodeGateway(params *NodeGatewayParams, nOpts ...NodeOption) error {
 	if box.registry != nil && !box.params.Autonomous {
 		box.serverMutex.Lock()
 		defer box.serverMutex.Unlock()
+
+		options := new(nodeOptions)
+		for _, o := range nOpts {
+			o(options)
+		}
 
 		info, err := box.registry.GetService(params.ServiceName)
 		if err != nil {
 			return err
 		}
 
-		listener, err := box.listen(params.Port, params.Security, params.Tls)
+		listener, err := box.listen(options.port, params.Security, options.tlsConfig)
 		if err != nil {
 			return err
 		}
@@ -133,7 +122,9 @@ func (box *Box) StartGatewayGrpcMappingNode(params *GatewayGrpcMappingParams) er
 				}
 			}()
 
-			if params.ForceRegister || !box.params.CA && !box.params.Autonomous {
+			if options.forceRegister || !box.params.CA && !box.params.Autonomous {
+				box.ConnectToRegistry()
+
 				if box.registry != nil {
 					if box.info == nil {
 						box.info = &ome.ServiceInfo{}
@@ -146,7 +137,7 @@ func (box *Box) StartGatewayGrpcMappingNode(params *GatewayGrpcMappingParams) er
 					n.Address = address
 					n.Protocol = ome.Protocol_Http
 					n.Security = params.Security
-					n.Meta = params.Meta
+					n.Meta = options.md
 					box.info.Nodes = append(box.info.Nodes, n)
 
 					err = box.registry.RegisterService(box.info)
@@ -161,10 +152,15 @@ func (box *Box) StartGatewayGrpcMappingNode(params *GatewayGrpcMappingParams) er
 	return errors.New("matching gRPC service not found")
 }
 
-func (box *Box) StartAcmeServiceGatewayMapping(params *ACMEServiceGatewayParams) error {
+func (box *Box) StartAcmeNodeGateway(params *ACMENodeGatewayParams, nOpts ...NodeOption) error {
 
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
+
+	options := new(nodeOptions)
+	for _, o := range nOpts {
+		o(options)
+	}
 
 	info, err := box.registry.GetService(params.ServiceName)
 	if err != nil {
@@ -268,7 +264,7 @@ func (box *Box) StartAcmeServiceGatewayMapping(params *ACMEServiceGatewayParams)
 			}
 		}()
 
-		if params.ForceRegister || !box.params.CA && !box.params.Autonomous {
+		if options.forceRegister || !box.params.CA && !box.params.Autonomous {
 			if box.registry != nil {
 				if box.info == nil {
 					box.info = &ome.ServiceInfo{}
@@ -281,7 +277,7 @@ func (box *Box) StartAcmeServiceGatewayMapping(params *ACMEServiceGatewayParams)
 				n.Address = address
 				n.Protocol = ome.Protocol_Http
 				n.Security = ome.Security_Acme
-				n.Meta = params.Meta
+				n.Meta = options.md
 				box.info.Nodes = append(box.info.Nodes, n)
 
 				err = box.registry.RegisterService(box.info)
@@ -297,11 +293,16 @@ func (box *Box) StartAcmeServiceGatewayMapping(params *ACMEServiceGatewayParams)
 	return errors.NotFound
 }
 
-func (box *Box) StartGrpcNode(params *GrpcNodeParams) error {
+func (box *Box) StartNode(params *NodeParams, nOpts ...NodeOption) error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
 
-	listener, err := box.listen(params.Port, ome.Security_MutualTls, params.Tls)
+	options := new(nodeOptions)
+	for _, o := range nOpts {
+		o(options)
+	}
+
+	listener, err := box.listen(options.port, ome.Security_MutualTls, options.tlsConfig)
 	if err != nil {
 		return err
 	}
@@ -314,29 +315,15 @@ func (box *Box) StartGrpcNode(params *GrpcNodeParams) error {
 	log.Info("starting gRPC server", log.Field("service", params.Node.Id), log.Field("address", address))
 	var opts []grpc.ServerOption
 
-	interceptorChain := NewInterceptorsChain(
-		InterceptorFunc(
-			func(ctx context.Context) (context.Context, error) {
-				return ContextWithBox(ctx, box), nil
-			}),
-		NewProxyBasicInterceptor(),
-		NewJwtVerifierInterceptor(box.JwtVerifyFunc),
-	)
-
+	mergedInterceptors := NewInterceptorsChain(options.interceptors...)
 	streamInterceptors := append([]grpc.StreamServerInterceptor{},
 		grpc_opentracing.StreamServerInterceptor(),
-		interceptorChain.InterceptStream,
+		mergedInterceptors.InterceptStream,
 	)
-
 	unaryInterceptors := append([]grpc.UnaryServerInterceptor{},
 		grpc_opentracing.UnaryServerInterceptor(),
-		interceptorChain.InterceptUnary,
+		mergedInterceptors.InterceptUnary,
 	)
-
-	if params.Interceptor != nil {
-		streamInterceptors = append(streamInterceptors, params.Interceptor.InterceptStream)
-		unaryInterceptors = append(unaryInterceptors, params.Interceptor.InterceptUnary)
-	}
 
 	chainUnaryInterceptor := grpc_middleware.ChainUnaryServer(unaryInterceptors...)
 	chainStreamInterceptor := grpc_middleware.ChainStreamServer(streamInterceptors...)
@@ -348,7 +335,7 @@ func (box *Box) StartGrpcNode(params *GrpcNodeParams) error {
 	rs := new(gPRCNode)
 	rs.Address = address
 	rs.Server = srv
-	rs.Secure = params.Tls != nil
+	rs.Secure = options.tlsConfig != nil
 
 	rs.Name = params.Node.Id
 	box.gRPCNodes[params.Node.Id] = rs
@@ -372,7 +359,9 @@ func (box *Box) StartGrpcNode(params *GrpcNodeParams) error {
 		}
 	}()
 
-	if params.ForceRegister || !box.params.CA && !box.params.Autonomous && params.Node != nil && box.registry != nil {
+	if options.forceRegister || !box.params.CA && !box.params.Autonomous && params.Node != nil {
+		box.ConnectToRegistry()
+
 		if box.info == nil {
 			box.info = &ome.ServiceInfo{}
 			box.info.Id = box.Name()
@@ -380,7 +369,7 @@ func (box *Box) StartGrpcNode(params *GrpcNodeParams) error {
 			if box.info.Meta == nil {
 				box.info.Meta = map[string]string{}
 			}
-			for name, meta := range params.Meta {
+			for name, meta := range options.md {
 				box.info.Meta[name] = meta
 			}
 		}
@@ -396,41 +385,7 @@ func (box *Box) StartGrpcNode(params *GrpcNodeParams) error {
 	return nil
 }
 
-func (box *Box) StopService(name string) {
-	box.serverMutex.Lock()
-	defer box.serverMutex.Unlock()
-	rs := box.gRPCNodes[name]
-	delete(box.gRPCNodes, name)
-	if !box.params.Autonomous && rs != nil && box.registry != nil {
-		err := box.registry.DeregisterService(name)
-		if err != nil {
-			log.Error("could not deregister service", log.Err(err), log.Field("name", name))
-		}
-		rs.Stop()
-	}
-}
-
-func (box *Box) stopServices() error {
-	box.serverMutex.Lock()
-	defer box.serverMutex.Unlock()
-
-	if box.registry != nil {
-		for _, rs := range box.gRPCNodes {
-			rs.Stop()
-		}
-
-		if !box.params.Autonomous {
-			err := box.registry.DeregisterService(box.Name(), box.Name())
-			if err != nil {
-				log.Error("could not de register service", log.Err(err), log.Field("name", box.Name()))
-			}
-		}
-	}
-	box.gRPCNodes = map[string]*gPRCNode{}
-	return nil
-}
-
-func (box *Box) StartCAService(credentialsVerifier CredentialsVerifyFunc) error {
+func (box *Box) StartCA(credentialsVerifier CredentialsValidatorFunc) error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
 
@@ -486,7 +441,92 @@ func (box *Box) StartCAService(credentialsVerifier CredentialsVerifyFunc) error 
 	rs.Secure = true
 	box.gRPCNodes["ca"] = rs
 
-	go srv.Serve(listener)
+	go func() {
+		if err := srv.Serve(listener); err != nil {
+			log.Error("failed to serve CA", log.Err(err))
+		}
+	}()
+	return nil
+}
+
+func (box *Box) StartRegistry() (err error) {
+	if box.params.RegistryAddress == "" {
+		box.params.RegistryAddress = fmt.Sprintf("%s:%d", box.Host(), ports.Discover)
+
+	} else {
+		parts := strings.Split(box.params.RegistryAddress, ":")
+		if len(parts) != 2 {
+			if len(parts) == 1 {
+				box.params.RegistryAddress = fmt.Sprintf("%s:%d", box.params.RegistryAddress, ports.Discover)
+			}
+			return errors.New("malformed registry address. Should be like HOST:PORT")
+		}
+	}
+
+	dc := &discover.ServerConfig{
+		Name:                 box.params.Name,
+		StoreDir:             box.Dir(),
+		BindAddress:          box.params.RegistryAddress,
+		CertFilename:         box.CertificateFilename(),
+		KeyFilename:          box.KeyFilename(),
+		ClientCACertFilename: box.params.CACertPath,
+	}
+	box.registry, err = discover.Serve(dc)
+	if err != nil {
+		log.Error("impossible to run discovery server", log.Err(err))
+	}
+
+	return nil
+}
+
+func (box *Box) StopRegistry() error {
+	if box.registry == nil {
+		return nil
+	}
+
+	if stopper, ok := box.registry.(interface {
+		Stop() error
+	}); ok {
+		return stopper.Stop()
+	}
+	return nil
+}
+
+func (box *Box) ConnectToRegistry() {
+	box.Registry()
+}
+
+func (box *Box) StopNode(name string) {
+	box.serverMutex.Lock()
+	defer box.serverMutex.Unlock()
+	rs := box.gRPCNodes[name]
+	delete(box.gRPCNodes, name)
+	if !box.params.Autonomous && rs != nil && box.registry != nil {
+		err := box.registry.DeregisterService(name)
+		if err != nil {
+			log.Error("could not deregister service", log.Err(err), log.Field("name", name))
+		}
+		rs.Stop()
+	}
+}
+
+func (box *Box) stopNodes() error {
+	box.serverMutex.Lock()
+	defer box.serverMutex.Unlock()
+
+	if box.registry != nil {
+		for _, rs := range box.gRPCNodes {
+			rs.Stop()
+		}
+
+		if !box.params.Autonomous {
+			err := box.registry.DeregisterService(box.Name(), box.Name())
+			if err != nil {
+				log.Error("could not de register service", log.Err(err), log.Field("name", box.Name()))
+			}
+		}
+	}
+	box.gRPCNodes = map[string]*gPRCNode{}
 	return nil
 }
 

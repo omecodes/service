@@ -18,11 +18,16 @@ import (
 	"time"
 )
 
-func (box *Box) StartGateway(params *GatewayParams) error {
+func (box *Box) StartGateway(params *GatewayParams, nOpts ...NodeOption) error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
 
-	listener, err := box.listen(params.Port, params.Node.Security, params.Tls)
+	var options nodeOptions
+	for _, o := range nOpts {
+		o(&options)
+	}
+
+	listener, err := box.listen(options.port, params.Node.Security, options.tlsConfig)
 	if err != nil {
 		return err
 	}
@@ -56,7 +61,7 @@ func (box *Box) StartGateway(params *GatewayParams) error {
 	gt := &httpNode{}
 	gt.Server = srv
 	gt.Address = address
-	if params.Tls != nil || params.Node.Security != ome.Security_Insecure {
+	if options.tlsConfig != nil || params.Node.Security != ome.Security_Insecure {
 		gt.Scheme = "https"
 	} else {
 		gt.Scheme = "http"

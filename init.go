@@ -1,15 +1,11 @@
 package service
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/omecodes/common/errors"
-	"github.com/omecodes/common/utils/log"
-	"github.com/omecodes/discover"
 	"github.com/omecodes/libome"
 	"github.com/omecodes/libome/crypt"
-	"github.com/omecodes/libome/ports"
 	"google.golang.org/grpc/credentials"
 )
 
@@ -50,14 +46,8 @@ func (box *Box) Init(opts ...InitOption) error {
 		}
 	}
 
-	if !box.params.NoRegistry {
+	if !box.params.NoRegistry && options.registry != nil {
 		box.registry = options.registry
-		if box.registry == nil {
-			err = box.initRegistry()
-			if err != nil {
-				return errors.Errorf("could not initialize registry: %s", err)
-			}
-		}
 	}
 	return nil
 }
@@ -94,46 +84,4 @@ func (box *Box) loadCACredentials() (err error) {
 	box.caClientAuthentication = ome.NewGRPCProxy(parts[0], parts[1])
 
 	return
-}
-
-func (box *Box) initRegistry() (err error) {
-	if box.params.RegistryAddress == "" {
-		box.params.RegistryAddress = fmt.Sprintf("%s:%d", box.Host(), ports.Discover)
-
-	} else {
-		parts := strings.Split(box.params.RegistryAddress, ":")
-		if len(parts) != 2 {
-			if len(parts) == 1 {
-				box.params.RegistryAddress = fmt.Sprintf("%s:%d", box.params.RegistryAddress, ports.Discover)
-			}
-			return errors.New("malformed registry address. Should be like HOST:PORT")
-		}
-	}
-
-	if box.params.RegistryServer {
-		dc := &discover.ServerConfig{
-			Name:                 box.params.Name,
-			StoreDir:             box.Dir(),
-			BindAddress:          box.params.RegistryAddress,
-			CertFilename:         box.CertificateFilename(),
-			KeyFilename:          box.KeyFilename(),
-			ClientCACertFilename: box.params.CACertPath,
-		}
-		box.registry, err = discover.Serve(dc)
-		if err != nil {
-			log.Error("impossible to run discovery server", log.Err(err))
-		}
-	} else {
-		box.registry = discover.NewZebouClient(box.params.RegistryAddress, box.ClientMutualTLS())
-	}
-	return
-}
-
-// Stop stops all started services and gateways
-func (box *Box) Stop() {
-	_ = box.stopServices()
-	_ = box.stopGateways()
-	if box.registry != nil {
-		_ = box.registry.Stop()
-	}
 }

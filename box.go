@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto"
 	"crypto/x509"
+	"github.com/omecodes/discover"
 	"sync"
 
 	"github.com/omecodes/libome"
@@ -83,6 +84,9 @@ func (box *Box) RegistryCert() *x509.Certificate {
 }
 
 func (box *Box) Registry() ome.Registry {
+	if box.registry == nil {
+		box.registry = discover.NewZebouClient(box.params.RegistryAddress, box.ClientMutualTLS())
+	}
 	return box.registry
 }
 
@@ -104,4 +108,13 @@ func (box *Box) CertificateFilename() string {
 
 func (box *Box) KeyFilename() string {
 	return box.params.KeyPath
+}
+
+// Stop stops all started services and gateways
+func (box *Box) Stop() {
+	_ = box.stopNodes()
+	_ = box.stopGateways()
+	if box.registry != nil {
+		_ = box.registry.Stop()
+	}
 }

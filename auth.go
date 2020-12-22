@@ -52,4 +52,4 @@ func RevokeJwt(ctx context.Context, jwt string) error {
 	return err
 }
 
-type CredentialsVerifyFunc func(credentials *ome.ProxyCredentials) (bool, error)
+type CredentialsValidatorFunc func(credentials *ome.ProxyCredentials) (bool, error)

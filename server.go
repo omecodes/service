@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"net/http"
 
@@ -14,37 +13,29 @@ import (
 
 type WireEndpointFunc func(ctx context.Context, serveMux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) error
 
-type ACMEServiceGatewayParams struct {
-	ForceRegister  bool
+type ACMENodeGatewayParams struct {
 	ServiceName    string
 	TargetNodeName string
 	NodeName       string
 	ServiceType    uint32
 	Binder         WireEndpointFunc
 	MuxWrapper     MuxWrapper
-	Meta           map[string]string
 }
 
-type GatewayGrpcMappingParams struct {
-	ForceRegister  bool
+type NodeGatewayParams struct {
 	ServiceName    string
 	TargetNodeName string
 	NodeName       string
-	Port           int
-	Tls            *tls.Config
 	ServiceType    uint32
 	Security       ome.Security
 	Binder         WireEndpointFunc
 	MuxWrapper     MuxWrapper
-	Meta           map[string]string
 }
 
 type GatewayParams struct {
 	ForceRegister  bool
 	MiddlewareList []mux.MiddlewareFunc
-	Port           int
 	ProvideRouter  func() *mux.Router
-	Tls            *tls.Config
 	ServiceType    uint32
 	Node           *ome.Node
 }
@@ -57,14 +48,10 @@ type AcmeGatewayParams struct {
 	Node           *ome.Node
 }
 
-type GrpcNodeParams struct {
+type NodeParams struct {
 	ForceRegister       bool
-	Port                int
-	Tls                 *tls.Config
-	Interceptor         MergedInterceptor
 	RegisterHandlerFunc func(*grpc.Server)
 	ServiceType         uint32
-	Meta                map[string]string
 	Node                *ome.Node
 }
 

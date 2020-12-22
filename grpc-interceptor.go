@@ -75,7 +75,7 @@ func NewInterceptorsChain(i ...Interceptor) MergedInterceptor {
 	return &interceptorChain{interceptors: i}
 }
 
-// Interceptor is context wrapper which is executed when gRPC function is called
+// Interceptor is a context wrapper which is executed when gRPC function is called
 // it can be use to enrich context or verify authentication.
 type Interceptor interface {
 	// Intercept gets token works with and return a new token
@@ -90,7 +90,7 @@ func (interceptorFunc InterceptorFunc) Intercept(ctx context.Context) (context.C
 	return interceptorFunc(ctx)
 }
 
-// JwtVerifyFunc is a function thats verify jwt passed through authorization header
+// JwtVerifyFunc is a function that verify jwt passed through authorization header
 type JwtVerifyFunc func(ctx context.Context, jwt string) (context.Context, error)
 
 type jwtVerifier struct {
