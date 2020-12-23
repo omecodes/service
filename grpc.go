@@ -39,7 +39,7 @@ func (box *Box) StartNodeGateway(params *NodeGatewayParams, nOpts ...NodeOption)
 			o(options)
 		}
 
-		bOpts := box.options.override(options.boxOptions...)
+		box.options.override(options.boxOptions...)
 
 		info, err := box.registry.GetService(params.ServiceName)
 		if err != nil {
@@ -50,13 +50,13 @@ func (box *Box) StartNodeGateway(params *NodeGatewayParams, nOpts ...NodeOption)
 		if options.tlsConfig != nil {
 			var addr string
 			if options.port == 0 {
-				addr = bOpts.Host() + ":"
+				addr = box.options.Host() + ":"
 			} else {
-				addr = fmt.Sprintf("%s:%d", bOpts.Host(), options.port)
+				addr = fmt.Sprintf("%s:%d", box.options.Host(), options.port)
 			}
 			listener, err = tls.Listen("tcp", addr, options.tlsConfig)
 		} else {
-			listener, options.tlsConfig, err = bOpts.listen(options.port, params.Security)
+			listener, options.tlsConfig, err = box.options.listen(options.port, params.Security)
 		}
 
 		if err != nil {
@@ -70,8 +70,8 @@ func (box *Box) StartNodeGateway(params *NodeGatewayParams, nOpts ...NodeOption)
 
 			address := listener.Addr().String()
 
-			if bOpts.netMainDomain != "" {
-				address = strings.Replace(address, bOpts.netIP, bOpts.netMainDomain, 1)
+			if box.options.netMainDomain != "" {
+				address = strings.Replace(address, box.options.netIP, box.options.netMainDomain, 1)
 			}
 
 			endpoint := fmt.Sprintf("%s-gateway-endpoint", params.TargetNodeName)
@@ -314,7 +314,7 @@ func (box *Box) StartNode(params *NodeParams, nOpts ...NodeOption) error {
 		o(options)
 	}
 
-	bOpts := box.options.override(options.boxOptions...)
+	box.options.override(options.boxOptions...)
 
 	var listener net.Listener
 	var err error
@@ -322,21 +322,21 @@ func (box *Box) StartNode(params *NodeParams, nOpts ...NodeOption) error {
 	if options.tlsConfig != nil {
 		var addr string
 		if options.port == 0 {
-			addr = bOpts.Host() + ":"
+			addr = box.options.Host() + ":"
 		} else {
-			addr = fmt.Sprintf("%s:%d", bOpts.Host(), options.port)
+			addr = fmt.Sprintf("%s:%d", box.options.Host(), options.port)
 		}
 		listener, err = tls.Listen("tcp", addr, options.tlsConfig)
 	} else {
-		listener, options.tlsConfig, err = bOpts.listen(options.port, ome.Security_MutualTls)
+		listener, options.tlsConfig, err = box.options.listen(options.port, ome.Security_MutualTls)
 	}
 	if err != nil {
 		return err
 	}
 
 	address := listener.Addr().String()
-	if bOpts.netMainDomain != "" {
-		address = strings.Replace(address, bOpts.netIP, bOpts.netMainDomain, 1)
+	if box.options.netMainDomain != "" {
+		address = strings.Replace(address, box.options.netIP, box.options.netMainDomain, 1)
 	}
 
 	log.Info("starting gRPC server", log.Field("service", params.Node.Id), log.Field("address", address))
@@ -413,19 +413,19 @@ func (box *Box) StartNode(params *NodeParams, nOpts ...NodeOption) error {
 }
 
 func (box *Box) StartRegistry(opts ...Option) (err error) {
-	bOpts := box.options.override(opts...)
+	box.options.override(opts...)
 
-	if bOpts.regAddr == "" {
+	if box.options.regAddr == "" {
 		return err2.New(err2.CodeBadRequest, "missing registry address")
 	}
 
 	dc := &discover.ServerConfig{
-		Name:                 bOpts.name,
-		StoreDir:             bOpts.workingDir,
-		BindAddress:          bOpts.regAddr,
-		CertFilename:         bOpts.certificateFilename,
-		KeyFilename:          bOpts.keyFilename,
-		ClientCACertFilename: bOpts.caCertFilename,
+		Name:                 box.options.name,
+		StoreDir:             box.options.workingDir,
+		BindAddress:          box.options.regAddr,
+		CertFilename:         box.options.certificateFilename,
+		KeyFilename:          box.options.keyFilename,
+		ClientCACertFilename: box.options.caCertFilename,
 	}
 	box.registry, err = discover.Serve(dc)
 	if err != nil {

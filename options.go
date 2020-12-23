@@ -33,33 +33,10 @@ type options struct {
 	keyFilename         string
 }
 
-func (opts *options) override(opt ...Option) *options {
-	nOpts := new(options)
-	nOpts.name = opts.name
-	nOpts.workingDir = opts.workingDir
-	nOpts.caCert = opts.caCert
-	nOpts.caKey = opts.caKey
-	nOpts.caCertFilename = opts.caCertFilename
-	nOpts.caAddr = opts.caAddr
-	nOpts.caAPIKey = opts.caAPIKey
-	nOpts.caAPISecret = opts.caAPISecret
-	nOpts.regAddr = opts.regAddr
-	nOpts.regAPIKey = opts.regAPIKey
-	nOpts.regAPISecret = opts.regAPISecret
-	nOpts.logFile = opts.logFile
-	nOpts.netMainDomain = opts.netMainDomain
-	nOpts.netDomains = opts.netDomains
-	nOpts.netIP = opts.netIP
-	nOpts.netExternalIP = opts.netExternalIP
-	nOpts.cert = opts.cert
-	nOpts.key = opts.key
-	nOpts.certificateFilename = opts.certificateFilename
-	nOpts.keyFilename = opts.keyFilename
-
+func (opts *options) override(opt ...Option) {
 	for _, o := range opt {
-		o(nOpts)
+		o(opts)
 	}
-	return nOpts
 }
 
 func (opts *options) Name() string {

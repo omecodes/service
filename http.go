@@ -28,7 +28,7 @@ func (box *Box) StartGateway(params *GatewayParams, nOpts ...NodeOption) error {
 	for _, o := range nOpts {
 		o(&options)
 	}
-	bOpts := box.options.override(options.boxOptions...)
+	box.options.override(options.boxOptions...)
 
 	var listener net.Listener
 	var err error
@@ -36,13 +36,13 @@ func (box *Box) StartGateway(params *GatewayParams, nOpts ...NodeOption) error {
 	if options.tlsConfig != nil {
 		var addr string
 		if options.port == 0 {
-			addr = bOpts.Host() + ":"
+			addr = box.options.Host() + ":"
 		} else {
-			addr = fmt.Sprintf("%s:%d", bOpts.Host(), options.port)
+			addr = fmt.Sprintf("%s:%d", box.options.Host(), options.port)
 		}
 		listener, err = tls.Listen("tcp", addr, options.tlsConfig)
 	} else {
-		listener, options.tlsConfig, err = bOpts.listen(options.port, params.Security)
+		listener, options.tlsConfig, err = box.options.listen(options.port, params.Security)
 	}
 
 	if err != nil {
@@ -50,8 +50,8 @@ func (box *Box) StartGateway(params *GatewayParams, nOpts ...NodeOption) error {
 	}
 
 	address := listener.Addr().String()
-	if bOpts.netMainDomain != "" {
-		address = strings.Replace(address, strings.Split(address, ":")[0], bOpts.netMainDomain, 1)
+	if box.options.netMainDomain != "" {
+		address = strings.Replace(address, strings.Split(address, ":")[0], box.options.netMainDomain, 1)
 	}
 	router := params.ProvideRouter()
 
@@ -137,7 +137,7 @@ func (box *Box) StartAcmeGateway(params *AcmeGatewayParams, nOpts ...NodeOption)
 	for _, o := range nOpts {
 		o(&options)
 	}
-	bOpts := box.options.override(options.boxOptions...)
+	box.options.override(options.boxOptions...)
 
 	cacheDir := filepath.Dir(box.CertificateFilename())
 	hostPolicy := func(ctx context.Context, host string) error {
@@ -154,8 +154,8 @@ func (box *Box) StartAcmeGateway(params *AcmeGatewayParams, nOpts ...NodeOption)
 	}
 
 	address := fmt.Sprintf("%s:443", box.Host())
-	if bOpts.netMainDomain != "" {
-		address = strings.Replace(address, strings.Split(address, ":")[0], bOpts.netMainDomain, 1)
+	if box.options.netMainDomain != "" {
+		address = strings.Replace(address, strings.Split(address, ":")[0], box.options.netMainDomain, 1)
 	}
 	router := params.ProvideRouter()
 
