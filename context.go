@@ -5,34 +5,21 @@ import (
 	"crypto"
 	"crypto/tls"
 	"crypto/x509"
-	"strings"
-
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/libome"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
-type box struct{}
+type ctxBox struct{}
 
 type ctxServiceCredentials struct{}
 
-type serviceContext struct{}
-
 func serviceBox(ctx context.Context) *Box {
-	val := ctx.Value(box{})
-	if val == nil {
-		srvCtx := ctx.Value(serviceContext{})
-		if srvCtx == nil {
-			return nil
-		}
-		val = srvCtx.(context.Context).Value(box{})
-		if val == nil {
-			return nil
-		}
-		return val.(*Box)
+	o := ctx.Value(ctxBox{})
+	if o == nil {
+		return nil
 	}
-	return val.(*Box)
+	return o.(*Box)
 }
 
 func CACertificate(ctx context.Context) *x509.Certificate {
@@ -56,7 +43,7 @@ func PrivateKey(ctx context.Context) crypto.PrivateKey {
 	if box == nil {
 		return nil
 	}
-	return box.privateKey
+	return box.key
 }
 
 func Registry(ctx context.Context) ome.Registry {
@@ -73,11 +60,9 @@ func CACredentials(ctx context.Context) *ome.ProxyCredentials {
 		return nil
 	}
 
-	parts := strings.Split(box.params.CACredentials, ":")
-
 	return &ome.ProxyCredentials{
-		Key:    parts[0],
-		Secret: parts[1],
+		Key:    box.options.caAPIKey,
+		Secret: box.options.caAPISecret,
 	}
 }
 
@@ -87,35 +72,23 @@ func Secret(ctx context.Context) string {
 	if box == nil {
 		return ""
 	}
-	return box.credentials.Secret
+	return box.caAPISecret
 }
 
-func CAGRPCAuthentication(ctx context.Context) credentials.PerRPCCredentials {
-	box := serviceBox(ctx)
-	if box == nil {
-		return nil
-	}
-
-	if box.caClientAuthentication == nil {
-		box.loadCACredentials()
-	}
-	return box.caClientAuthentication
-}
-
-func Name(ctx context.Context) string {
+func GetName(ctx context.Context) string {
 	box := serviceBox(ctx)
 	if box == nil {
 		return ""
 	}
-	return box.params.Name
+	return box.options.name
 }
 
-func Dir(ctx context.Context) string {
+func GetDir(ctx context.Context) string {
 	box := serviceBox(ctx)
 	if box == nil {
 		return ""
 	}
-	return box.params.Dir
+	return box.options.workingDir
 }
 
 func ID(ctx context.Context) string {
@@ -123,7 +96,7 @@ func ID(ctx context.Context) string {
 	if box == nil {
 		return ""
 	}
-	return box.params.Name
+	return box.options.name
 }
 
 func GatewayAddress(ctx context.Context, name string) string {
@@ -155,7 +128,7 @@ func Dial(ctx context.Context, st uint32) (*grpc.ClientConn, error) {
 }
 
 func ContextWithBox(ctx context.Context, b *Box) context.Context {
-	return context.WithValue(ctx, box{}, b)
+	return context.WithValue(ctx, ctxBox{}, b)
 }
 
 func BoxFromContext(ctx context.Context) *Box {

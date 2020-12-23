@@ -13,11 +13,12 @@ import (
 	"github.com/omecodes/common/utils/log"
 	"github.com/omecodes/discover"
 	"github.com/omecodes/libome"
-	"github.com/omecodes/libome/ports"
+	err2 "github.com/omecodes/libome/errors"
 	"golang.org/x/crypto/acme/autocert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
+	"net"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -38,12 +39,26 @@ func (box *Box) StartNodeGateway(params *NodeGatewayParams, nOpts ...NodeOption)
 			o(options)
 		}
 
+		bOpts := box.options.override(options.boxOptions...)
+
 		info, err := box.registry.GetService(params.ServiceName)
 		if err != nil {
 			return err
 		}
 
-		listener, err := box.listen(options.port, params.Security, options.tlsConfig)
+		var listener net.Listener
+		if options.tlsConfig != nil {
+			var addr string
+			if options.port == 0 {
+				addr = bOpts.Host() + ":"
+			} else {
+				addr = fmt.Sprintf("%s:%d", bOpts.Host(), options.port)
+			}
+			listener, err = tls.Listen("tcp", addr, options.tlsConfig)
+		} else {
+			listener, options.tlsConfig, err = bOpts.listen(options.port, params.Security)
+		}
+
 		if err != nil {
 			return err
 		}
@@ -54,8 +69,9 @@ func (box *Box) StartNodeGateway(params *NodeGatewayParams, nOpts ...NodeOption)
 			}
 
 			address := listener.Addr().String()
-			if box.params.Domain != "" {
-				address = strings.Replace(address, box.params.Ip, box.params.Domain, 1)
+
+			if bOpts.netMainDomain != "" {
+				address = strings.Replace(address, bOpts.netIP, bOpts.netMainDomain, 1)
 			}
 
 			endpoint := fmt.Sprintf("%s-gateway-endpoint", params.TargetNodeName)
@@ -298,14 +314,29 @@ func (box *Box) StartNode(params *NodeParams, nOpts ...NodeOption) error {
 		o(options)
 	}
 
-	listener, err := box.listen(options.port, ome.Security_MutualTls, options.tlsConfig)
+	bOpts := box.options.override(options.boxOptions...)
+
+	var listener net.Listener
+	var err error
+
+	if options.tlsConfig != nil {
+		var addr string
+		if options.port == 0 {
+			addr = bOpts.Host() + ":"
+		} else {
+			addr = fmt.Sprintf("%s:%d", bOpts.Host(), options.port)
+		}
+		listener, err = tls.Listen("tcp", addr, options.tlsConfig)
+	} else {
+		listener, options.tlsConfig, err = bOpts.listen(options.port, ome.Security_MutualTls)
+	}
 	if err != nil {
 		return err
 	}
 
 	address := listener.Addr().String()
-	if box.params.Domain != "" {
-		address = strings.Replace(address, box.params.Ip, box.params.Domain, 1)
+	if bOpts.netMainDomain != "" {
+		address = strings.Replace(address, bOpts.netIP, bOpts.netMainDomain, 1)
 	}
 
 	log.Info("starting gRPC server", log.Field("service", params.Node.Id), log.Field("address", address))
@@ -381,27 +412,20 @@ func (box *Box) StartNode(params *NodeParams, nOpts ...NodeOption) error {
 	return nil
 }
 
-func (box *Box) StartRegistry() (err error) {
-	if box.params.RegistryAddress == "" {
-		box.params.RegistryAddress = fmt.Sprintf("%s:%d", box.Host(), ports.Discover)
+func (box *Box) StartRegistry(opts ...Option) (err error) {
+	bOpts := box.options.override(opts...)
 
-	} else {
-		parts := strings.Split(box.params.RegistryAddress, ":")
-		if len(parts) != 2 {
-			if len(parts) == 1 {
-				box.params.RegistryAddress = fmt.Sprintf("%s:%d", box.params.RegistryAddress, ports.Discover)
-			}
-			return errors.New("malformed registry address. Should be like HOST:PORT")
-		}
+	if bOpts.regAddr == "" {
+		return err2.New(err2.CodeBadRequest, "missing registry address")
 	}
 
 	dc := &discover.ServerConfig{
-		Name:                 box.params.Name,
-		StoreDir:             box.Dir(),
-		BindAddress:          box.params.RegistryAddress,
-		CertFilename:         box.CertificateFilename(),
-		KeyFilename:          box.KeyFilename(),
-		ClientCACertFilename: box.params.CACertPath,
+		Name:                 bOpts.name,
+		StoreDir:             bOpts.workingDir,
+		BindAddress:          bOpts.regAddr,
+		CertFilename:         bOpts.certificateFilename,
+		KeyFilename:          bOpts.keyFilename,
+		ClientCACertFilename: bOpts.caCertFilename,
 	}
 	box.registry, err = discover.Serve(dc)
 	if err != nil {

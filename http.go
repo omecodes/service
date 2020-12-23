@@ -6,16 +6,18 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/securecookie"
-	"github.com/omecodes/common/httpx"
-	"github.com/omecodes/common/utils/log"
-	"github.com/omecodes/libome"
-	"golang.org/x/crypto/acme/autocert"
+	"net"
 	"net/http"
 	"net/url"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/gorilla/securecookie"
+	"github.com/omecodes/common/httpx"
+	"github.com/omecodes/common/utils/log"
+	"github.com/omecodes/libome"
+	"golang.org/x/crypto/acme/autocert"
 )
 
 func (box *Box) StartGateway(params *GatewayParams, nOpts ...NodeOption) error {
@@ -26,15 +28,30 @@ func (box *Box) StartGateway(params *GatewayParams, nOpts ...NodeOption) error {
 	for _, o := range nOpts {
 		o(&options)
 	}
+	bOpts := box.options.override(options.boxOptions...)
 
-	listener, err := box.listen(options.port, params.Node.Security, options.tlsConfig)
+	var listener net.Listener
+	var err error
+
+	if options.tlsConfig != nil {
+		var addr string
+		if options.port == 0 {
+			addr = bOpts.Host() + ":"
+		} else {
+			addr = fmt.Sprintf("%s:%d", bOpts.Host(), options.port)
+		}
+		listener, err = tls.Listen("tcp", addr, options.tlsConfig)
+	} else {
+		listener, options.tlsConfig, err = bOpts.listen(options.port, params.Security)
+	}
+
 	if err != nil {
 		return err
 	}
 
 	address := listener.Addr().String()
-	if box.params.Domain != "" {
-		address = strings.Replace(address, strings.Split(address, ":")[0], box.params.Domain, 1)
+	if bOpts.netMainDomain != "" {
+		address = strings.Replace(address, strings.Split(address, ":")[0], bOpts.netMainDomain, 1)
 	}
 	router := params.ProvideRouter()
 
@@ -120,6 +137,7 @@ func (box *Box) StartAcmeGateway(params *AcmeGatewayParams, nOpts ...NodeOption)
 	for _, o := range nOpts {
 		o(&options)
 	}
+	bOpts := box.options.override(options.boxOptions...)
 
 	cacheDir := filepath.Dir(box.CertificateFilename())
 	hostPolicy := func(ctx context.Context, host string) error {
@@ -136,8 +154,8 @@ func (box *Box) StartAcmeGateway(params *AcmeGatewayParams, nOpts ...NodeOption)
 	}
 
 	address := fmt.Sprintf("%s:443", box.Host())
-	if box.params.Domain != "" {
-		address = strings.Replace(address, strings.Split(address, ":")[0], box.params.Domain, 1)
+	if bOpts.netMainDomain != "" {
+		address = strings.Replace(address, strings.Split(address, ":")[0], bOpts.netMainDomain, 1)
 	}
 	router := params.ProvideRouter()
 
@@ -360,8 +378,7 @@ func (atv *authorizationJWT) Middleware(next http.Handler) http.Handler {
 						}
 
 						req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-						credentialsPart := strings.Split(box.params.CACredentials, ":")
-						req.SetBasicAuth(credentialsPart[0], credentialsPart[1])
+						req.SetBasicAuth(box.options.caAPIKey, box.options.caAPISecret)
 
 						rsp, err := client.Do(req)
 						if err != nil {

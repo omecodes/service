@@ -36,6 +36,7 @@ type GatewayParams struct {
 	ForceRegister  bool
 	MiddlewareList []mux.MiddlewareFunc
 	ProvideRouter  func() *mux.Router
+	Security       ome.Security
 	ServiceType    uint32
 	Node           *ome.Node
 }

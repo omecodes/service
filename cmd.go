@@ -5,7 +5,6 @@ import (
 )
 
 const (
-	CmdFlagAutonomous        = "auto"
 	CmdFlagIP                = "ip"
 	CmdFlagExternalIP        = "eip"
 	CmdFlagName              = "name"
@@ -13,18 +12,14 @@ const (
 	CmdFlagAdditionalDomains = "odn"
 	CmdFlagCert              = "cert"
 	CmdFlagKey               = "key"
-	CmdFlagAcme              = "acme"
-	CmdFlagCA                = "ca"
 	CmdFlagCAAddr            = "ca-addr"
 	CmdFlagCACert            = "ca-cert"
-	CmdFlagCACred            = "ca-cred"
-	CmdFlagNoRegistry        = "no-reg"
+	CmdFlagCAApiKey          = "ca-api-key"
+	CmdFlagCAApiSecret       = "ca-api-secret"
 	CmdFlagRegistry          = "reg"
-	CmdFlagRegistrySecure    = "reg-tls"
-	CmdFlagRegistryServer    = "reg-server"
 )
 
-func CMD(use string, params *Params) *cobra.Command {
+func CMD(use string, box *Box) *cobra.Command {
 	command := &cobra.Command{
 		Use:   use,
 		Short: use,
@@ -35,40 +30,42 @@ func CMD(use string, params *Params) *cobra.Command {
 
 	flags := command.PersistentFlags()
 
-	flags.StringVar(&params.Name, CmdFlagName, "", "Unique name in registryAddress group")
-	flags.StringVar(&params.CertificatePath, CmdFlagCert, "", "Public certificate path")
-	flags.StringVar(&params.KeyPath, CmdFlagKey, "", "Private key path")
+	flags.StringVar(&box.options.name, CmdFlagName, "", "Unique name in registryAddress group")
+	flags.StringVar(&box.options.certificateFilename, CmdFlagCert, "", "Public certificate path")
+	flags.StringVar(&box.options.keyFilename, CmdFlagKey, "", "Private key path")
 
-	flags.StringVar(&params.RegistryAddress, CmdFlagRegistry, "", "Registry server address")
+	flags.StringVar(&box.options.regAddr, CmdFlagRegistry, "", "Registry server address")
 
-	flags.StringVar(&params.Ip, CmdFlagIP, "", "Bind ip address. Must match the domain if provided and no eip is provided")
-	flags.StringVar(&params.Ip, CmdFlagExternalIP, "", "External ip. Must matching domain if provided")
-	flags.StringVar(&params.Domain, CmdFlagServiceDomain, "", "Main domain name - Used as service name")
-	flags.StringArrayVar(&params.OtherDomains, CmdFlagAdditionalDomains, nil, "Additional domain name list")
+	flags.StringVar(&box.options.netIP, CmdFlagIP, "", "Bind ip address. Must match the domain if provided and no eip is provided")
+	flags.StringVar(&box.options.netExternalIP, CmdFlagExternalIP, "", "External ip. Must matching domain if provided")
+	flags.StringVar(&box.options.netMainDomain, CmdFlagServiceDomain, "", "Main domain name - Used as service name")
+	flags.StringArrayVar(&box.options.netDomains, CmdFlagAdditionalDomains, nil, "Additional domain name list")
 
-	flags.StringVar(&params.CACertPath, CmdFlagCACert, "", "Authority Certificate - file path")
-	flags.StringVar(&params.CAAddress, CmdFlagCAAddr, "", "Authority ServerGRPC - address location")
-	flags.StringVar(&params.CACredentials, CmdFlagCACred, "", "Authority Credentials - authority authentication credentials")
+	flags.StringVar(&box.options.caCertFilename, CmdFlagCACert, "", "Authority Certificate - file path")
+	flags.StringVar(&box.options.caAddr, CmdFlagCAAddr, "", "Authority ServerGRPC - address location")
+	flags.StringVar(&box.options.caAPIKey, CmdFlagCAApiKey, "", "Authority Credentials - authority authentication credentials")
+	flags.StringVar(&box.options.caAPISecret, CmdFlagCAApiSecret, "", "Authority Credentials - authority authentication credentials")
 	return command
 }
 
-func SetCMDFlags(cmd *cobra.Command, params *Params, ignoreFlagName bool) {
+func SetCMDFlags(cmd *cobra.Command, box *Box, ignoreFlagName bool) {
 	flags := cmd.PersistentFlags()
 
 	if !ignoreFlagName {
-		flags.StringVar(&params.Name, CmdFlagName, "", "Unique name in registryAddress group")
+		flags.StringVar(&box.options.name, CmdFlagName, "", "Unique name in registryAddress group")
 	}
-	flags.StringVar(&params.CertificatePath, CmdFlagCert, "", "Public certificate path")
-	flags.StringVar(&params.KeyPath, CmdFlagKey, "", "Private key path")
+	flags.StringVar(&box.options.certificateFilename, CmdFlagCert, "", "Public certificate path")
+	flags.StringVar(&box.options.keyFilename, CmdFlagKey, "", "Private key path")
 
-	flags.StringVar(&params.RegistryAddress, CmdFlagRegistry, "", "Registry server address")
+	flags.StringVar(&box.options.regAddr, CmdFlagRegistry, "", "Registry server address")
 
-	flags.StringVar(&params.Ip, CmdFlagIP, "", "Bind ip address. Must match the domain if provided and no eip is provided")
-	flags.StringVar(&params.Ip, CmdFlagExternalIP, "", "External ip. Must matching domain if provided")
-	flags.StringVar(&params.Domain, CmdFlagServiceDomain, "", "Main domain name - Used as service name")
-	flags.StringArrayVar(&params.OtherDomains, CmdFlagAdditionalDomains, nil, "Additional domain name list")
+	flags.StringVar(&box.options.netIP, CmdFlagIP, "", "Bind ip address. Must match the domain if provided and no eip is provided")
+	flags.StringVar(&box.options.netExternalIP, CmdFlagExternalIP, "", "External ip. Must matching domain if provided")
+	flags.StringVar(&box.options.netMainDomain, CmdFlagServiceDomain, "", "Main domain name - Used as service name")
+	flags.StringArrayVar(&box.options.netDomains, CmdFlagAdditionalDomains, nil, "Additional domain name list")
 
-	flags.StringVar(&params.CACertPath, CmdFlagCACert, "", "Authority Certificate - file path")
-	flags.StringVar(&params.CAAddress, CmdFlagCAAddr, "", "Authority ServerGRPC - address location")
-	flags.StringVar(&params.CACredentials, CmdFlagCACred, "", "Authority Credentials - authority authentication credentials")
+	flags.StringVar(&box.options.caCertFilename, CmdFlagCACert, "", "Authority Certificate - file path")
+	flags.StringVar(&box.options.caAddr, CmdFlagCAAddr, "", "Authority ServerGRPC - address location")
+	flags.StringVar(&box.options.caAPIKey, CmdFlagCAApiKey, "", "Authority Credentials - authority authentication credentials")
+	flags.StringVar(&box.options.caAPISecret, CmdFlagCAApiSecret, "", "Authority Credentials - authority authentication credentials")
 }
