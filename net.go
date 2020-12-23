@@ -9,7 +9,7 @@ import (
 	"github.com/omecodes/libome"
 )
 
-func (opts *options) listen(port int, security ome.Security) (net.Listener, *tls.Config, error) {
+func (opts *Options) listen(port int, security ome.Security) (net.Listener, *tls.Config, error) {
 	var (
 		listener net.Listener
 		err      error

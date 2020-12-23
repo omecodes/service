@@ -30,7 +30,7 @@ func (box *Box) StartGateway(params *GatewayParams, nOpts ...NodeOption) error {
 	for _, o := range nOpts {
 		o(&options)
 	}
-	box.options.override(options.boxOptions...)
+	box.Options.override(options.boxOptions...)
 
 	var listener net.Listener
 	var err error
@@ -38,13 +38,13 @@ func (box *Box) StartGateway(params *GatewayParams, nOpts ...NodeOption) error {
 	if options.tlsConfig != nil {
 		var addr string
 		if options.port == 0 {
-			addr = box.options.Host() + ":"
+			addr = box.Options.Host() + ":"
 		} else {
-			addr = fmt.Sprintf("%s:%d", box.options.Host(), options.port)
+			addr = fmt.Sprintf("%s:%d", box.Options.Host(), options.port)
 		}
 		listener, err = tls.Listen("tcp", addr, options.tlsConfig)
 	} else {
-		listener, options.tlsConfig, err = box.options.listen(options.port, params.Security)
+		listener, options.tlsConfig, err = box.Options.listen(options.port, params.Security)
 	}
 
 	if err != nil {
@@ -52,8 +52,8 @@ func (box *Box) StartGateway(params *GatewayParams, nOpts ...NodeOption) error {
 	}
 
 	address := listener.Addr().String()
-	if box.options.netMainDomain != "" {
-		address = strings.Replace(address, strings.Split(address, ":")[0], box.options.netMainDomain, 1)
+	if box.Options.netMainDomain != "" {
+		address = strings.Replace(address, strings.Split(address, ":")[0], box.Options.netMainDomain, 1)
 	}
 	router := params.ProvideRouter()
 
@@ -139,7 +139,7 @@ func (box *Box) StartPublicGateway(params *PublicGatewayParams, nOpts ...NodeOpt
 	for _, o := range nOpts {
 		o(&options)
 	}
-	box.options.override(options.boxOptions...)
+	box.Options.override(options.boxOptions...)
 
 	cacheDir := filepath.Join(box.workingDir, "lets-encrypt")
 	err := os.MkdirAll(cacheDir, os.ModePerm)
@@ -175,8 +175,8 @@ func (box *Box) StartPublicGateway(params *PublicGatewayParams, nOpts ...NodeOpt
 	tlsConf.GetCertificate = certReloadAgent.GetCertificateFunc()
 
 	address := fmt.Sprintf("%s:443", box.Host())
-	if box.options.netMainDomain != "" {
-		address = strings.Replace(address, strings.Split(address, ":")[0], box.options.netMainDomain, 1)
+	if box.Options.netMainDomain != "" {
+		address = strings.Replace(address, strings.Split(address, ":")[0], box.Options.netMainDomain, 1)
 	}
 
 	router := params.ProvideRouter()
@@ -388,7 +388,7 @@ func (atv *authorizationJWT) Middleware(next http.Handler) http.Handler {
 						}
 
 						req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-						req.SetBasicAuth(box.options.caAPIKey, box.options.caAPISecret)
+						req.SetBasicAuth(box.Options.caAPIKey, box.Options.caAPISecret)
 
 						rsp, err := client.Do(req)
 						if err != nil {

@@ -22,7 +22,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func (opts *options) loadCertificateKeyPairFromFiles() error {
+func (opts *Options) loadCertificateKeyPairFromFiles() error {
 	var err error
 	opts.cert, err = crypt.LoadCertificate(opts.certificateFilename)
 	if err == nil {
@@ -31,7 +31,7 @@ func (opts *options) loadCertificateKeyPairFromFiles() error {
 	return err
 }
 
-func (opts *options) loadOrGenerateCertificateKeyPair() (err error) {
+func (opts *Options) loadOrGenerateCertificateKeyPair() (err error) {
 	if opts.cert != nil && opts.key != nil {
 		return
 	}
@@ -130,7 +130,7 @@ func (opts *options) loadOrGenerateCertificateKeyPair() (err error) {
 	return
 }
 
-func (opts *options) serverMutualTLS() *tls.Config {
+func (opts *Options) serverMutualTLS() *tls.Config {
 	if opts.key == nil || opts.cert == nil || opts.caCert == nil {
 		return nil
 	}
@@ -148,7 +148,7 @@ func (opts *options) serverMutualTLS() *tls.Config {
 	}
 }
 
-func (opts *options) ServerTLS() *tls.Config {
+func (opts *Options) ServerTLS() *tls.Config {
 	if opts.key == nil || opts.cert == nil || opts.caCert == nil {
 		return nil
 	}
@@ -162,7 +162,7 @@ func (opts *options) ServerTLS() *tls.Config {
 	}
 }
 
-func (opts *options) ClientMutualTLS() *tls.Config {
+func (opts *Options) ClientMutualTLS() *tls.Config {
 	if opts.key == nil || opts.cert == nil || opts.caCert == nil {
 		return nil
 	}
@@ -179,7 +179,7 @@ func (opts *options) ClientMutualTLS() *tls.Config {
 	}
 }
 
-func (opts *options) ClientTLS() *tls.Config {
+func (opts *Options) ClientTLS() *tls.Config {
 	if opts.caCert != nil {
 		CAPool := x509.NewCertPool()
 		CAPool.AddCert(opts.caCert)

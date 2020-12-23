@@ -61,8 +61,8 @@ func CACredentials(ctx context.Context) *ome.ProxyCredentials {
 	}
 
 	return &ome.ProxyCredentials{
-		Key:    box.options.caAPIKey,
-		Secret: box.options.caAPISecret,
+		Key:    box.Options.caAPIKey,
+		Secret: box.Options.caAPISecret,
 	}
 }
 
@@ -80,7 +80,7 @@ func GetName(ctx context.Context) string {
 	if box == nil {
 		return ""
 	}
-	return box.options.name
+	return box.Options.name
 }
 
 func GetDir(ctx context.Context) string {
@@ -88,7 +88,7 @@ func GetDir(ctx context.Context) string {
 	if box == nil {
 		return ""
 	}
-	return box.options.workingDir
+	return box.Options.workingDir
 }
 
 func ID(ctx context.Context) string {
@@ -96,7 +96,7 @@ func ID(ctx context.Context) string {
 	if box == nil {
 		return ""
 	}
-	return box.options.name
+	return box.Options.name
 }
 
 func GatewayAddress(ctx context.Context, name string) string {

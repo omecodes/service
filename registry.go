@@ -6,7 +6,7 @@ import (
 	err2 "github.com/omecodes/libome/errors"
 )
 
-func (opts *options) StartRegistryServer(opt ...Option) (err error) {
+func (opts *Options) StartRegistryServer(opt ...Option) (err error) {
 	opts.override(opt...)
 
 	if opts.regAddr == "" {
@@ -29,7 +29,7 @@ func (opts *options) StartRegistryServer(opt ...Option) (err error) {
 	return nil
 }
 
-func (opts *options) StopRegistry() error {
+func (opts *Options) StopRegistry() error {
 	if opts.registry == nil {
 		return nil
 	}

@@ -48,7 +48,7 @@ func Register(register bool) NodeOption {
 	}
 }
 
-func Options(opts ...Option) NodeOption {
+func GlobalOptions(opts ...Option) NodeOption {
 	return func(options *nodeOptions) {
 		options.boxOptions = opts
 	}

@@ -39,7 +39,7 @@ func (box *Box) StartNodeGateway(params *NodeGatewayParams, nOpts ...NodeOption)
 			o(options)
 		}
 
-		box.options.override(options.boxOptions...)
+		box.Options.override(options.boxOptions...)
 
 		info, err := box.registry.GetService(params.ServiceName)
 		if err != nil {
@@ -50,13 +50,13 @@ func (box *Box) StartNodeGateway(params *NodeGatewayParams, nOpts ...NodeOption)
 		if options.tlsConfig != nil {
 			var addr string
 			if options.port == 0 {
-				addr = box.options.Host() + ":"
+				addr = box.Options.Host() + ":"
 			} else {
-				addr = fmt.Sprintf("%s:%d", box.options.Host(), options.port)
+				addr = fmt.Sprintf("%s:%d", box.Options.Host(), options.port)
 			}
 			listener, err = tls.Listen("tcp", addr, options.tlsConfig)
 		} else {
-			listener, options.tlsConfig, err = box.options.listen(options.port, params.Security)
+			listener, options.tlsConfig, err = box.Options.listen(options.port, params.Security)
 		}
 
 		if err != nil {
@@ -70,8 +70,8 @@ func (box *Box) StartNodeGateway(params *NodeGatewayParams, nOpts ...NodeOption)
 
 			address := listener.Addr().String()
 
-			if box.options.netMainDomain != "" {
-				address = strings.Replace(address, box.options.netIP, box.options.netMainDomain, 1)
+			if box.Options.netMainDomain != "" {
+				address = strings.Replace(address, box.Options.netIP, box.Options.netMainDomain, 1)
 			}
 
 			endpoint := fmt.Sprintf("%s-gateway-endpoint", params.TargetNodeName)
@@ -135,7 +135,7 @@ func (box *Box) StartNodeGateway(params *NodeGatewayParams, nOpts ...NodeOption)
 			}()
 
 			if options.register {
-				registry := box.options.Registry()
+				registry := box.Options.Registry()
 
 				if box.info == nil {
 					box.info = &ome.ServiceInfo{}
@@ -281,7 +281,7 @@ func (box *Box) StartPublicNodeGateway(params *PublicNodeGatewayParams, nOpts ..
 		}()
 
 		if options.register {
-			registry := box.options.Registry()
+			registry := box.Options.Registry()
 			if box.info == nil {
 				box.info = &ome.ServiceInfo{}
 				box.info.Id = box.Name()
@@ -317,7 +317,7 @@ func (box *Box) StartNode(params *NodeParams, nOpts ...NodeOption) error {
 		o(options)
 	}
 
-	box.options.override(options.boxOptions...)
+	box.Options.override(options.boxOptions...)
 
 	var listener net.Listener
 	var err error
@@ -325,21 +325,21 @@ func (box *Box) StartNode(params *NodeParams, nOpts ...NodeOption) error {
 	if options.tlsConfig != nil {
 		var addr string
 		if options.port == 0 {
-			addr = box.options.Host() + ":"
+			addr = box.Options.Host() + ":"
 		} else {
-			addr = fmt.Sprintf("%s:%d", box.options.Host(), options.port)
+			addr = fmt.Sprintf("%s:%d", box.Options.Host(), options.port)
 		}
 		listener, err = tls.Listen("tcp", addr, options.tlsConfig)
 	} else {
-		listener, options.tlsConfig, err = box.options.listen(options.port, ome.Security_MutualTls)
+		listener, options.tlsConfig, err = box.Options.listen(options.port, ome.Security_MutualTls)
 	}
 	if err != nil {
 		return err
 	}
 
 	address := listener.Addr().String()
-	if box.options.netMainDomain != "" {
-		address = strings.Replace(address, box.options.netIP, box.options.netMainDomain, 1)
+	if box.Options.netMainDomain != "" {
+		address = strings.Replace(address, box.Options.netIP, box.Options.netMainDomain, 1)
 	}
 
 	log.Info("starting gRPC server", log.Field("service", params.Node.Id), log.Field("address", address))
@@ -390,7 +390,7 @@ func (box *Box) StartNode(params *NodeParams, nOpts ...NodeOption) error {
 	}()
 
 	if options.register || params.Node != nil {
-		registry := box.options.Registry()
+		registry := box.Options.Registry()
 
 		if box.info == nil {
 			box.info = &ome.ServiceInfo{}

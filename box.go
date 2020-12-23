@@ -10,7 +10,7 @@ type Box struct {
 	serverMutex sync.Mutex
 	dialerMutex sync.Mutex
 
-	*options
+	*Options
 
 	gRPCNodes map[string]*gPRCNode
 	httpNodes map[string]*httpNode
@@ -20,9 +20,9 @@ type Box struct {
 }
 
 func CreateBox(opts ...Option) *Box {
-	b := &Box{options: new(options)}
+	b := &Box{Options: new(Options)}
 	for _, o := range opts {
-		o(b.options)
+		o(b.Options)
 	}
 
 	b.dialerCache = map[string]Dialer{}
@@ -32,11 +32,11 @@ func CreateBox(opts ...Option) *Box {
 }
 
 func (box *Box) Update(opts ...Option) {
-	if box.options == nil {
-		box.options = new(options)
+	if box.Options == nil {
+		box.Options = new(Options)
 	}
 	for _, o := range opts {
-		o(box.options)
+		o(box.Options)
 	}
 }
 
