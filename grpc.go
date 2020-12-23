@@ -5,21 +5,21 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"github.com/foomo/simplecert"
+	"github.com/foomo/tlsconfig"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_opentracing "github.com/grpc-ecosystem/go-grpc-middleware/tracing/opentracing"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/httpx"
 	"github.com/omecodes/common/utils/log"
-	"github.com/omecodes/discover"
 	"github.com/omecodes/libome"
-	err2 "github.com/omecodes/libome/errors"
-	"golang.org/x/crypto/acme/autocert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -135,27 +135,25 @@ func (box *Box) StartNodeGateway(params *NodeGatewayParams, nOpts ...NodeOption)
 			}()
 
 			if options.register {
-				box.ConnectToRegistry()
+				registry := box.options.Registry()
 
-				if box.registry != nil {
-					if box.info == nil {
-						box.info = &ome.ServiceInfo{}
-						box.info.Id = box.Name()
-						box.info.Type = info.Type
-					}
+				if box.info == nil {
+					box.info = &ome.ServiceInfo{}
+					box.info.Id = box.Name()
+					box.info.Type = info.Type
+				}
 
-					n := &ome.Node{}
-					n.Id = params.NodeName
-					n.Address = address
-					n.Protocol = ome.Protocol_Http
-					n.Security = params.Security
-					n.Meta = options.md
-					box.info.Nodes = append(box.info.Nodes, n)
+				n := &ome.Node{}
+				n.Id = params.NodeName
+				n.Address = address
+				n.Protocol = ome.Protocol_Http
+				n.Security = params.Security
+				n.Meta = options.md
+				box.info.Nodes = append(box.info.Nodes, n)
 
-					err = box.registry.RegisterService(box.info)
-					if err != nil {
-						log.Error("could not register service", log.Err(err))
-					}
+				err = registry.RegisterService(box.info)
+				if err != nil {
+					log.Error("could not register service", log.Err(err))
 				}
 			}
 			return nil
@@ -164,7 +162,7 @@ func (box *Box) StartNodeGateway(params *NodeGatewayParams, nOpts ...NodeOption)
 	return errors.New("matching gRPC service not found")
 }
 
-func (box *Box) StartAcmeNodeGateway(params *ACMENodeGatewayParams, nOpts ...NodeOption) error {
+func (box *Box) StartPublicNodeGateway(params *PublicNodeGatewayParams, nOpts ...NodeOption) error {
 
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
@@ -184,20 +182,38 @@ func (box *Box) StartAcmeNodeGateway(params *ACMENodeGatewayParams, nOpts ...Nod
 			continue
 		}
 
-		cacheDir := filepath.Dir(box.CertificateFilename())
-		hostPolicy := func(ctx context.Context, host string) error {
-			// Note: change to your real domain
-			allowedHost := box.Domain()
-			if host == allowedHost {
-				return nil
+		cacheDir := filepath.Join(box.workingDir, "lets-encrypt")
+		err := os.MkdirAll(cacheDir, os.ModePerm)
+		if err != nil {
+			return err
+		}
+
+		cfg := simplecert.Default
+		cfg.Domains = box.Domains()
+		cfg.CacheDir = cacheDir
+		cfg.SSLEmail = params.Email
+		cfg.DNSProvider = "cloudflare"
+
+		certReloadAgent, err := simplecert.Init(cfg, nil)
+		if err != nil {
+			return err
+		}
+
+		log.Info("starting HTTP Listener on Port 80")
+		go func() {
+			if err := http.ListenAndServe(":80", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				httpx.Redirect(w, &httpx.RedirectURL{
+					URL:         fmt.Sprintf("https://%s:443%s", box.netMainDomain, r.URL.Path),
+					Code:        http.StatusPermanentRedirect,
+					ContentType: "text/html",
+				})
+			})); err != nil {
+				log.Error("listen to port 80 failed", log.Err(err))
 			}
-			return fmt.Errorf("acme/autocert: only %s host is allowed", allowedHost)
-		}
-		man := &autocert.Manager{
-			Prompt:     autocert.AcceptTOS,
-			HostPolicy: hostPolicy,
-			Cache:      autocert.DirCache(cacheDir),
-		}
+		}()
+
+		tlsConf := tlsconfig.NewServerTLSConfig(tlsconfig.TLSModeServerStrict)
+		tlsConf.GetCertificate = certReloadAgent.GetCertificateFunc()
 
 		endpoint := fmt.Sprintf("%s-gateway-endpoint", params.TargetNodeName)
 		grpcServerEndpoint := flag.String(endpoint, node.Address, "gRPC server endpoint")
@@ -226,7 +242,7 @@ func (box *Box) StartAcmeNodeGateway(params *ACMENodeGatewayParams, nOpts ...Nod
 			ReadTimeout:  5 * time.Second,
 			WriteTimeout: 5 * time.Second,
 			IdleTimeout:  120 * time.Second,
-			TLSConfig:    &tls.Config{GetCertificate: man.GetCertificate},
+			TLSConfig:    tlsConf,
 		}
 
 		if params.MuxWrapper != nil {
@@ -262,40 +278,27 @@ func (box *Box) StartAcmeNodeGateway(params *ACMENodeGatewayParams, nOpts ...Nod
 				box.info.Nodes = newNodeList
 				_ = box.registry.RegisterService(box.info)
 			}
-
-			httpSrv := &http.Server{
-				ReadTimeout:  5 * time.Second,
-				WriteTimeout: 5 * time.Second,
-				IdleTimeout:  120 * time.Second,
-				Handler:      man.HTTPHandler(srv.Handler),
-				Addr:         fmt.Sprintf("%s:80", box.Host()),
-			}
-			err = httpSrv.ListenAndServe()
-			if err != nil {
-				log.Error("failed to run acme server", log.Err(err))
-			}
 		}()
 
 		if options.register {
-			if box.registry != nil {
-				if box.info == nil {
-					box.info = &ome.ServiceInfo{}
-					box.info.Id = box.Name()
-					box.info.Type = info.Type
-				}
+			registry := box.options.Registry()
+			if box.info == nil {
+				box.info = &ome.ServiceInfo{}
+				box.info.Id = box.Name()
+				box.info.Type = info.Type
+			}
 
-				n := &ome.Node{}
-				n.Id = params.NodeName
-				n.Address = address
-				n.Protocol = ome.Protocol_Http
-				n.Security = ome.Security_Acme
-				n.Meta = options.md
-				box.info.Nodes = append(box.info.Nodes, n)
+			n := &ome.Node{}
+			n.Id = params.NodeName
+			n.Address = address
+			n.Protocol = ome.Protocol_Http
+			n.Security = ome.Security_Acme
+			n.Meta = options.md
+			box.info.Nodes = append(box.info.Nodes, n)
 
-				err = box.registry.RegisterService(box.info)
-				if err != nil {
-					log.Error("could not register service", log.Err(err))
-				}
+			err = registry.RegisterService(box.info)
+			if err != nil {
+				log.Error("could not register service", log.Err(err))
 			}
 		}
 		return nil
@@ -387,7 +390,7 @@ func (box *Box) StartNode(params *NodeParams, nOpts ...NodeOption) error {
 	}()
 
 	if options.register || params.Node != nil {
-		box.ConnectToRegistry()
+		registry := box.options.Registry()
 
 		if box.info == nil {
 			box.info = &ome.ServiceInfo{}
@@ -404,52 +407,12 @@ func (box *Box) StartNode(params *NodeParams, nOpts ...NodeOption) error {
 		params.Node.Address = address
 		box.info.Nodes = append(box.info.Nodes, params.Node)
 
-		err = box.registry.RegisterService(box.info)
+		err = registry.RegisterService(box.info)
 		if err != nil {
 			log.Error("could not register service", log.Err(err), log.Field("name", params.Node.Id))
 		}
 	}
 	return nil
-}
-
-func (box *Box) StartRegistry(opts ...Option) (err error) {
-	box.options.override(opts...)
-
-	if box.options.regAddr == "" {
-		return err2.New(err2.CodeBadRequest, "missing registry address")
-	}
-
-	dc := &discover.ServerConfig{
-		Name:                 box.options.name,
-		StoreDir:             box.options.workingDir,
-		BindAddress:          box.options.regAddr,
-		CertFilename:         box.options.certificateFilename,
-		KeyFilename:          box.options.keyFilename,
-		ClientCACertFilename: box.options.caCertFilename,
-	}
-	box.registry, err = discover.Serve(dc)
-	if err != nil {
-		log.Error("impossible to run discovery server", log.Err(err))
-	}
-
-	return nil
-}
-
-func (box *Box) StopRegistry() error {
-	if box.registry == nil {
-		return nil
-	}
-
-	if stopper, ok := box.registry.(interface {
-		Stop() error
-	}); ok {
-		return stopper.Stop()
-	}
-	return nil
-}
-
-func (box *Box) ConnectToRegistry() {
-	box.Registry()
 }
 
 func (box *Box) StopNode(name string) {

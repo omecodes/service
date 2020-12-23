@@ -13,11 +13,12 @@ import (
 
 type WireEndpointFunc func(ctx context.Context, serveMux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) error
 
-type ACMENodeGatewayParams struct {
+type PublicNodeGatewayParams struct {
 	ServiceName    string
 	TargetNodeName string
 	NodeName       string
 	ServiceType    uint32
+	Email          string
 	Binder         WireEndpointFunc
 	MuxWrapper     MuxWrapper
 }
@@ -41,8 +42,9 @@ type GatewayParams struct {
 	Node           *ome.Node
 }
 
-type AcmeGatewayParams struct {
+type PublicGatewayParams struct {
 	ForceRegister  bool
+	Email          string
 	MiddlewareList []mux.MiddlewareFunc
 	ProvideRouter  func() *mux.Router
 	ServiceType    uint32

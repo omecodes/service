@@ -3,6 +3,8 @@ package service
 import (
 	"crypto"
 	"crypto/x509"
+	"github.com/omecodes/discover"
+	ome "github.com/omecodes/libome"
 )
 
 type options struct {
@@ -16,6 +18,7 @@ type options struct {
 	caAPIKey       string
 	caAPISecret    string
 
+	registry     ome.Registry
 	regAddr      string
 	regAPIKey    string
 	regAPISecret string
@@ -96,6 +99,10 @@ func (opts *options) IpList() []string {
 	return l
 }
 
+func (opts *options) Domains() []string {
+	return append(opts.netDomains, opts.netMainDomain)
+}
+
 func (opts *options) ServiceCert() *x509.Certificate {
 	return opts.cert
 }
@@ -106,6 +113,13 @@ func (opts *options) ServiceKey() crypto.PrivateKey {
 
 func (opts *options) CACertificate() *x509.Certificate {
 	return opts.caCert
+}
+
+func (opts *options) Registry() ome.Registry {
+	if opts.registry == nil {
+		opts.registry = discover.NewZebouClient(opts.regAddr, opts.ClientMutualTLS())
+	}
+	return opts.registry
 }
 
 // Option is an [options] object handler function

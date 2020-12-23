@@ -6,9 +6,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/foomo/simplecert"
+	"github.com/foomo/tlsconfig"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -17,7 +20,6 @@ import (
 	"github.com/omecodes/common/httpx"
 	"github.com/omecodes/common/utils/log"
 	"github.com/omecodes/libome"
-	"golang.org/x/crypto/acme/autocert"
 )
 
 func (box *Box) StartGateway(params *GatewayParams, nOpts ...NodeOption) error {
@@ -129,7 +131,7 @@ func (box *Box) StartGateway(params *GatewayParams, nOpts ...NodeOption) error {
 	return nil
 }
 
-func (box *Box) StartAcmeGateway(params *AcmeGatewayParams, nOpts ...NodeOption) error {
+func (box *Box) StartPublicGateway(params *PublicGatewayParams, nOpts ...NodeOption) error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
 
@@ -139,24 +141,44 @@ func (box *Box) StartAcmeGateway(params *AcmeGatewayParams, nOpts ...NodeOption)
 	}
 	box.options.override(options.boxOptions...)
 
-	cacheDir := filepath.Dir(box.CertificateFilename())
-	hostPolicy := func(ctx context.Context, host string) error {
-		allowedHost := box.Domain()
-		if host == allowedHost {
-			return nil
+	cacheDir := filepath.Join(box.workingDir, "lets-encrypt")
+	err := os.MkdirAll(cacheDir, os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	cfg := simplecert.Default
+	cfg.Domains = box.Domains()
+	cfg.CacheDir = cacheDir
+	cfg.SSLEmail = params.Email
+	cfg.DNSProvider = "cloudflare"
+
+	certReloadAgent, err := simplecert.Init(cfg, nil)
+	if err != nil {
+		return err
+	}
+
+	log.Info("starting HTTP Listener on Port 80")
+	go func() {
+		if err := http.ListenAndServe(":80", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			httpx.Redirect(w, &httpx.RedirectURL{
+				URL:         fmt.Sprintf("https://%s:443%s", box.netMainDomain, r.URL.Path),
+				Code:        http.StatusPermanentRedirect,
+				ContentType: "text/html",
+			})
+		})); err != nil {
+			log.Error("listen to port 80 failed", log.Err(err))
 		}
-		return fmt.Errorf("acme/autocert: only %s host is allowed", allowedHost)
-	}
-	man := &autocert.Manager{
-		Prompt:     autocert.AcceptTOS,
-		HostPolicy: hostPolicy,
-		Cache:      autocert.DirCache(cacheDir),
-	}
+	}()
+
+	tlsConf := tlsconfig.NewServerTLSConfig(tlsconfig.TLSModeServerStrict)
+	tlsConf.GetCertificate = certReloadAgent.GetCertificateFunc()
 
 	address := fmt.Sprintf("%s:443", box.Host())
 	if box.options.netMainDomain != "" {
 		address = strings.Replace(address, strings.Split(address, ":")[0], box.options.netMainDomain, 1)
 	}
+
 	router := params.ProvideRouter()
 
 	var handler http.Handler
@@ -177,7 +199,7 @@ func (box *Box) StartAcmeGateway(params *AcmeGatewayParams, nOpts ...NodeOption)
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 5 * time.Second,
 		IdleTimeout:  120 * time.Second,
-		TLSConfig:    &tls.Config{GetCertificate: man.GetCertificate},
+		TLSConfig:    tlsConf,
 	}
 
 	gt := &httpNode{}
@@ -203,18 +225,6 @@ func (box *Box) StartAcmeGateway(params *AcmeGatewayParams, nOpts ...NodeOption)
 				}
 				box.info.Nodes = newNodeList
 				_ = box.registry.RegisterService(box.info)
-			}
-
-			httpSrv := &http.Server{
-				ReadTimeout:  5 * time.Second,
-				WriteTimeout: 5 * time.Second,
-				IdleTimeout:  120 * time.Second,
-				Handler:      man.HTTPHandler(srv.Handler),
-				Addr:         fmt.Sprintf("%s:80", box.Host()),
-			}
-			err = httpSrv.ListenAndServe()
-			if err != nil {
-				log.Error("failed to run acme server", log.Err(err))
 			}
 		}
 	}()

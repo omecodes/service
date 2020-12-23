@@ -15,8 +15,6 @@ type Box struct {
 	gRPCNodes map[string]*gPRCNode
 	httpNodes map[string]*httpNode
 
-	registry ome.Registry
-
 	info        *ome.ServiceInfo
 	dialerCache map[string]Dialer
 }
@@ -37,10 +35,6 @@ func (box *Box) Update(opts ...Option) {
 	for _, o := range opts {
 		o(&box.options)
 	}
-}
-
-func (box *Box) Registry() ome.Registry {
-	return box.registry
 }
 
 // Stop stops all started services and gateways
