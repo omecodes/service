@@ -481,6 +481,8 @@ github.com/omecodes/discover v0.0.0-20201221184512-1ada749c5a84 h1:qbbV+fNlhKIJq
 github.com/omecodes/discover v0.0.0-20201221184512-1ada749c5a84/go.mod h1:kJR9DuqdlsFe3bPXGLSD7Vl02QhEif7bUtSDkitLbpo=
 github.com/omecodes/discover v0.0.0-20201222170647-7647400baa0c h1:kBi7iBmpUJiKFY7nZQ3kLDdk/N8kEcipNE8iqOXbbM8=
 github.com/omecodes/discover v0.0.0-20201222170647-7647400baa0c/go.mod h1:kJR9DuqdlsFe3bPXGLSD7Vl02QhEif7bUtSDkitLbpo=
+github.com/omecodes/discover v0.0.0-20201224185158-ccc7d5c13964 h1:AeBxc6ZqR4GQZOyR5iJfoN7a4YKUAXoy5ICfkZ88KXY=
+github.com/omecodes/discover v0.0.0-20201224185158-ccc7d5c13964/go.mod h1:kJR9DuqdlsFe3bPXGLSD7Vl02QhEif7bUtSDkitLbpo=
 github.com/omecodes/libome v0.0.0-20201128214815-2b3f03af9fa6/go.mod h1:zWK7ZcUVGB+F7XO5fSkwzypxtHjMM05UAPcwpnd+BcI=
 github.com/omecodes/libome v0.0.0-20201219112332-e9e07f64c286 h1:o+ybdTFMhdoWJI8u2Mq1C5pP3msfjUsItA9PD/DDU18=
 github.com/omecodes/libome v0.0.0-20201219112332-e9e07f64c286/go.mod h1:KDrBixAwkiu9Ooe/f0MRAbiD5GgQgOwDpCVm7sX2F84=
