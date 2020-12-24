@@ -34,15 +34,15 @@ func CreateBox(opts ...Option) *Box {
 }
 
 func (box *Box) Service(serviceType uint32) *ome.ServiceInfo {
-	box.serverMutex.Lock()
-	defer box.serverMutex.Unlock()
+	box.servicesMutex.Lock()
+	defer box.servicesMutex.Unlock()
 
 	return box.services[serviceType]
 }
 
 func (box *Box) ServiceNode(serviceType uint32, name string) *ome.Node {
-	box.serverMutex.Lock()
-	defer box.serverMutex.Unlock()
+	box.servicesMutex.Lock()
+	defer box.servicesMutex.Unlock()
 
 	serv, found := box.services[serviceType]
 	if !found {
@@ -58,14 +58,14 @@ func (box *Box) ServiceNode(serviceType uint32, name string) *ome.Node {
 }
 
 func (box *Box) SaveService(serviceType uint32, info *ome.ServiceInfo) {
-	box.serverMutex.Lock()
-	defer box.serverMutex.Unlock()
+	box.servicesMutex.Lock()
+	defer box.servicesMutex.Unlock()
 	box.services[serviceType] = info
 }
 
 func (box *Box) AllServices() []*ome.ServiceInfo {
-	box.serverMutex.Lock()
-	defer box.serverMutex.Unlock()
+	box.servicesMutex.Lock()
+	defer box.servicesMutex.Unlock()
 
 	var infoList []*ome.ServiceInfo
 	for _, info := range box.services {
