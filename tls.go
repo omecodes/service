@@ -93,7 +93,7 @@ func (opts *Options) loadOrGenerateCertificateKeyPair() (err error) {
 		}
 		pub := opts.key.(*ecdsa.PrivateKey).PublicKey
 
-		gAuth := ome.NewGRPCBasic(opts.caAPIKey, opts.caAPISecret)
+		gAuth := ome.NewGRPCProxy(opts.caAPIKey, opts.caAPISecret)
 		transportCredentials, err := credentials.NewClientTLSFromFile(opts.caCertFilename, "")
 		if err != nil {
 			return err
