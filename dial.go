@@ -11,7 +11,12 @@ import (
 )
 
 func (box *Box) dialToService(serviceType uint32) (*grpc.ClientConn, error) {
-	infoList, err := box.Registry().GetOfType(serviceType)
+	reg, err := box.Registry()
+	if err != nil {
+		return nil, err
+	}
+
+	infoList, err := reg.GetOfType(serviceType)
 	if err != nil {
 		return nil, err
 	}
@@ -33,13 +38,11 @@ func (box *Box) dialToService(serviceType uint32) (*grpc.ClientConn, error) {
 		// if no existing connection dialer found, dial new one
 		for _, node := range info.Nodes {
 			if node.Protocol == ome.Protocol_Grpc {
-				tlsConf := box.ClientMutualTLS()
-				if tlsConf == nil {
-					dialer = NewDialer(node.Address)
-				} else {
-					dialer = NewDialer(node.Address, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)))
+				tlsConf, err := box.ClientMutualTLS()
+				if err != nil {
+					return nil, err
 				}
-
+				dialer = NewDialer(node.Address, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)))
 				conn, err := dialer.Dial()
 				if err != nil {
 					log.Error("could not connect to gRPC server", log.Err(err), log.Field("at", fmt.Sprintf("grpc://%s/%s@%s", info.Type, node.Id, node.Address)))

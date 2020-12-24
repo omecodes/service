@@ -30,11 +30,15 @@ func (opts *Options) listen(port int, security ome.Security) (net.Listener, *tls
 		}
 
 		if security == ome.Security_Tls {
-			tc = opts.ServerTLS()
+			tc, err = opts.ServerTLS()
 		} else if security == ome.Security_MutualTls {
-			tc = opts.serverMutualTLS()
+			tc, err = opts.serverMutualTLS()
 		} else {
 			return nil, nil, errors.New("unsupported security type")
+		}
+
+		if err != nil {
+			return nil, nil, err
 		}
 
 		listener, err = tls.Listen("tcp", address, tc)

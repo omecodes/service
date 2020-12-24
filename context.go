@@ -111,10 +111,10 @@ func GetGatewayAddress(ctx context.Context, name string) string {
 	return gt.URL()
 }
 
-func GetClientTLSConfig(ctx context.Context) *tls.Config {
+func GetClientTLSConfig(ctx context.Context) (*tls.Config, error) {
 	box := serviceBox(ctx)
 	if box == nil {
-		return nil
+		return nil, errors.NotSupported
 	}
 	return box.ClientMutualTLS()
 }

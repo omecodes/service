@@ -22,6 +22,13 @@ import (
 	"google.golang.org/grpc"
 )
 
+func (opts *Options) loadCACertificate() (err error) {
+	if opts.caCert == nil {
+		opts.caCert, err = crypt.LoadCertificate(opts.caCertFilename)
+	}
+	return
+}
+
 func (opts *Options) loadCertificateKeyPairFromFiles() error {
 	var err error
 	opts.cert, err = crypt.LoadCertificate(opts.certificateFilename)
@@ -130,28 +137,38 @@ func (opts *Options) loadOrGenerateCertificateKeyPair() (err error) {
 	return
 }
 
-func (opts *Options) serverMutualTLS() *tls.Config {
-	if opts.key == nil || opts.cert == nil || opts.caCert == nil {
-		return nil
+func (opts *Options) serverMutualTLS() (*tls.Config, error) {
+	err := opts.loadOrGenerateCertificateKeyPair()
+	if err != nil {
+		return nil, err
 	}
+
+	err = opts.loadCACertificate()
+	if err != nil {
+		return nil, err
+	}
+
 	CAPool := x509.NewCertPool()
 	CAPool.AddCert(opts.caCert)
 	tlsCert := tls.Certificate{
 		Certificate: [][]byte{opts.cert.Raw},
 		PrivateKey:  opts.key,
 	}
+
 	return &tls.Config{
 		Certificates: []tls.Certificate{tlsCert},
 		ClientCAs:    CAPool,
 		ClientAuth:   tls.VerifyClientCertIfGiven,
 		ServerName:   opts.netMainDomain,
-	}
+	}, nil
 }
 
-func (opts *Options) ServerTLS() *tls.Config {
-	if opts.key == nil || opts.cert == nil || opts.caCert == nil {
-		return nil
+func (opts *Options) ServerTLS() (*tls.Config, error) {
+	err := opts.loadOrGenerateCertificateKeyPair()
+	if err != nil {
+		return nil, err
 	}
+
 	tlsCert := tls.Certificate{
 		Certificate: [][]byte{opts.cert.Raw},
 		PrivateKey:  opts.key,
@@ -159,13 +176,20 @@ func (opts *Options) ServerTLS() *tls.Config {
 	return &tls.Config{
 		Certificates: []tls.Certificate{tlsCert},
 		ServerName:   opts.netMainDomain,
-	}
+	}, nil
 }
 
-func (opts *Options) ClientMutualTLS() *tls.Config {
-	if opts.key == nil || opts.cert == nil || opts.caCert == nil {
-		return nil
+func (opts *Options) ClientMutualTLS() (*tls.Config, error) {
+	err := opts.loadOrGenerateCertificateKeyPair()
+	if err != nil {
+		return nil, err
 	}
+
+	err = opts.loadCACertificate()
+	if err != nil {
+		return nil, err
+	}
+
 	CAPool := x509.NewCertPool()
 	CAPool.AddCert(opts.caCert)
 
@@ -176,16 +200,18 @@ func (opts *Options) ClientMutualTLS() *tls.Config {
 	return &tls.Config{
 		RootCAs:      CAPool,
 		Certificates: []tls.Certificate{tlsCert},
-	}
+	}, nil
 }
 
-func (opts *Options) ClientTLS() *tls.Config {
-	if opts.caCert != nil {
-		CAPool := x509.NewCertPool()
-		CAPool.AddCert(opts.caCert)
-		return &tls.Config{
-			RootCAs: CAPool,
-		}
+func (opts *Options) ClientTLS() (*tls.Config, error) {
+	err := opts.loadCACertificate()
+	if err != nil {
+		return nil, err
 	}
-	return nil
+
+	CAPool := x509.NewCertPool()
+	CAPool.AddCert(opts.caCert)
+	return &tls.Config{
+		RootCAs: CAPool,
+	}, nil
 }

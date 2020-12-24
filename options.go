@@ -115,11 +115,15 @@ func (opts *Options) CACertificate() *x509.Certificate {
 	return opts.caCert
 }
 
-func (opts *Options) Registry() ome.Registry {
+func (opts *Options) Registry() (ome.Registry, error) {
 	if opts.registry == nil {
-		opts.registry = discover.NewZebouClient(opts.regAddr, opts.ClientMutualTLS())
+		tc, err := opts.ClientMutualTLS()
+		if err != nil {
+			return nil, err
+		}
+		opts.registry = discover.NewZebouClient(opts.regAddr, tc)
 	}
-	return opts.registry
+	return opts.registry, nil
 }
 
 // Option is an [Options] object handler function

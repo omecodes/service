@@ -86,7 +86,11 @@ func (box *Box) StartNodeGateway(params *NodeGatewayParams, nOpts ...NodeOption)
 			if node.Security == ome.Security_Insecure {
 				opts = append(opts, grpc.WithInsecure())
 			} else {
-				opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(box.ClientMutualTLS())))
+				tc, err := box.ClientMutualTLS()
+				if err != nil {
+					return err
+				}
+				opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tc)))
 			}
 
 			err = params.Binder(ctx, mux, *grpcServerEndpoint, opts)
@@ -129,7 +133,10 @@ func (box *Box) StartNodeGateway(params *NodeGatewayParams, nOpts ...NodeOption)
 			}()
 
 			if options.register {
-				reg := box.Options.Registry()
+				reg, err := box.Options.Registry()
+				if err != nil {
+					return err
+				}
 				n := &ome.Node{
 					Id:       params.NodeName,
 					Protocol: ome.Protocol_Http,
@@ -214,7 +221,11 @@ func (box *Box) StartPublicNodeGateway(params *PublicNodeGatewayParams, nOpts ..
 		if node.Security == ome.Security_Insecure {
 			opts = append(opts, grpc.WithInsecure())
 		} else {
-			opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(box.ClientMutualTLS())))
+			tc, err := box.ClientMutualTLS()
+			if err != nil {
+				return err
+			}
+			opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(tc)))
 		}
 
 		err = params.Binder(ctx, mux, *grpcServerEndpoint, opts)
@@ -262,7 +273,10 @@ func (box *Box) StartPublicNodeGateway(params *PublicNodeGatewayParams, nOpts ..
 		}()
 
 		if options.register {
-			reg := box.Options.Registry()
+			reg, err := box.Options.Registry()
+			if err != nil {
+				return err
+			}
 			n := &ome.Node{
 				Id:       params.NodeName,
 				Protocol: ome.Protocol_Http,
@@ -350,7 +364,11 @@ func (box *Box) StartNode(params *NodeParams, nOpts ...NodeOption) error {
 	}()
 
 	if options.register {
-		reg := box.Options.Registry()
+		reg, err := box.Options.Registry()
+		if err != nil {
+			return err
+		}
+
 		n := &ome.Node{
 			Id:       params.Name,
 			Protocol: ome.Protocol_Grpc,

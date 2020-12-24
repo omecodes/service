@@ -106,7 +106,11 @@ func (box *Box) StartGateway(params *GatewayParams, nOpts ...NodeOption) error {
 	}()
 
 	if options.register {
-		reg := box.Options.Registry()
+		reg, err := box.Options.Registry()
+		if err != nil {
+			return err
+		}
+
 		n := &ome.Node{
 			Id:       params.Name,
 			Protocol: ome.Protocol_Http,
@@ -216,7 +220,11 @@ func (box *Box) StartPublicGateway(params *PublicGatewayParams, nOpts ...NodeOpt
 	}()
 
 	if options.register {
-		reg := box.Options.Registry()
+		reg, err := box.Options.Registry()
+		if err != nil {
+			return err
+		}
+
 		n := &ome.Node{
 			Id:       params.Name,
 			Protocol: ome.Protocol_Http,
@@ -343,7 +351,13 @@ func (atv *authorizationJWT) Middleware(next http.Handler) http.Handler {
 				log.Info("bearer info might be access token. Starting access token introspection")
 
 				box := BoxFromContext(r.Context())
-				reg := box.Registry()
+				reg, err := box.Registry()
+				if err != nil {
+					log.Error("error while getting registry server in registry")
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+
 				info, err := reg.FirstOfType(ome.AuthenticationServiceType)
 				if err != nil {
 					log.Error("could not find authentication server in registry")
@@ -357,7 +371,14 @@ func (atv *authorizationJWT) Middleware(next http.Handler) http.Handler {
 						client := http.Client{}
 						if node.Security != ome.Security_Insecure {
 							// by default no mutual TLS
-							client.Transport = &http.Transport{TLSClientConfig: box.ClientTLS()}
+							tc, err := box.ClientTLS()
+							if err != nil {
+								log.Error("failed to get connection TLS config", log.Err(err))
+								w.WriteHeader(http.StatusInternalServerError)
+								return
+							}
+
+							client.Transport = &http.Transport{TLSClientConfig: tc}
 						}
 
 						form := url.Values{}
