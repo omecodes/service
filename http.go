@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/foomo/simplecert"
 	"github.com/foomo/tlsconfig"
+	"github.com/google/uuid"
 	"net"
 	"net/http"
 	"net/url"
@@ -31,6 +32,9 @@ func (box *Box) StartGateway(params *GatewayParams, nOpts ...NodeOption) error {
 		o(&options)
 	}
 	box.Options.override(options.boxOptions...)
+	if params.Name == "" {
+		params.Name = uuid.New().String()
+	}
 
 	var listener net.Listener
 	var err error
@@ -65,14 +69,14 @@ func (box *Box) StartGateway(params *GatewayParams, nOpts ...NodeOption) error {
 			handler = m.Middleware(handler)
 		}
 	} else {
-		handler = httpx.Logger(params.Node.Id).Handle(router)
+		handler = httpx.Logger(params.Name).Handle(router)
 	}
 
 	handler = httpx.ContextUpdater(func(ctx context.Context) context.Context {
 		return ContextWithBox(ctx, box)
 	}).Handle(handler)
 
-	log.Info("starting HTTP server", log.Field("gateway", params.Node.Id), log.Field("address", address))
+	log.Info("starting HTTP server", log.Field("gateway", params.Name), log.Field("address", address))
 	srv := &http.Server{
 		Addr:    address,
 		Handler: handler,
@@ -80,14 +84,14 @@ func (box *Box) StartGateway(params *GatewayParams, nOpts ...NodeOption) error {
 	gt := &httpNode{}
 	gt.Server = srv
 	gt.Address = address
-	if options.tlsConfig != nil || params.Node.Security != ome.Security_Insecure {
+	if options.tlsConfig != nil || params.Security != ome.Security_Insecure {
 		gt.Scheme = "https"
 	} else {
 		gt.Scheme = "http"
 	}
 
-	gt.Name = params.Node.Id
-	box.httpNodes[params.Node.Id] = gt
+	gt.Name = params.Name
+	box.httpNodes[params.Name] = gt
 	go func() {
 		err = srv.Serve(listener)
 		if err != nil {
@@ -95,37 +99,26 @@ func (box *Box) StartGateway(params *GatewayParams, nOpts ...NodeOption) error {
 				log.Error("http server stopped", log.Err(err))
 			}
 
-			if box.info != nil {
-				var newNodeList []*ome.Node
-				for _, node := range box.info.Nodes {
-					if node.Id != params.Node.Id {
-						newNodeList = append(newNodeList, node)
-					}
-				}
-				box.info.Nodes = newNodeList
-				_ = box.registry.RegisterService(box.info)
+			if info, deleted := box.DeleteNode(params.ServiceType, params.ServiceID, params.Name); deleted {
+				_ = box.registry.RegisterService(info)
 			}
 		}
 	}()
 
 	if options.register {
-		registry := box.Registry()
-		n := params.Node
-		n.Address = address
-		if box.info == nil {
-			box.info = new(ome.ServiceInfo)
-			box.info.Id = box.Name()
-			box.info.Type = params.ServiceType
-			if box.info.Meta == nil {
-				box.info.Meta = map[string]string{}
-			}
+		reg := box.Options.Registry()
+		n := &ome.Node{
+			Id:       params.Name,
+			Protocol: ome.Protocol_Http,
+			Address:  address,
+			Security: params.Security,
+			Ttl:      -1,
+			Meta:     params.Meta,
 		}
-		box.info.Nodes = append(box.info.Nodes, n)
-
-		// gt.RegistryID, err = box.registry.RegisterService(info, ome.ActionOnRegisterExistingService_AddNodes|ome.ActionOnRegisterExistingService_UpdateExisting)
-		err = registry.RegisterService(box.info)
+		info := box.SaveNode(params.ServiceType, params.ServiceID, n)
+		err = reg.RegisterService(info)
 		if err != nil {
-			log.Error("could not register gateway", log.Err(err), log.Field("name", params.Node.Id))
+			log.Error("could not register service", log.Err(err))
 		}
 	}
 	return nil
@@ -192,7 +185,7 @@ func (box *Box) StartPublicGateway(params *PublicGatewayParams, nOpts ...NodeOpt
 		handler = router
 	}
 
-	log.Info("starting HTTP server", log.Field("gateway", params.Node.Id), log.Field("address", address))
+	log.Info("starting HTTP server", log.Field("gateway", params.Name), log.Field("address", address))
 	srv := &http.Server{
 		Addr:         address,
 		Handler:      handler,
@@ -207,8 +200,8 @@ func (box *Box) StartPublicGateway(params *PublicGatewayParams, nOpts ...NodeOpt
 	gt.Address = address
 	gt.Scheme = "https"
 
-	gt.Name = params.Node.Id
-	box.httpNodes[params.Node.Id] = gt
+	gt.Name = params.Name
+	box.httpNodes[params.Name] = gt
 	go func() {
 		err := srv.ListenAndServeTLS("", "")
 		if err != nil {
@@ -216,36 +209,26 @@ func (box *Box) StartPublicGateway(params *PublicGatewayParams, nOpts ...NodeOpt
 				log.Error("http server stopped", log.Err(err))
 			}
 
-			if box.info != nil {
-				var newNodeList []*ome.Node
-				for _, node := range box.info.Nodes {
-					if node.Id != params.Node.Id {
-						newNodeList = append(newNodeList, node)
-					}
-				}
-				box.info.Nodes = newNodeList
-				_ = box.registry.RegisterService(box.info)
+			if info, deleted := box.DeleteNode(params.ServiceType, params.ServiceID, params.Name); deleted {
+				_ = box.registry.RegisterService(info)
 			}
 		}
 	}()
 
 	if options.register {
-		n := params.Node
-		n.Address = address
-		if box.info == nil {
-			box.info = new(ome.ServiceInfo)
-			box.info.Id = box.Name()
-			box.info.Type = params.ServiceType
-			if box.info.Meta == nil {
-				box.info.Meta = map[string]string{}
-			}
+		reg := box.Options.Registry()
+		n := &ome.Node{
+			Id:       params.Name,
+			Protocol: ome.Protocol_Http,
+			Address:  address,
+			Security: ome.Security_Acme,
+			Ttl:      -1,
+			Meta:     params.Meta,
 		}
-		box.info.Nodes = append(box.info.Nodes, n)
-
-		// gt.RegistryID, err = box.registry.RegisterService(info, ome.ActionOnRegisterExistingService_AddNodes|ome.ActionOnRegisterExistingService_UpdateExisting)
-		err := box.registry.RegisterService(box.info)
+		info := box.SaveNode(params.ServiceType, params.ServiceID, n)
+		err = reg.RegisterService(info)
 		if err != nil {
-			log.Error("could not register gateway", log.Err(err), log.Field("name", params.Node.Id))
+			log.Error("could not register service", log.Err(err))
 		}
 	}
 	return nil

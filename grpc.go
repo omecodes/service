@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/foomo/simplecert"
 	"github.com/foomo/tlsconfig"
+	"github.com/google/uuid"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_opentracing "github.com/grpc-ecosystem/go-grpc-middleware/tracing/opentracing"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -122,36 +123,23 @@ func (box *Box) StartNodeGateway(params *NodeGatewayParams, nOpts ...NodeOption)
 					log.Error("http server stopped", log.Err(err))
 				}
 
-				if box.info != nil {
-					var newNodeList []*ome.Node
-					for _, node := range box.info.Nodes {
-						if node.Id != params.NodeName {
-							newNodeList = append(newNodeList, node)
-						}
-					}
-					box.info.Nodes = newNodeList
-					_ = box.registry.RegisterService(box.info)
+				if info, deleted := box.DeleteNode(params.ServiceType, params.ServiceID, params.NodeName); deleted {
+					_ = box.registry.RegisterService(info)
 				}
 			}()
 
 			if options.register {
-				registry := box.Options.Registry()
-
-				if box.info == nil {
-					box.info = &ome.ServiceInfo{}
-					box.info.Id = box.Name()
-					box.info.Type = info.Type
+				reg := box.Options.Registry()
+				n := &ome.Node{
+					Id:       params.NodeName,
+					Protocol: ome.Protocol_Http,
+					Address:  address,
+					Security: params.Security,
+					Ttl:      -1,
+					Meta:     params.Meta,
 				}
-
-				n := &ome.Node{}
-				n.Id = params.NodeName
-				n.Address = address
-				n.Protocol = ome.Protocol_Http
-				n.Security = params.Security
-				n.Meta = options.md
-				box.info.Nodes = append(box.info.Nodes, n)
-
-				err = registry.RegisterService(box.info)
+				info := box.SaveNode(params.ServiceType, params.ServiceID, n)
+				err = reg.RegisterService(info)
 				if err != nil {
 					log.Error("could not register service", log.Err(err))
 				}
@@ -268,35 +256,23 @@ func (box *Box) StartPublicNodeGateway(params *PublicNodeGatewayParams, nOpts ..
 				log.Fatal("failed to start server", log.Err(err))
 			}
 
-			if box.info != nil {
-				var newNodeList []*ome.Node
-				for _, node := range box.info.Nodes {
-					if node.Id != params.NodeName {
-						newNodeList = append(newNodeList, node)
-					}
-				}
-				box.info.Nodes = newNodeList
-				_ = box.registry.RegisterService(box.info)
+			if info, deleted := box.DeleteNode(params.ServiceType, params.ServiceID, params.NodeName); deleted {
+				_ = box.registry.RegisterService(info)
 			}
 		}()
 
 		if options.register {
-			registry := box.Options.Registry()
-			if box.info == nil {
-				box.info = &ome.ServiceInfo{}
-				box.info.Id = box.Name()
-				box.info.Type = info.Type
+			reg := box.Options.Registry()
+			n := &ome.Node{
+				Id:       params.NodeName,
+				Protocol: ome.Protocol_Http,
+				Address:  address,
+				Security: ome.Security_Acme,
+				Ttl:      -1,
+				Meta:     params.Meta,
 			}
-
-			n := &ome.Node{}
-			n.Id = params.NodeName
-			n.Address = address
-			n.Protocol = ome.Protocol_Http
-			n.Security = ome.Security_Acme
-			n.Meta = options.md
-			box.info.Nodes = append(box.info.Nodes, n)
-
-			err = registry.RegisterService(box.info)
+			info := box.SaveNode(params.ServiceType, params.ServiceID, n)
+			err = reg.RegisterService(info)
 			if err != nil {
 				log.Error("could not register service", log.Err(err))
 			}
@@ -317,22 +293,13 @@ func (box *Box) StartNode(params *NodeParams, nOpts ...NodeOption) error {
 		o(options)
 	}
 
+	if params.Name == "" {
+		params.Name = uuid.New().String()
+	}
+
 	box.Options.override(options.boxOptions...)
 
-	var listener net.Listener
-	var err error
-
-	if options.tlsConfig != nil {
-		var addr string
-		if options.port == 0 {
-			addr = box.Options.Host() + ":"
-		} else {
-			addr = fmt.Sprintf("%s:%d", box.Options.Host(), options.port)
-		}
-		listener, err = tls.Listen("tcp", addr, options.tlsConfig)
-	} else {
-		listener, options.tlsConfig, err = box.Options.listen(options.port, ome.Security_MutualTls)
-	}
+	listener, _, err := box.Options.listen(options.port, ome.Security_MutualTls)
 	if err != nil {
 		return err
 	}
@@ -342,7 +309,7 @@ func (box *Box) StartNode(params *NodeParams, nOpts ...NodeOption) error {
 		address = strings.Replace(address, box.Options.netIP, box.Options.netMainDomain, 1)
 	}
 
-	log.Info("starting gRPC server", log.Field("service", params.Node.Id), log.Field("address", address))
+	log.Info("starting gRPC server", log.Field("service", params.Name), log.Field("address", address))
 	var opts []grpc.ServerOption
 
 	mergedInterceptors := ome.NewGrpcContextInterceptor(options.interceptors...)
@@ -365,10 +332,10 @@ func (box *Box) StartNode(params *NodeParams, nOpts ...NodeOption) error {
 	rs := new(gPRCNode)
 	rs.Address = address
 	rs.Server = srv
-	rs.Secure = options.tlsConfig != nil
+	rs.Secure = true
 
-	rs.Name = params.Node.Id
-	box.gRPCNodes[params.Node.Id] = rs
+	rs.Name = params.Name
+	box.gRPCNodes[params.Name] = rs
 
 	params.RegisterHandlerFunc(srv)
 	go func() {
@@ -377,39 +344,25 @@ func (box *Box) StartNode(params *NodeParams, nOpts ...NodeOption) error {
 			log.Error("grpc server stopped", log.Err(err))
 		}
 
-		if box.info != nil {
-			var newNodeList []*ome.Node
-			for _, node := range box.info.Nodes {
-				if node.Id != params.Node.Id {
-					newNodeList = append(newNodeList, node)
-				}
-			}
-			box.info.Nodes = newNodeList
-			_ = box.registry.RegisterService(box.info)
+		if info, deleted := box.DeleteNode(params.ServiceType, params.ServiceID, params.Name); deleted {
+			_ = box.registry.RegisterService(info)
 		}
 	}()
 
-	if options.register || params.Node != nil {
-		registry := box.Options.Registry()
-
-		if box.info == nil {
-			box.info = &ome.ServiceInfo{}
-			box.info.Id = box.Name()
-			box.info.Type = params.ServiceType
-			if box.info.Meta == nil {
-				box.info.Meta = map[string]string{}
-			}
-			for name, meta := range options.md {
-				box.info.Meta[name] = meta
-			}
+	if options.register {
+		reg := box.Options.Registry()
+		n := &ome.Node{
+			Id:       params.Name,
+			Protocol: ome.Protocol_Grpc,
+			Address:  address,
+			Security: ome.Security_MutualTls,
+			Ttl:      -1,
+			Meta:     params.Meta,
 		}
-
-		params.Node.Address = address
-		box.info.Nodes = append(box.info.Nodes, params.Node)
-
-		err = registry.RegisterService(box.info)
+		info := box.SaveNode(params.ServiceType, params.ServiceID, n)
+		err = reg.RegisterService(info)
 		if err != nil {
-			log.Error("could not register service", log.Err(err), log.Field("name", params.Node.Id))
+			log.Error("could not register service", log.Err(err))
 		}
 	}
 	return nil

@@ -18,9 +18,11 @@ type PublicNodeGatewayParams struct {
 	TargetNodeName string
 	NodeName       string
 	ServiceType    uint32
+	ServiceID      string
 	Email          string
 	Binder         WireEndpointFunc
 	MuxWrapper     MuxWrapper
+	Meta           MD
 }
 
 type NodeGatewayParams struct {
@@ -28,41 +30,47 @@ type NodeGatewayParams struct {
 	TargetNodeName string
 	NodeName       string
 	ServiceType    uint32
+	ServiceID      string
 	Security       ome.Security
 	Binder         WireEndpointFunc
 	MuxWrapper     MuxWrapper
+	Meta           MD
 }
 
 type GatewayParams struct {
-	ForceRegister  bool
 	MiddlewareList []mux.MiddlewareFunc
 	ProvideRouter  func() *mux.Router
 	Security       ome.Security
 	ServiceType    uint32
-	Node           *ome.Node
+	ServiceID      string
+	Name           string
+	Meta           MD
 }
 
 type PublicGatewayParams struct {
-	ForceRegister  bool
 	Email          string
 	MiddlewareList []mux.MiddlewareFunc
 	ProvideRouter  func() *mux.Router
 	ServiceType    uint32
-	Node           *ome.Node
+	ServiceID      string
+	Name           string
+	Meta           MD
 }
 
 type NodeParams struct {
-	ForceRegister       bool
 	RegisterHandlerFunc func(*grpc.Server)
 	ServiceType         uint32
-	Node                *ome.Node
+	ServiceID           string
+	Name                string
+	Meta                MD
 }
 
 type gPRCNode struct {
-	Name    string
-	Secure  bool
-	Address string
-	Server  *grpc.Server
+	Name      string
+	Secure    bool
+	ServiceID string
+	Address   string
+	Server    *grpc.Server
 }
 
 func (s *gPRCNode) Stop() {
