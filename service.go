@@ -22,7 +22,7 @@ func (box *Box) ServiceAddress(name string) (string, error) {
 }
 
 func GRPCConnectionDialer(ctx context.Context, serviceType uint32, opts ...grpc.DialOption) (Dialer, error) {
-	reg := Registry(ctx)
+	reg := GetRegistry(ctx)
 	if reg == nil {
 		return nil, errors.New("no registry configured")
 	}
@@ -39,7 +39,7 @@ func GRPCConnectionDialer(ctx context.Context, serviceType uint32, opts ...grpc.
 	for _, info := range infos {
 		for _, node := range info.Nodes {
 			if node.Protocol == ome.Protocol_Grpc {
-				tlsConf := ClientTLSConfig(ctx)
+				tlsConf := GetClientTLSConfig(ctx)
 				if tlsConf == nil {
 					return NewDialer(node.Address, opts...), nil
 				} else {
@@ -53,7 +53,7 @@ func GRPCConnectionDialer(ctx context.Context, serviceType uint32, opts ...grpc.
 }
 
 func SpecificServiceConnectionDialer(ctx context.Context, serviceID string, opts ...grpc.DialOption) (Dialer, error) {
-	reg := Registry(ctx)
+	reg := GetRegistry(ctx)
 	if reg == nil {
 		return nil, errors.New("no registry configured")
 	}
@@ -64,7 +64,7 @@ func SpecificServiceConnectionDialer(ctx context.Context, serviceID string, opts
 	}
 
 	for _, node := range info.Nodes {
-		tlsConf := ClientTLSConfig(ctx)
+		tlsConf := GetClientTLSConfig(ctx)
 		if tlsConf == nil {
 			return NewDialer(node.Address, opts...), nil
 		} else {
@@ -77,7 +77,7 @@ func SpecificServiceConnectionDialer(ctx context.Context, serviceID string, opts
 }
 
 func SpecificServiceNodeConnectionDialer(ctx context.Context, serviceID string, nodeName string, opts ...grpc.DialOption) (Dialer, error) {
-	reg := Registry(ctx)
+	reg := GetRegistry(ctx)
 	if reg == nil {
 		return nil, errors.New("no registry configured")
 	}
@@ -89,7 +89,7 @@ func SpecificServiceNodeConnectionDialer(ctx context.Context, serviceID string, 
 
 	for _, node := range info.Nodes {
 		if nodeName == node.Id {
-			tlsConf := ClientTLSConfig(ctx)
+			tlsConf := GetClientTLSConfig(ctx)
 			if tlsConf == nil {
 				return NewDialer(node.Address, opts...), nil
 			} else {

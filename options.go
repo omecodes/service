@@ -246,3 +246,9 @@ func KeyFIle(filename string) Option {
 		o.keyFilename = filename
 	}
 }
+
+func Registry(reg ome.Registry) Option {
+	return func(options *Options) {
+		options.registry = reg
+	}
+}

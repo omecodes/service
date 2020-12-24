@@ -22,7 +22,7 @@ func serviceBox(ctx context.Context) *Box {
 	return o.(*Box)
 }
 
-func CACertificate(ctx context.Context) *x509.Certificate {
+func GetCACertificate(ctx context.Context) *x509.Certificate {
 	box := serviceBox(ctx)
 	if box == nil {
 		return nil
@@ -30,7 +30,7 @@ func CACertificate(ctx context.Context) *x509.Certificate {
 	return box.caCert
 }
 
-func Certificate(ctx context.Context) *x509.Certificate {
+func GetCertificate(ctx context.Context) *x509.Certificate {
 	box := serviceBox(ctx)
 	if box == nil {
 		return nil
@@ -38,7 +38,7 @@ func Certificate(ctx context.Context) *x509.Certificate {
 	return box.cert
 }
 
-func PrivateKey(ctx context.Context) crypto.PrivateKey {
+func GetPrivateKey(ctx context.Context) crypto.PrivateKey {
 	box := serviceBox(ctx)
 	if box == nil {
 		return nil
@@ -46,7 +46,7 @@ func PrivateKey(ctx context.Context) crypto.PrivateKey {
 	return box.key
 }
 
-func Registry(ctx context.Context) ome.Registry {
+func GetRegistry(ctx context.Context) ome.Registry {
 	box := serviceBox(ctx)
 	if box == nil {
 		return nil
@@ -67,7 +67,7 @@ func CACredentials(ctx context.Context) *ome.ProxyCredentials {
 }
 
 // Secret returns the application shared secret
-func Secret(ctx context.Context) string {
+func GetSecret(ctx context.Context) string {
 	box := serviceBox(ctx)
 	if box == nil {
 		return ""
@@ -91,7 +91,7 @@ func GetDir(ctx context.Context) string {
 	return box.Options.workingDir
 }
 
-func ID(ctx context.Context) string {
+func GetID(ctx context.Context) string {
 	box := serviceBox(ctx)
 	if box == nil {
 		return ""
@@ -99,7 +99,7 @@ func ID(ctx context.Context) string {
 	return box.Options.name
 }
 
-func GatewayAddress(ctx context.Context, name string) string {
+func GetGatewayAddress(ctx context.Context, name string) string {
 	box := serviceBox(ctx)
 	if box == nil {
 		return ""
@@ -111,7 +111,7 @@ func GatewayAddress(ctx context.Context, name string) string {
 	return gt.URL()
 }
 
-func ClientTLSConfig(ctx context.Context) *tls.Config {
+func GetClientTLSConfig(ctx context.Context) *tls.Config {
 	box := serviceBox(ctx)
 	if box == nil {
 		return nil
