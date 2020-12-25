@@ -13,8 +13,8 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/httpx"
-	"github.com/omecodes/common/utils/log"
 	"github.com/omecodes/libome"
+	"github.com/omecodes/libome/logs"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
@@ -98,7 +98,7 @@ func (box *Box) StartNodeGateway(params *NodeGatewayParams, nOpts ...NodeOption)
 				return err
 			}
 
-			log.Info("starting HTTP server", log.Field("service-gateway", params.NodeName), log.Field("for", params.TargetNodeName), log.Field("address", address))
+			logs.Info("starting HTTP server", logs.Details("service-gateway", params.NodeName), logs.Details("for", params.TargetNodeName), logs.Details("address", address))
 			srv := &http.Server{Addr: address}
 
 			if params.MuxWrapper != nil {
@@ -124,7 +124,7 @@ func (box *Box) StartNodeGateway(params *NodeGatewayParams, nOpts ...NodeOption)
 			go func() {
 				err := srv.Serve(listener)
 				if err != http.ErrServerClosed {
-					log.Error("http server stopped", log.Err(err))
+					logs.Error("http server stopped", logs.Err(err))
 				}
 
 				if info, deleted := box.DeleteNode(params.ServiceType, params.ServiceID, params.NodeName); deleted {
@@ -148,7 +148,7 @@ func (box *Box) StartNodeGateway(params *NodeGatewayParams, nOpts ...NodeOption)
 				info := box.SaveNode(params.ServiceType, params.ServiceID, n)
 				err = reg.RegisterService(info)
 				if err != nil {
-					log.Error("could not register service", log.Err(err))
+					logs.Error("could not register service", logs.Err(err))
 				}
 			}
 			return nil
@@ -194,7 +194,7 @@ func (box *Box) StartPublicNodeGateway(params *PublicNodeGatewayParams, nOpts ..
 			return err
 		}
 
-		log.Info("starting HTTP Listener on Port 80")
+		logs.Info("starting HTTP Listener on Port 80")
 		go func() {
 			if err := http.ListenAndServe(":80", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				httpx.Redirect(w, &httpx.RedirectURL{
@@ -203,7 +203,7 @@ func (box *Box) StartPublicNodeGateway(params *PublicNodeGatewayParams, nOpts ..
 					ContentType: "text/html",
 				})
 			})); err != nil {
-				log.Error("listen to port 80 failed", log.Err(err))
+				logs.Error("listen to port 80 failed", logs.Err(err))
 			}
 		}()
 
@@ -235,7 +235,7 @@ func (box *Box) StartPublicNodeGateway(params *PublicNodeGatewayParams, nOpts ..
 
 		address := fmt.Sprintf("%s:443", box.Host())
 
-		log.Info("starting HTTP server", log.Field("service-gateway", params.NodeName), log.Field("for", params.TargetNodeName), log.Field("address", address))
+		logs.Info("starting HTTP server", logs.Details("service-gateway", params.NodeName), logs.Details("for", params.TargetNodeName), logs.Details("address", address))
 		srv := &http.Server{
 			Addr:         address,
 			ReadTimeout:  5 * time.Second,
@@ -264,7 +264,7 @@ func (box *Box) StartPublicNodeGateway(params *PublicNodeGatewayParams, nOpts ..
 		go func() {
 			err := srv.ListenAndServeTLS("", "")
 			if err != http.ErrServerClosed {
-				log.Fatal("failed to start server", log.Err(err))
+				logs.Fatal("failed to start server", logs.Err(err))
 			}
 
 			if info, deleted := box.DeleteNode(params.ServiceType, params.ServiceID, params.NodeName); deleted {
@@ -288,13 +288,13 @@ func (box *Box) StartPublicNodeGateway(params *PublicNodeGatewayParams, nOpts ..
 			info := box.SaveNode(params.ServiceType, params.ServiceID, n)
 			err = reg.RegisterService(info)
 			if err != nil {
-				log.Error("could not register service", log.Err(err))
+				logs.Error("could not register service", logs.Err(err))
 			}
 		}
 		return nil
 	}
 
-	log.Error("could not run gateway", log.Field("for", params.TargetNodeName), log.Err(errors.NotFound))
+	logs.Error("could not run gateway", logs.Details("for", params.TargetNodeName), logs.Err(errors.NotFound))
 	return errors.NotFound
 }
 
@@ -323,7 +323,7 @@ func (box *Box) StartNode(params *NodeParams, nOpts ...NodeOption) error {
 		address = strings.Replace(address, box.Options.netIP, box.Options.netMainDomain, 1)
 	}
 
-	log.Info("starting gRPC server", log.Field("service", params.Name), log.Field("address", address))
+	logs.Info("starting gRPC server", logs.Details("service", params.Name), logs.Details("address", address))
 	var opts []grpc.ServerOption
 
 	mergedInterceptors := ome.NewGrpcContextInterceptor(options.interceptors...)
@@ -355,7 +355,7 @@ func (box *Box) StartNode(params *NodeParams, nOpts ...NodeOption) error {
 	go func() {
 		err := srv.Serve(listener)
 		if err != grpc.ErrServerStopped {
-			log.Error("grpc server stopped", log.Err(err))
+			logs.Error("grpc server stopped", logs.Err(err))
 		}
 
 		if info, deleted := box.DeleteNode(params.ServiceType, params.ServiceID, params.Name); deleted {
@@ -380,7 +380,7 @@ func (box *Box) StartNode(params *NodeParams, nOpts ...NodeOption) error {
 		info := box.SaveNode(params.ServiceType, params.ServiceID, n)
 		err = reg.RegisterService(info)
 		if err != nil {
-			log.Error("could not register service", log.Err(err))
+			logs.Error("could not register service", logs.Err(err))
 		}
 	}
 	return nil
@@ -395,7 +395,7 @@ func (box *Box) StopNode(name string) {
 	if rs != nil && box.registry != nil {
 		err := box.registry.DeregisterService(name)
 		if err != nil {
-			log.Error("could not deregister service", log.Err(err), log.Field("name", name))
+			logs.Error("could not deregister service", logs.Err(err), logs.Details("name", name))
 		}
 		rs.Stop()
 	}
@@ -412,7 +412,7 @@ func (box *Box) stopNodes() error {
 
 		err := box.registry.DeregisterService(box.Name(), box.Name())
 		if err != nil {
-			log.Error("could not de register service", log.Err(err), log.Field("name", box.Name()))
+			logs.Error("could not de register service", logs.Err(err), logs.Details("name", box.Name()))
 		}
 	}
 	box.gRPCNodes = map[string]*gPRCNode{}
@@ -420,7 +420,7 @@ func (box *Box) stopNodes() error {
 }
 
 func (box *Box) handlerError(ctx context.Context, mux *runtime.ServeMux, m runtime.Marshaler, w http.ResponseWriter, r *http.Request, err error) {
-	log.Info("caught error", log.Field("err", err))
+	logs.Info("caught error", logs.Details("err", err))
 	st, ok := status.FromError(err)
 	if !ok {
 		w.WriteHeader(http.StatusInternalServerError)

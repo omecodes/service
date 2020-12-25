@@ -5,12 +5,12 @@ import (
 	"crypto/ecdsa"
 	"crypto/tls"
 	"fmt"
+	"github.com/omecodes/libome/logs"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/omecodes/common/errors"
-	"github.com/omecodes/common/utils/log"
 	"github.com/omecodes/libome"
 	"github.com/omecodes/libome/crypt"
 )
@@ -70,7 +70,7 @@ func (j *syncedVerifier) Verify(ctx context.Context, t *ome.JWT) (ome.JWTState, 
 
 			node, err := j.registry.GetNode(serviceName, nodeName)
 			if err != nil {
-				log.Error("[jwt verifier] failed to get node info", log.Err(err), log.Field("service", serviceName), log.Field("node", nodeName))
+				logs.Error("[jwt verifier] failed to get node info", logs.Err(err), logs.Details("service", serviceName), logs.Details("node", nodeName))
 				return 0, errors.Forbidden
 			}
 
@@ -134,10 +134,10 @@ func (j *syncedVerifier) initStores() {
 	}
 	j.storesInitialized = true
 
-	log.Info("[jwt verifier] initializing token stores")
+	logs.Info("[jwt verifier] initializing token stores")
 	infos, err := j.registry.GetOfType(ome.TokenStoreServiceType)
 	if err != nil {
-		log.Error("[jwt verifier] could not load token stores info", log.Err(err))
+		logs.Error("[jwt verifier] could not load token stores info", logs.Err(err))
 		return
 	}
 

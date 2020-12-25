@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"github.com/omecodes/libome/logs"
 	"google.golang.org/grpc/credentials"
 	"os"
 	"path/filepath"
@@ -16,7 +17,6 @@ import (
 	"github.com/iancoleman/strcase"
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/futils"
-	"github.com/omecodes/common/utils/log"
 	"github.com/omecodes/libome"
 	"github.com/omecodes/libome/crypt"
 	"google.golang.org/grpc"
@@ -87,7 +87,7 @@ func (opts *Options) loadOrGenerateCertificateKeyPair() (err error) {
 		_, err = opts.cert.Verify(x509.VerifyOptions{Roots: CAPool})
 		if err != nil || time.Now().After(opts.cert.NotAfter) || time.Now().Before(opts.cert.NotBefore) {
 			if err != nil {
-				log.Error("service certificate verification failed", log.Err(err))
+				logs.Error("service certificate verification failed", logs.Err(err))
 			}
 			shouldGenerateNewPair = true
 		}

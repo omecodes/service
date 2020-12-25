@@ -19,8 +19,8 @@ import (
 
 	"github.com/gorilla/securecookie"
 	"github.com/omecodes/common/httpx"
-	"github.com/omecodes/common/utils/log"
 	"github.com/omecodes/libome"
+	"github.com/omecodes/libome/logs"
 )
 
 func (box *Box) StartGateway(params *GatewayParams, nOpts ...NodeOption) error {
@@ -76,7 +76,7 @@ func (box *Box) StartGateway(params *GatewayParams, nOpts ...NodeOption) error {
 		return ContextWithBox(ctx, box)
 	}).Handle(handler)
 
-	log.Info("starting HTTP server", log.Field("gateway", params.Name), log.Field("address", address))
+	logs.Info("starting HTTP server", logs.Details("gateway", params.Name), logs.Details("address", address))
 	srv := &http.Server{
 		Addr:    address,
 		Handler: handler,
@@ -96,7 +96,7 @@ func (box *Box) StartGateway(params *GatewayParams, nOpts ...NodeOption) error {
 		err = srv.Serve(listener)
 		if err != nil {
 			if err != http.ErrServerClosed {
-				log.Error("http server stopped", log.Err(err))
+				logs.Error("http server stopped", logs.Err(err))
 			}
 
 			if info, deleted := box.DeleteNode(params.ServiceType, params.ServiceID, params.Name); deleted {
@@ -122,7 +122,7 @@ func (box *Box) StartGateway(params *GatewayParams, nOpts ...NodeOption) error {
 		info := box.SaveNode(params.ServiceType, params.ServiceID, n)
 		err = reg.RegisterService(info)
 		if err != nil {
-			log.Error("could not register service", log.Err(err))
+			logs.Error("could not register service", logs.Err(err))
 		}
 	}
 	return nil
@@ -155,7 +155,7 @@ func (box *Box) StartPublicGateway(params *PublicGatewayParams, nOpts ...NodeOpt
 		return err
 	}
 
-	log.Info("starting HTTP Listener on Port 80")
+	logs.Info("starting HTTP Listener on Port 80")
 	go func() {
 		if err := http.ListenAndServe(":80", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			httpx.Redirect(w, &httpx.RedirectURL{
@@ -164,7 +164,7 @@ func (box *Box) StartPublicGateway(params *PublicGatewayParams, nOpts ...NodeOpt
 				ContentType: "text/html",
 			})
 		})); err != nil {
-			log.Error("listen to port 80 failed", log.Err(err))
+			logs.Error("listen to port 80 failed", logs.Err(err))
 		}
 	}()
 
@@ -189,7 +189,7 @@ func (box *Box) StartPublicGateway(params *PublicGatewayParams, nOpts ...NodeOpt
 		handler = router
 	}
 
-	log.Info("starting HTTP server", log.Field("gateway", params.Name), log.Field("address", address))
+	logs.Info("starting HTTP server", logs.Details("gateway", params.Name), logs.Details("address", address))
 	srv := &http.Server{
 		Addr:         address,
 		Handler:      handler,
@@ -210,7 +210,7 @@ func (box *Box) StartPublicGateway(params *PublicGatewayParams, nOpts ...NodeOpt
 		err := srv.ListenAndServeTLS("", "")
 		if err != nil {
 			if err != http.ErrServerClosed {
-				log.Error("http server stopped", log.Err(err))
+				logs.Error("http server stopped", logs.Err(err))
 			}
 
 			if info, deleted := box.DeleteNode(params.ServiceType, params.ServiceID, params.Name); deleted {
@@ -236,7 +236,7 @@ func (box *Box) StartPublicGateway(params *PublicGatewayParams, nOpts ...NodeOpt
 		info := box.SaveNode(params.ServiceType, params.ServiceID, n)
 		err = reg.RegisterService(info)
 		if err != nil {
-			log.Error("could not register service", log.Err(err))
+			logs.Error("could not register service", logs.Err(err))
 		}
 	}
 	return nil
@@ -248,7 +248,7 @@ func (box *Box) stopGateways() error {
 	for name, srv := range box.httpNodes {
 		err := srv.Stop()
 		if err != nil {
-			log.Error(fmt.Sprintf("gateway stopped"), log.Err(err), log.Field("node", name))
+			logs.Error(fmt.Sprintf("gateway stopped"), logs.Err(err), logs.Details("node", name))
 		}
 	}
 	return nil
@@ -298,7 +298,7 @@ func (atv *authorizationBearer) Middleware(next http.Handler) http.Handler {
 
 			strJWT, err := ome.ExtractJwtFromAccessToken("", accessToken, atv.codecs...)
 			if err != nil {
-				//log.Error("could not extract jwt from access token", log.Err(err))
+				//logs.Error("could not extract jwt from access token", logs.Err(err))
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -311,13 +311,13 @@ func (atv *authorizationBearer) Middleware(next http.Handler) http.Handler {
 
 			state, err := atv.verifier.Verify(r.Context(), jwt)
 			if err != nil {
-				log.Error("could not verify JWT", log.Err(err), log.Field("jwt", strJWT))
+				logs.Error("could not verify JWT", logs.Err(err), logs.Details("jwt", strJWT))
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
 
 			if state != ome.JWTState_Valid {
-				log.Info("invalid JWT", log.Field("jwt", strJWT))
+				logs.Info("invalid JWT", logs.Details("jwt", strJWT))
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
@@ -348,19 +348,19 @@ func (atv *authorizationJWT) Middleware(next http.Handler) http.Handler {
 		if strings.HasPrefix(authorizationHeader, "Bearer ") {
 			strJWT := strings.TrimLeft(authorizationHeader, "Bearer ")
 			if strings.Count(strJWT, ".") != 2 {
-				log.Info("bearer info might be access token. Starting access token introspection")
+				logs.Info("bearer info might be access token. Starting access token introspection")
 
 				box := BoxFromContext(r.Context())
 				reg, err := box.Registry()
 				if err != nil {
-					log.Error("error while getting registry server in registry")
+					logs.Error("error while getting registry server in registry")
 					w.WriteHeader(http.StatusInternalServerError)
 					return
 				}
 
 				info, err := reg.FirstOfType(ome.AuthenticationServiceType)
 				if err != nil {
-					log.Error("could not find authentication server in registry")
+					logs.Error("could not find authentication server in registry")
 					w.WriteHeader(http.StatusInternalServerError)
 					return
 				}
@@ -373,7 +373,7 @@ func (atv *authorizationJWT) Middleware(next http.Handler) http.Handler {
 							// by default no mutual TLS
 							tc, err := box.ClientTLS()
 							if err != nil {
-								log.Error("failed to get connection TLS config", log.Err(err))
+								logs.Error("failed to get connection TLS config", logs.Err(err))
 								w.WriteHeader(http.StatusInternalServerError)
 								return
 							}
@@ -386,7 +386,7 @@ func (atv *authorizationJWT) Middleware(next http.Handler) http.Handler {
 
 						req, err := http.NewRequest(http.MethodPost, endpoint, strings.NewReader(form.Encode()))
 						if err != nil {
-							log.Error("failed to create token introspection request", log.Err(err))
+							logs.Error("failed to create token introspection request", logs.Err(err))
 							w.WriteHeader(http.StatusInternalServerError)
 							return
 						}
@@ -396,13 +396,13 @@ func (atv *authorizationJWT) Middleware(next http.Handler) http.Handler {
 
 						rsp, err := client.Do(req)
 						if err != nil {
-							log.Error("could not send request token introspection", log.Err(err))
+							logs.Error("could not send request token introspection", logs.Err(err))
 							w.WriteHeader(http.StatusInternalServerError)
 							return
 						}
 
 						if rsp.StatusCode != 200 {
-							log.Error("token introspection failed", log.Field("status", rsp.Status))
+							logs.Error("token introspection failed", logs.Details("status", rsp.Status))
 							w.WriteHeader(http.StatusForbidden)
 							return
 						}
@@ -410,7 +410,7 @@ func (atv *authorizationJWT) Middleware(next http.Handler) http.Handler {
 						var jwt ome.JWT
 						err = json.NewDecoder(rsp.Body).Decode(&jwt)
 						if err != nil {
-							log.Error("could not read introspection body response", log.Err(err))
+							logs.Error("could not read introspection body response", logs.Err(err))
 							w.WriteHeader(http.StatusForbidden)
 							return
 						}
@@ -429,13 +429,13 @@ func (atv *authorizationJWT) Middleware(next http.Handler) http.Handler {
 
 				state, err := atv.verifier.Verify(r.Context(), t)
 				if err != nil {
-					log.Error("could not verify JWT", log.Err(err), log.Field("jwt", strJWT))
+					logs.Error("could not verify JWT", logs.Err(err), logs.Details("jwt", strJWT))
 					w.WriteHeader(http.StatusUnauthorized)
 					return
 				}
 
 				if state != ome.JWTState_Valid {
-					log.Info("invalid JWT", log.Field("jwt", strJWT))
+					logs.Info("invalid JWT", logs.Details("jwt", strJWT))
 					w.WriteHeader(http.StatusUnauthorized)
 					return
 				}

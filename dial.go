@@ -3,8 +3,8 @@ package service
 import (
 	"fmt"
 	"github.com/omecodes/common/errors"
-	"github.com/omecodes/common/utils/log"
 	"github.com/omecodes/libome"
+	"github.com/omecodes/libome/logs"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/credentials"
@@ -45,9 +45,9 @@ func (box *Box) dialToService(serviceType uint32) (*grpc.ClientConn, error) {
 				dialer = NewDialer(node.Address, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)))
 				conn, err := dialer.Dial()
 				if err != nil {
-					log.Error("could not connect to gRPC server", log.Err(err), log.Field("at", fmt.Sprintf("grpc://%s/%s@%s", info.Type, node.Id, node.Address)))
+					logs.Error("could not connect to gRPC server", logs.Err(err), logs.Details("at", fmt.Sprintf("grpc://%s/%s@%s", info.Type, node.Id, node.Address)))
 				} else {
-					log.Info("connected to gRPC server", log.Field("at", fmt.Sprintf("grpc://%s/%s@%s", info.Type, node.Id, node.Address)))
+					logs.Info("connected to gRPC server", logs.Details("at", fmt.Sprintf("grpc://%s/%s@%s", info.Type, node.Id, node.Address)))
 					box.addDialerToCache(node.Address, dialer)
 					return conn, err
 				}

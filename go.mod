@@ -8,7 +8,7 @@ require (
 	github.com/Azure/go-autorest/autorest v0.11.15 // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.9.10 // indirect
 	github.com/Azure/go-autorest/autorest/validation v0.3.1 // indirect
-	github.com/aliyun/alibaba-cloud-sdk-go v1.61.802 // indirect
+	github.com/aliyun/alibaba-cloud-sdk-go v1.61.805 // indirect
 	github.com/aws/aws-sdk-go v1.36.15 // indirect
 	github.com/exoscale/egoscale v0.37.1 // indirect
 	github.com/foomo/simplecert v1.8.1
@@ -23,7 +23,7 @@ require (
 	github.com/linode/linodego v0.24.1 // indirect
 	github.com/omecodes/common v0.0.0-20201205124409-0a391e4b4c08
 	github.com/omecodes/discover v0.0.0-20201224203918-4be6856ee8fb
-	github.com/omecodes/libome v0.0.0-20201222212527-11e3f5f47526
+	github.com/omecodes/libome v0.0.0-20201225162725-c89c7a20a215
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/spf13/cobra v1.1.1
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad // indirect

@@ -3,12 +3,12 @@ package service
 import (
 	"context"
 	"crypto/tls"
+	"github.com/omecodes/libome/logs"
 	"io"
 	"sync"
 	"time"
 
 	"github.com/omecodes/common/errors"
-	"github.com/omecodes/common/utils/log"
 	"github.com/omecodes/libome"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
@@ -62,7 +62,7 @@ func (s *synchronizedStore) sync() {
 
 	err := s.store.DeleteAllFromService(s.serverAddress)
 	if err != nil {
-		log.Error("failed to clear jwt store", log.Err(err))
+		logs.Error("failed to clear jwt store", logs.Err(err))
 	}
 
 	for !s.stopRequested {
@@ -74,7 +74,7 @@ func (s *synchronizedStore) sync() {
 		s.work()
 		err = s.store.DeleteAllFromService(s.serverAddress)
 		if err != nil {
-			log.Error("failed to clear jwt store", log.Err(err))
+			logs.Error("failed to clear jwt store", logs.Err(err))
 		}
 	}
 }
@@ -91,17 +91,17 @@ func (s *synchronizedStore) work() {
 		s.conn = nil
 		if s.connectionAttempts == 1 {
 			s.unconnectedTime = time.Now()
-			log.Error("[jwt store] unconnected", log.Err(errors.Errorf("%d", status.Code(err))))
-			log.Info("[jwt store] trying again...")
+			logs.Error("[jwt store] unconnected", logs.Err(errors.Errorf("%d", status.Code(err))))
+			logs.Info("[jwt store] trying again...")
 		}
 		return
 	}
 	defer stream.CloseSend()
 
 	if s.connectionAttempts > 1 {
-		log.Info("[jwt store] connected", log.Field("after", time.Since(s.unconnectedTime).String()), log.Field("attempts", s.connectionAttempts))
+		logs.Info("[jwt store] connected", logs.Details("after", time.Since(s.unconnectedTime).String()), logs.Details("attempts", s.connectionAttempts))
 	} else {
-		log.Info("[jwt store] connected")
+		logs.Info("[jwt store] connected")
 	}
 	s.connectionAttempts = 0
 
@@ -118,7 +118,7 @@ func (s *synchronizedStore) send(stream ome.TokenStoreService_SynchronizeClient,
 	for !s.stopRequested {
 		select {
 		case <-s.sendCloseSignal:
-			log.Info("[jwt store] stop send")
+			logs.Info("[jwt store] stop send")
 			return
 
 		case event, open := <-s.outboundStream:
@@ -129,7 +129,7 @@ func (s *synchronizedStore) send(stream ome.TokenStoreService_SynchronizeClient,
 			err := stream.Send(event)
 			if err != nil {
 				if err != io.EOF {
-					log.Error("[jwt store] send event", log.Err(err))
+					logs.Error("[jwt store] send event", logs.Err(err))
 				}
 				return
 			}
@@ -145,24 +145,24 @@ func (s *synchronizedStore) recv(stream ome.TokenStoreService_SynchronizeClient,
 			s.sendCloseSignal <- true
 			close(s.sendCloseSignal)
 			if err != io.EOF {
-				log.Error("[jwt store] recv event", log.Err(err))
+				logs.Error("[jwt store] recv event", logs.Err(err))
 			}
 			return
 		}
 
-		log.Info("[jwt store] new event", log.Field("action", event.State), log.Field("id", event.Info.Jti))
+		logs.Info("[jwt store] new event", logs.Details("action", event.State), logs.Details("id", event.Info.Jti))
 
 		switch event.State {
 		case ome.JWTState_Valid:
 			err = s.store.Save(s.serverAddress, event.Info)
 			if err != nil {
-				log.Error("[jwt store] failed to save jwt info", log.Err(err), log.Field("id", event.Info.Jti))
+				logs.Error("[jwt store] failed to save jwt info", logs.Err(err), logs.Details("id", event.Info.Jti))
 			}
 
 		case ome.JWTState_Revoked:
 			err = s.store.Delete(event.Info.Jti)
 			if err != nil {
-				log.Error("failed to delete jwt info", log.Err(err), log.Field("id", event.Info.Jti))
+				logs.Error("failed to delete jwt info", logs.Err(err), logs.Details("id", event.Info.Jti))
 			}
 		}
 	}
