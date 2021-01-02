@@ -8,8 +8,8 @@ require (
 	github.com/Azure/go-autorest/autorest v0.11.15 // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.9.10 // indirect
 	github.com/Azure/go-autorest/autorest/validation v0.3.1 // indirect
-	github.com/aliyun/alibaba-cloud-sdk-go v1.61.820 // indirect
-	github.com/aws/aws-sdk-go v1.36.18 // indirect
+	github.com/aliyun/alibaba-cloud-sdk-go v1.61.821 // indirect
+	github.com/aws/aws-sdk-go v1.36.19 // indirect
 	github.com/cpu/goacmedns v0.1.0 // indirect
 	github.com/exoscale/egoscale v0.37.1 // indirect
 	github.com/foomo/simplecert v1.8.1
@@ -24,15 +24,13 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.0.1
 	github.com/iancoleman/strcase v0.1.2
 	github.com/linode/linodego v0.24.1 // indirect
-	github.com/omecodes/bome v0.0.0-20201230233011-a6167e57610b // indirect
 	github.com/omecodes/common v0.0.0-20201205124409-0a391e4b4c08
-	github.com/omecodes/discover v0.0.0-20201231112039-1c469ef4ad63
+	github.com/omecodes/discover v0.0.0-20210102114647-8e22094d8ec3
 	github.com/omecodes/libome v0.0.0-20201225162725-c89c7a20a215
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/spf13/cobra v1.1.1
 	github.com/transip/gotransip/v6 v6.3.0 // indirect
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad // indirect
 	golang.org/x/net v0.0.0-20201224014010-6772e930b67b // indirect
-	golang.org/x/sys v0.0.0-20201223074533-0d417f636930 // indirect
 	google.golang.org/grpc v1.34.0
 )

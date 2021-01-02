@@ -111,6 +111,8 @@ github.com/aliyun/alibaba-cloud-sdk-go v1.61.805 h1:fDQHvLqpTUu1C/NV6zX01T5WRvrE
 github.com/aliyun/alibaba-cloud-sdk-go v1.61.805/go.mod h1:pUKYbK5JQ+1Dfxk80P0qxGqe5dkxDoabbZS7zOcouyA=
 github.com/aliyun/alibaba-cloud-sdk-go v1.61.820 h1:e3R6CFldahMci7PMuUrBg2Q03hSt28NfpYd8myHIxrQ=
 github.com/aliyun/alibaba-cloud-sdk-go v1.61.820/go.mod h1:pUKYbK5JQ+1Dfxk80P0qxGqe5dkxDoabbZS7zOcouyA=
+github.com/aliyun/alibaba-cloud-sdk-go v1.61.821 h1:Ma1yGGVU3jn+i3ELXI5NYiv+Zwn+8y5SvhCjbWYU3qo=
+github.com/aliyun/alibaba-cloud-sdk-go v1.61.821/go.mod h1:pUKYbK5JQ+1Dfxk80P0qxGqe5dkxDoabbZS7zOcouyA=
 github.com/andybalholm/cascadia v1.1.0/go.mod h1:GsXiBklL0woXo1j/WYWtSYYC4ouU9PqHO0sqidkEA4Y=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
 github.com/apache/thrift v0.12.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=
@@ -124,6 +126,8 @@ github.com/aws/aws-sdk-go v1.36.15 h1:nGqgPlXegCKPZOKXvWnYCLvLPJPRoSOHHn9d0N0DG7
 github.com/aws/aws-sdk-go v1.36.15/go.mod h1:hcU610XS61/+aQV88ixoOzUoG7v3b31pl2zKMmprdro=
 github.com/aws/aws-sdk-go v1.36.18 h1:PvfZkE0cjM1k1EMQDSb2BrX8LETPx0IFFZ/YKkurmFg=
 github.com/aws/aws-sdk-go v1.36.18/go.mod h1:hcU610XS61/+aQV88ixoOzUoG7v3b31pl2zKMmprdro=
+github.com/aws/aws-sdk-go v1.36.19 h1:zbJZKkxeDiYxUYFjymjWxPye+qa1G2gRVyhIzZrB9zA=
+github.com/aws/aws-sdk-go v1.36.19/go.mod h1:hcU610XS61/+aQV88ixoOzUoG7v3b31pl2zKMmprdro=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
 github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+CedLV8=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
@@ -486,6 +490,8 @@ github.com/omecodes/bome v0.0.0-20201212145154-cc0621995609 h1:KSYsmZJhosD3nbIV8
 github.com/omecodes/bome v0.0.0-20201212145154-cc0621995609/go.mod h1:yn7sMaUBVd5CEFvX0IUYY8JuTF7Tn/PPeMFDA9pT3Sg=
 github.com/omecodes/bome v0.0.0-20201230233011-a6167e57610b h1:vamHUJfFPs3U9PcVgAoFFe7KHgl4A5EeHd67sLONyTQ=
 github.com/omecodes/bome v0.0.0-20201230233011-a6167e57610b/go.mod h1:yn7sMaUBVd5CEFvX0IUYY8JuTF7Tn/PPeMFDA9pT3Sg=
+github.com/omecodes/bome v0.0.0-20210102114402-0e5dea7b63bd h1:FKfPGwwHKrRECK0CsXEOsGYvWIzxb8FaSwAxmkyE//I=
+github.com/omecodes/bome v0.0.0-20210102114402-0e5dea7b63bd/go.mod h1:yn7sMaUBVd5CEFvX0IUYY8JuTF7Tn/PPeMFDA9pT3Sg=
 github.com/omecodes/common v0.0.0-20201205124409-0a391e4b4c08 h1:cw7bAWTQwcV4w2A7HvO89TnbvR/YvWLlOyosyPjYDY8=
 github.com/omecodes/common v0.0.0-20201205124409-0a391e4b4c08/go.mod h1:ORHcmOlnZMs77fvBLp41cuh0R3bOw/e+2jaoIxN0WP0=
 github.com/omecodes/discover v0.0.0-20201219122734-70fb556a9ef2 h1:l1K2xj1gey+eCWCvDn5hnr+3PBBbZFRvfgFaV9HXaJc=
@@ -508,6 +514,8 @@ github.com/omecodes/discover v0.0.0-20201224203918-4be6856ee8fb h1:59EUFYw9nUCw/
 github.com/omecodes/discover v0.0.0-20201224203918-4be6856ee8fb/go.mod h1:kJR9DuqdlsFe3bPXGLSD7Vl02QhEif7bUtSDkitLbpo=
 github.com/omecodes/discover v0.0.0-20201231112039-1c469ef4ad63 h1:5R0hkDCtOLnLRfNoKfFnkOWgF1IKiEV5Bek3C6Ty/+E=
 github.com/omecodes/discover v0.0.0-20201231112039-1c469ef4ad63/go.mod h1:JufNAIocPNmikqZAh05lsrQeDML5uf6rnaP2oYbmkqA=
+github.com/omecodes/discover v0.0.0-20210102114647-8e22094d8ec3 h1:h9Bk85sA+K98JftRZOKdfI4Oplx7DX6iUpqv0lSeZXw=
+github.com/omecodes/discover v0.0.0-20210102114647-8e22094d8ec3/go.mod h1:2hnBXpG2+i+c09oD1YGzY3ZW6sSaRR9GFAMoojYkTs4=
 github.com/omecodes/libome v0.0.0-20201128214815-2b3f03af9fa6/go.mod h1:zWK7ZcUVGB+F7XO5fSkwzypxtHjMM05UAPcwpnd+BcI=
 github.com/omecodes/libome v0.0.0-20201219112332-e9e07f64c286 h1:o+ybdTFMhdoWJI8u2Mq1C5pP3msfjUsItA9PD/DDU18=
 github.com/omecodes/libome v0.0.0-20201219112332-e9e07f64c286/go.mod h1:KDrBixAwkiu9Ooe/f0MRAbiD5GgQgOwDpCVm7sX2F84=
@@ -846,6 +854,8 @@ golang.org/x/sys v0.0.0-20201221093633-bc327ba9c2f0 h1:n+DPcgTwkgWzIFpLmoimYR2K2
 golang.org/x/sys v0.0.0-20201221093633-bc327ba9c2f0/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20201223074533-0d417f636930 h1:vRgIt+nup/B/BwIS0g2oC0haq0iqbV3ZA+u6+0TlNCo=
 golang.org/x/sys v0.0.0-20201223074533-0d417f636930/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
+golang.org/x/sys v0.0.0-20201231184435-2d18734c6014 h1:joucsQqXmyBVxViHCPFjG3hx8JzIFSaym3l3MM/Jsdg=
+golang.org/x/sys v0.0.0-20201231184435-2d18734c6014/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/term v0.0.0-20201117132131-f5c789dd3221/go.mod h1:Nr5EML6q2oocZ2LXRh80K7BxOlk5/8JxuGnuhpl+muw=
 golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1/go.mod h1:bj7SfCRtBDWHUb9snDiAeCFNEtKQo2Wmx5Cou7ajbmo=
 golang.org/x/text v0.0.0-20170915032832-14c0d48ead0c/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
