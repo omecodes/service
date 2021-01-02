@@ -25,7 +25,7 @@ require (
 	github.com/iancoleman/strcase v0.1.2
 	github.com/linode/linodego v0.24.1 // indirect
 	github.com/omecodes/common v0.0.0-20201205124409-0a391e4b4c08
-	github.com/omecodes/discover v0.0.0-20210102114647-8e22094d8ec3
+	github.com/omecodes/discover v0.0.0-20210102120945-d33e5fc92877
 	github.com/omecodes/libome v0.0.0-20201225162725-c89c7a20a215
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/spf13/cobra v1.1.1

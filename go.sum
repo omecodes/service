@@ -492,6 +492,8 @@ github.com/omecodes/bome v0.0.0-20201230233011-a6167e57610b h1:vamHUJfFPs3U9PcVg
 github.com/omecodes/bome v0.0.0-20201230233011-a6167e57610b/go.mod h1:yn7sMaUBVd5CEFvX0IUYY8JuTF7Tn/PPeMFDA9pT3Sg=
 github.com/omecodes/bome v0.0.0-20210102114402-0e5dea7b63bd h1:FKfPGwwHKrRECK0CsXEOsGYvWIzxb8FaSwAxmkyE//I=
 github.com/omecodes/bome v0.0.0-20210102114402-0e5dea7b63bd/go.mod h1:yn7sMaUBVd5CEFvX0IUYY8JuTF7Tn/PPeMFDA9pT3Sg=
+github.com/omecodes/bome v0.0.0-20210102120806-b0f9e3b3edd2 h1:5bOyaFM5YSzttOFUmrPkn1IwJApWGrDbIzdjP5ZAiRU=
+github.com/omecodes/bome v0.0.0-20210102120806-b0f9e3b3edd2/go.mod h1:yn7sMaUBVd5CEFvX0IUYY8JuTF7Tn/PPeMFDA9pT3Sg=
 github.com/omecodes/common v0.0.0-20201205124409-0a391e4b4c08 h1:cw7bAWTQwcV4w2A7HvO89TnbvR/YvWLlOyosyPjYDY8=
 github.com/omecodes/common v0.0.0-20201205124409-0a391e4b4c08/go.mod h1:ORHcmOlnZMs77fvBLp41cuh0R3bOw/e+2jaoIxN0WP0=
 github.com/omecodes/discover v0.0.0-20201219122734-70fb556a9ef2 h1:l1K2xj1gey+eCWCvDn5hnr+3PBBbZFRvfgFaV9HXaJc=
@@ -516,6 +518,8 @@ github.com/omecodes/discover v0.0.0-20201231112039-1c469ef4ad63 h1:5R0hkDCtOLnLR
 github.com/omecodes/discover v0.0.0-20201231112039-1c469ef4ad63/go.mod h1:JufNAIocPNmikqZAh05lsrQeDML5uf6rnaP2oYbmkqA=
 github.com/omecodes/discover v0.0.0-20210102114647-8e22094d8ec3 h1:h9Bk85sA+K98JftRZOKdfI4Oplx7DX6iUpqv0lSeZXw=
 github.com/omecodes/discover v0.0.0-20210102114647-8e22094d8ec3/go.mod h1:2hnBXpG2+i+c09oD1YGzY3ZW6sSaRR9GFAMoojYkTs4=
+github.com/omecodes/discover v0.0.0-20210102120945-d33e5fc92877 h1:G54wck7A7bZQZ+nqlk2IZUgIbsgxo6SllI0V88pcN/8=
+github.com/omecodes/discover v0.0.0-20210102120945-d33e5fc92877/go.mod h1:Qh5RRkkCB7eHN8LhzsfQffgq8cRVkm2IU62N5X+jJOM=
 github.com/omecodes/libome v0.0.0-20201128214815-2b3f03af9fa6/go.mod h1:zWK7ZcUVGB+F7XO5fSkwzypxtHjMM05UAPcwpnd+BcI=
 github.com/omecodes/libome v0.0.0-20201219112332-e9e07f64c286 h1:o+ybdTFMhdoWJI8u2Mq1C5pP3msfjUsItA9PD/DDU18=
 github.com/omecodes/libome v0.0.0-20201219112332-e9e07f64c286/go.mod h1:KDrBixAwkiu9Ooe/f0MRAbiD5GgQgOwDpCVm7sX2F84=
