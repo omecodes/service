@@ -15,7 +15,7 @@ require (
 	github.com/foomo/simplecert v1.8.1
 	github.com/foomo/tlsconfig v0.0.0-20180418120404-b67861b076c9
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
-	github.com/google/uuid v1.1.3
+	github.com/google/uuid v1.1.4
 	github.com/gophercloud/gophercloud v0.15.0 // indirect
 	github.com/gophercloud/utils v0.0.0-20201221200157-19f764eec2b7 // indirect
 	github.com/gorilla/mux v1.8.0
@@ -24,13 +24,16 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.0.1
 	github.com/iancoleman/strcase v0.1.2
 	github.com/linode/linodego v0.24.1 // indirect
+	github.com/omecodes/bome v0.0.0-20210105194151-5d90ae70305a // indirect
 	github.com/omecodes/common v0.0.0-20201205124409-0a391e4b4c08
-	github.com/omecodes/discover v0.0.0-20210102120945-d33e5fc92877
+	github.com/omecodes/discover v0.0.0-20210105205043-5b445aac6bcd
 	github.com/omecodes/libome v0.0.0-20201225162725-c89c7a20a215
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/spf13/cobra v1.1.1
 	github.com/transip/gotransip/v6 v6.3.0 // indirect
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad // indirect
 	golang.org/x/net v0.0.0-20201224014010-6772e930b67b // indirect
+	golang.org/x/sys v0.0.0-20210104204734-6f8348627aad // indirect
+	google.golang.org/genproto v0.0.0-20210105202744-fe13368bc0e1 // indirect
 	google.golang.org/grpc v1.34.0
 )
