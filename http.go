@@ -6,14 +6,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/foomo/simplecert"
-	"github.com/foomo/tlsconfig"
 	"github.com/google/uuid"
+	"github.com/omecodes/common/utils/log"
+	"golang.org/x/crypto/acme/autocert"
 	"net"
 	"net/http"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -138,38 +136,19 @@ func (box *Box) StartPublicGateway(params *PublicGatewayParams, nOpts ...NodeOpt
 	}
 	box.Options.override(options.boxOptions...)
 
-	cacheDir := filepath.Join(box.workingDir, "lets-encrypt")
-	err := os.MkdirAll(cacheDir, os.ModePerm)
-	if err != nil {
-		return err
+	certManager := autocert.Manager{
+		Prompt:     autocert.AcceptTOS,
+		HostPolicy: autocert.HostWhitelist(box.Domains()...),
 	}
+	certManager.Cache = autocert.DirCache(box.workingDir)
 
-	cfg := simplecert.Default
-	cfg.Domains = box.Domains()
-	cfg.CacheDir = cacheDir
-	cfg.SSLEmail = params.Email
-	cfg.DNSProvider = "cloudflare"
-
-	certReloadAgent, err := simplecert.Init(cfg, nil)
-	if err != nil {
-		return err
-	}
-
-	logs.Info("starting HTTP Listener on Port 80")
+	log.Info("starting HTTP Listener on Port 80")
 	go func() {
-		if err := http.ListenAndServe(":80", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			httpx.Redirect(w, &httpx.RedirectURL{
-				URL:         fmt.Sprintf("https://%s:443%s", box.netMainDomain, r.URL.Path),
-				Code:        http.StatusPermanentRedirect,
-				ContentType: "text/html",
-			})
-		})); err != nil {
-			logs.Error("listen to port 80 failed", logs.Err(err))
+		h := certManager.HTTPHandler(nil)
+		if err := http.ListenAndServe(":80", h); err != nil {
+			log.Error("listen to port 80 failed", log.Err(err))
 		}
 	}()
-
-	tlsConf := tlsconfig.NewServerTLSConfig(tlsconfig.TLSModeServerStrict)
-	tlsConf.GetCertificate = certReloadAgent.GetCertificateFunc()
 
 	address := fmt.Sprintf("%s:443", box.Host())
 	if box.Options.netMainDomain != "" {
@@ -196,7 +175,9 @@ func (box *Box) StartPublicGateway(params *PublicGatewayParams, nOpts ...NodeOpt
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 5 * time.Second,
 		IdleTimeout:  120 * time.Second,
-		TLSConfig:    tlsConf,
+		TLSConfig: &tls.Config{
+			GetCertificate: certManager.GetCertificate,
+		},
 	}
 
 	gt := &httpNode{}

@@ -5,23 +5,21 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
-	"github.com/foomo/simplecert"
-	"github.com/foomo/tlsconfig"
 	"github.com/google/uuid"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_opentracing "github.com/grpc-ecosystem/go-grpc-middleware/tracing/opentracing"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/omecodes/common/errors"
 	"github.com/omecodes/common/httpx"
+	"github.com/omecodes/common/utils/log"
 	"github.com/omecodes/libome"
 	"github.com/omecodes/libome/logs"
+	"golang.org/x/crypto/acme/autocert"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 	"net"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -177,38 +175,19 @@ func (box *Box) StartPublicNodeGateway(params *PublicNodeGatewayParams, nOpts ..
 			continue
 		}
 
-		cacheDir := filepath.Join(box.workingDir, "lets-encrypt")
-		err := os.MkdirAll(cacheDir, os.ModePerm)
-		if err != nil {
-			return err
+		certManager := autocert.Manager{
+			Prompt:     autocert.AcceptTOS,
+			HostPolicy: autocert.HostWhitelist(box.Domains()...),
 		}
+		certManager.Cache = autocert.DirCache(box.workingDir)
 
-		cfg := simplecert.Default
-		cfg.Domains = box.Domains()
-		cfg.CacheDir = cacheDir
-		cfg.SSLEmail = params.Email
-		cfg.DNSProvider = "cloudflare"
-
-		certReloadAgent, err := simplecert.Init(cfg, nil)
-		if err != nil {
-			return err
-		}
-
-		logs.Info("starting HTTP Listener on Port 80")
+		log.Info("starting HTTP Listener on Port 80")
 		go func() {
-			if err := http.ListenAndServe(":80", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				httpx.Redirect(w, &httpx.RedirectURL{
-					URL:         fmt.Sprintf("https://%s:443%s", box.netMainDomain, r.URL.Path),
-					Code:        http.StatusPermanentRedirect,
-					ContentType: "text/html",
-				})
-			})); err != nil {
-				logs.Error("listen to port 80 failed", logs.Err(err))
+			h := certManager.HTTPHandler(nil)
+			if err := http.ListenAndServe(":80", h); err != nil {
+				log.Error("listen to port 80 failed", log.Err(err))
 			}
 		}()
-
-		tlsConf := tlsconfig.NewServerTLSConfig(tlsconfig.TLSModeServerStrict)
-		tlsConf.GetCertificate = certReloadAgent.GetCertificateFunc()
 
 		endpoint := fmt.Sprintf("%s-gateway-endpoint", params.TargetNodeName)
 		grpcServerEndpoint := flag.String(endpoint, node.Address, "gRPC server endpoint")
@@ -241,7 +220,9 @@ func (box *Box) StartPublicNodeGateway(params *PublicNodeGatewayParams, nOpts ..
 			ReadTimeout:  5 * time.Second,
 			WriteTimeout: 5 * time.Second,
 			IdleTimeout:  120 * time.Second,
-			TLSConfig:    tlsConf,
+			TLSConfig: &tls.Config{
+				GetCertificate: certManager.GetCertificate,
+			},
 		}
 
 		if params.MuxWrapper != nil {
