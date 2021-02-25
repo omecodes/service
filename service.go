@@ -2,8 +2,7 @@ package service
 
 import (
 	"context"
-	"errors"
-	"fmt"
+	"github.com/omecodes/errors"
 
 	"github.com/omecodes/libome"
 	"google.golang.org/grpc"
@@ -16,7 +15,7 @@ func (box *Box) ServiceAddress(name string) (string, error) {
 
 	s, exists := box.gRPCNodes[name]
 	if !exists {
-		return "", errors.New("not found")
+		return "", errors.NotFound("service info not found", errors.Details{Key: "type", Value: "service"}, errors.Details{Key: "name", Value: name})
 	}
 	return s.Address, nil
 }
@@ -24,7 +23,7 @@ func (box *Box) ServiceAddress(name string) (string, error) {
 func GRPCConnectionDialer(ctx context.Context, serviceType uint32, opts ...grpc.DialOption) (Dialer, error) {
 	reg := GetRegistry(ctx)
 	if reg == nil {
-		return nil, errors.New("no registry configured")
+		return nil, errors.Internal("no registry")
 	}
 
 	infos, err := reg.GetOfType(serviceType)
@@ -33,7 +32,7 @@ func GRPCConnectionDialer(ctx context.Context, serviceType uint32, opts ...grpc.
 	}
 
 	if len(infos) == 0 {
-		return nil, errors.New("not found")
+		return nil, errors.ServiceUnavailable("not service found", errors.Details{Key: "type", Value: "service-type"}, errors.Details{Key: "code", Value: serviceType})
 	}
 
 	for _, info := range infos {
@@ -49,13 +48,13 @@ func GRPCConnectionDialer(ctx context.Context, serviceType uint32, opts ...grpc.
 			}
 		}
 	}
-	return nil, fmt.Errorf("no service of type %s that supports gRPC has been found", serviceType)
+	return nil, errors.NotFound("service not found")
 }
 
 func SpecificServiceConnectionDialer(ctx context.Context, serviceID string, opts ...grpc.DialOption) (Dialer, error) {
 	reg := GetRegistry(ctx)
 	if reg == nil {
-		return nil, errors.New("no registry configured")
+		return nil, errors.Internal("no registry")
 	}
 
 	info, err := reg.GetService(serviceID)
@@ -73,13 +72,13 @@ func SpecificServiceConnectionDialer(ctx context.Context, serviceID string, opts
 		return NewDialer(node.Address, opts...), nil
 	}
 
-	return nil, fmt.Errorf("no service of name %s that supports gRPC has been found", serviceID)
+	return nil, errors.ServiceUnavailable("not service found", errors.Details{Key: "type", Value: "service-id"}, errors.Details{Key: "id", Value: serviceID})
 }
 
 func SpecificServiceNodeConnectionDialer(ctx context.Context, serviceID string, nodeName string, opts ...grpc.DialOption) (Dialer, error) {
 	reg := GetRegistry(ctx)
 	if reg == nil {
-		return nil, errors.New("no registry configured")
+		return nil, errors.Internal("no registry")
 	}
 
 	info, err := reg.GetService(serviceID)
@@ -98,7 +97,7 @@ func SpecificServiceNodeConnectionDialer(ctx context.Context, serviceID string, 
 		}
 	}
 
-	return nil, fmt.Errorf("no gPRCNode named %s of service named %s that supports gRPC has been found", nodeName, serviceID)
+	return nil, errors.ServiceUnavailable("not service found", errors.Details{Key: "type", Value: "service-id"}, errors.Details{Key: "node", Value: nodeName}, errors.Details{Key: "id", Value: serviceID})
 }
 
 func Connect(ctx context.Context, ofType uint32, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
@@ -137,7 +136,7 @@ func (box *Box) GRPCConnectionDialer(serviceType uint32, opts ...grpc.DialOption
 	}
 
 	if len(infos) == 0 {
-		return nil, errors.New("not found")
+		return nil, errors.ServiceUnavailable("not service found", errors.Details{Key: "type", Value: "service-type"}, errors.Details{Key: "code", Value: serviceType})
 	}
 
 	for _, info := range infos {
@@ -152,7 +151,7 @@ func (box *Box) GRPCConnectionDialer(serviceType uint32, opts ...grpc.DialOption
 			}
 		}
 	}
-	return nil, fmt.Errorf("no service of type %s that supports gRPC has been found", serviceType)
+	return nil, errors.ServiceUnavailable("not service found", errors.Details{Key: "type", Value: "service-type"}, errors.Details{Key: "code", Value: serviceType})
 }
 
 func (box *Box) SpecificServiceConnectionDialer(serviceID string, opts ...grpc.DialOption) (Dialer, error) {
@@ -175,12 +174,12 @@ func (box *Box) SpecificServiceConnectionDialer(serviceID string, opts ...grpc.D
 		return NewDialer(node.Address, opts...), nil
 	}
 
-	return nil, fmt.Errorf("no service of name %s that supports gRPC has been found", serviceID)
+	return nil, errors.ServiceUnavailable("not service found", errors.Details{Key: "type", Value: "service-id"}, errors.Details{Key: "id", Value: serviceID})
 }
 
 func (box *Box) SpecificServiceNodeConnectionDialer(serviceID string, nodeName string, opts ...grpc.DialOption) (Dialer, error) {
 	reg, err := box.Registry()
-	if reg != nil {
+	if err != nil {
 		return nil, err
 	}
 
@@ -200,7 +199,7 @@ func (box *Box) SpecificServiceNodeConnectionDialer(serviceID string, nodeName s
 		}
 	}
 
-	return nil, fmt.Errorf("no gPRCNode named %s of service named %s that supports gRPC has been found", nodeName, serviceID)
+	return nil, errors.ServiceUnavailable("not service found", errors.Details{Key: "type", Value: "service-id"}, errors.Details{Key: "node", Value: nodeName}, errors.Details{Key: "id", Value: serviceID})
 }
 
 func (box *Box) Connect(ofType uint32, opts ...grpc.DialOption) (*grpc.ClientConn, error) {

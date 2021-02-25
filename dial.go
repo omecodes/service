@@ -45,9 +45,9 @@ func (box *Box) dialToService(serviceType uint32) (*grpc.ClientConn, error) {
 				dialer = NewDialer(node.Address, grpc.WithTransportCredentials(credentials.NewTLS(tlsConf)))
 				conn, err := dialer.Dial()
 				if err != nil {
-					logs.Error("could not connect to gRPC server", logs.Err(err), logs.Details("at", fmt.Sprintf("grpc://%s/%s@%s", info.Type, node.Id, node.Address)))
+					logs.Error("could not connect to gRPC server", logs.Err(err), logs.Details("at", fmt.Sprintf("grpc://%s@%s", node.Id, node.Address)))
 				} else {
-					logs.Info("connected to gRPC server", logs.Details("at", fmt.Sprintf("grpc://%s/%s@%s", info.Type, node.Id, node.Address)))
+					logs.Info("connected to gRPC server", logs.Details("at", fmt.Sprintf("grpc://%s@%s", node.Id, node.Address)))
 					box.addDialerToCache(node.Address, dialer)
 					return conn, err
 				}

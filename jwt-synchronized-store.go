@@ -96,7 +96,11 @@ func (s *synchronizedStore) work() {
 		}
 		return
 	}
-	defer stream.CloseSend()
+	defer func () {
+		if closeErr := stream.CloseSend(); closeErr != nil {
+			logs.Error("close stream", logs.Err(err))
+		}
+	}()
 
 	if s.connectionAttempts > 1 {
 		logs.Info("[jwt store] connected", logs.Details("after", time.Since(s.unconnectedTime).String()), logs.Details("attempts", s.connectionAttempts))

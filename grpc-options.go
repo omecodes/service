@@ -59,7 +59,6 @@ type GRPCCallOption int
 const (
 	CallOptToken GRPCCallOption = iota + 1
 	CallOptProxyCredentials
-	CallOptBasic
 )
 
 func GRPCCallOptionsFromContext(ctx context.Context, ot ...GRPCCallOption) ([]grpc.CallOption, error) {

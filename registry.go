@@ -10,7 +10,7 @@ func (opts *Options) StartRegistryServer(opt ...Option) (err error) {
 	opts.override(opt...)
 
 	if opts.regAddr == "" {
-		return errors.Create(errors.BadRequest, "missing registry address")
+		return errors.BadRequest("missing registry address")
 	}
 
 	dc := &discover.ServerConfig{
