@@ -119,7 +119,7 @@ func (box *Box) Update(opts ...Option) {
 // Stop stops all started services and gateways
 func (box *Box) Stop() {
 	_ = box.stopNodes()
-	_ = box.stopGateways()
+	_ = box.stopHttpServices()
 	if box.registry != nil {
 		_ = box.registry.Stop()
 	}

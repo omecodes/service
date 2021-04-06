@@ -37,7 +37,7 @@ type NodeGatewayParams struct {
 	Meta           MD
 }
 
-type GatewayParams struct {
+type HTTPServerParams struct {
 	MiddlewareList []mux.MiddlewareFunc
 	ProvideRouter  func() *mux.Router
 	Security       ome.Security
@@ -47,7 +47,7 @@ type GatewayParams struct {
 	Meta           MD
 }
 
-type PublicGatewayParams struct {
+type HTTPGatewayParams struct {
 	Email          string
 	MiddlewareList []mux.MiddlewareFunc
 	ProvideRouter  func() *mux.Router

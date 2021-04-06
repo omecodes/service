@@ -21,7 +21,7 @@ import (
 	"github.com/omecodes/libome/logs"
 )
 
-func (box *Box) StartGateway(params *GatewayParams, nOpts ...NodeOption) error {
+func (box *Box) StartHTTPServer(params *HTTPServerParams, nOpts ...NodeOption) error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
 
@@ -126,7 +126,7 @@ func (box *Box) StartGateway(params *GatewayParams, nOpts ...NodeOption) error {
 	return nil
 }
 
-func (box *Box) StartPublicGateway(params *PublicGatewayParams, nOpts ...NodeOption) error {
+func (box *Box) StartHTTPGateway(params *HTTPGatewayParams, nOpts ...NodeOption) error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
 
@@ -223,7 +223,7 @@ func (box *Box) StartPublicGateway(params *PublicGatewayParams, nOpts ...NodeOpt
 	return nil
 }
 
-func (box *Box) stopGateways() error {
+func (box *Box) stopHttpServices() error {
 	box.serverMutex.Lock()
 	defer box.serverMutex.Unlock()
 	for name, srv := range box.httpNodes {
