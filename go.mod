@@ -14,7 +14,7 @@ require (
 	github.com/omecodes/bome v0.0.0-20210106205629-28fe97eb70d7 // indirect
 	github.com/omecodes/common v0.0.0-20201205124409-0a391e4b4c08
 	github.com/omecodes/discover v0.0.0-20210119195912-fc755694fab9
-	github.com/omecodes/errors v0.0.0-20210406211234-cd096e067ef4
+	github.com/omecodes/errors v0.0.0-20210412222728-5ab37f24e3c2
 	github.com/omecodes/libome v0.0.0-20210118230551-aff816f21c74
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/spf13/cobra v1.1.1
